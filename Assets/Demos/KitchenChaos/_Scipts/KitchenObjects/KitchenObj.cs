@@ -55,6 +55,14 @@ namespace Kitchen
                 _rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             }
 
+            // Ensure a Collider exists — Rigidbody without Collider won't interact with physics
+            if (GetComponent<Collider>() == null)
+            {
+                var box = gameObject.AddComponent<BoxCollider>();
+                box.size = new Vector3(0.3f, 0.3f, 0.3f);
+                box.center = Vector3.zero;
+            }
+
             if (_networkTransform == null)
             {
                 // Server-authoritative NetworkTransform (default, NOT ClientNetworkTransform)

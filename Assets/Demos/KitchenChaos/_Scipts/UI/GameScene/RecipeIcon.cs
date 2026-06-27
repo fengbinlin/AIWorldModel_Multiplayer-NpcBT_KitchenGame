@@ -18,12 +18,12 @@ namespace Kitchen.UI
             _textMeshPro = GetComponentInChildren<TextMeshProUGUI>();
         }
 
-        public void SetRecipe(RecipeData recipeData)
+        public void SetRecipe(RecipeSo recipeData)
         {
             _textMeshPro.text = recipeData.recipeName;
-            for (int i = 0; i < recipeData.recipe.Length; i++)
+            for (int i = 0; i < recipeData.ingredients.Length; i++)
             {
-                var objEnum = recipeData.recipe[i];
+                var objEnum = recipeData.ingredients[i];
                 var so = DataTableManager.Sigleton.GetKitchenObjSo(objEnum);
                 //如果已经有合适的icon 则不再生成
                 if (i < _icons.Count)
@@ -38,7 +38,7 @@ namespace Kitchen.UI
                 _icons.Add(icon);
             }
             //将多余的icon隐藏
-            for (int i = recipeData.recipe.Length; i < _icons.Count; i++)
+            for (int i = recipeData.ingredients.Length; i < _icons.Count; i++)
             {
                 _icons[i].gameObject.SetActive(false);
             }

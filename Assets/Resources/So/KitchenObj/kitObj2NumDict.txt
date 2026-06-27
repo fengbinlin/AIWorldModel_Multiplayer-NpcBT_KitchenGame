@@ -1,5 +1,0 @@
-﻿Tomato, 4
-CheeseBlock, 4
-Cabbage, 4
-MeatPattyUncooked,6
-MeatPattyCooked,4

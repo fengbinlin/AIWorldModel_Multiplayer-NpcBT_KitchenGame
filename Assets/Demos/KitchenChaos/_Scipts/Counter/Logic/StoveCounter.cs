@@ -61,7 +61,7 @@ namespace Kitchen
         public void InteractAlternate(Player.Player player)
         {
             //如果当前柜子有物体，且当前不在烹饪 且 物体可以被烹饪 则开启烹饪任务
-            if (HasKitchenObj() && !isCooking && KitchenObjOperator.CanCook(kitchenObj))
+            if (HasKitchenObj() && !isCooking && DataTableManager.Sigleton.CanProcess(kitchenObj.objEnum, FacilityEnum.StoveCounter))
             {
                 StartCookingServerRpc(); //通知服务器开启烹饪
                 return;
@@ -105,11 +105,12 @@ namespace Kitchen
             _cookingCts = new CancellationTokenSource();
             _OnStartCookingClientRpc();
             _CookingStageChangeClientRpc(kitchenObj.objEnum);
-            while (KitchenObjOperator.CanCook(kitchenObj) && !_cookingCts.IsCancellationRequested)
+            while (!_cookingCts.IsCancellationRequested)
             {
-                //获取此次烹饪需要的时间
-                float cookTime = DataTableManager.Sigleton.GetCookingTime(kitchenObj.objEnum);
-                //开始烹饪 同时 更新进度条
+                var process = DataTableManager.Sigleton.GetProcess(kitchenObj.objEnum, FacilityEnum.StoveCounter);
+                if (process == null) break;
+
+                float cookTime = process.processValue;
                 var startTime = Time.time;
                 while (Time.time - startTime < cookTime && !_cookingCts.IsCancellationRequested)
                 {
@@ -117,11 +118,10 @@ namespace Kitchen
                     _SetProgressClientRpc((Time.time - startTime) / cookTime);
                 }
 
+                if (_cookingCts.IsCancellationRequested) break;
 
-                KitchenObjOperator.Cook(kitchenObj, this); //这个操作只能在服务端执行 否则会烹饪两次
+                KitchenObjOperator.Process(kitchenObj, this, FacilityEnum.StoveCounter);
 
-
-                //烹饪阶段改变 
                 _CookingStageChangeClientRpc(kitchenObj.objEnum);
             }
 

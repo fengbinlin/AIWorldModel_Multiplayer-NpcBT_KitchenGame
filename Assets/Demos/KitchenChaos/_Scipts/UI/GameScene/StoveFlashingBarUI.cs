@@ -31,7 +31,7 @@ namespace Kitchen.UI
         {
             var obj = _stoveCounter.GetKitchenObj().objEnum;
 
-            if (KitchenObjOperator.WillBeBurned(obj))
+            if (DataTableManager.Sigleton.CanProcess(obj, FacilityEnum.StoveCounter))
             {
                 _animator.SetBool(_animParamHash, true);
             }

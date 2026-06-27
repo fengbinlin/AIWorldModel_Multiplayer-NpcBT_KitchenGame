@@ -1,4 +1,3 @@
-﻿using System.Collections.Generic;
 using Kitchen;
 using UnityEngine;
 
@@ -13,13 +12,10 @@ namespace Kitchen
 
         public static void ExchangeKitchenObj(ICanHoldKitchenObj holder1, ICanHoldKitchenObj holder2)
         {
-            //不同的情况 1.两个都有物体 2.一个有一个没有 3.都没有
             bool h1 = holder1.HasKitchenObj();
             bool h2 = holder2.HasKitchenObj();
             if (!h1 && !h2) return;
 
-
-            //1.两个都有物体
             if (h1 && h2)
             {
                 var obj1 = holder1.GetKitchenObj();
@@ -31,7 +27,6 @@ namespace Kitchen
                 return;
             }
 
-            //2.一个有一个没有
             if (h1)
             {
                 var obj1 = holder1.GetKitchenObj();
@@ -54,54 +49,22 @@ namespace Kitchen
             KitchenObjFactory.Instance.PutKitObjServerRpc(putter.GetNetworkObject(), reciever.GetNetworkObject());
         }
 
-
-        private static readonly HashSet<KitchenObjEnum> _cookableKitchenObjEnumSet = new()
+        /// <summary>
+        /// Processes an ingredient on a given facility: destroys the old object
+        /// and spawns the output defined by the matching KitchenProcessSo.
+        /// </summary>
+        public static void Process(KitchenObj oldObj, ICanHoldKitchenObj holder, FacilityEnum facility)
         {
-            KitchenObjEnum.MeatPattyUncooked,
-            KitchenObjEnum.MeatPattyCooked
-        };
-
-        public static bool CanCook(KitchenObj kitchenObj)
-        {
-            return _cookableKitchenObjEnumSet.Contains(kitchenObj.objEnum);
-        }
-
-        private static readonly HashSet<KitchenObjEnum> _cuttableKitchenObjEnumSet = new()
-        {
-            KitchenObjEnum.Tomato,
-            KitchenObjEnum.CheeseBlock,
-            KitchenObjEnum.Cabbage,
-        };
-
-        public static bool CanCut(KitchenObj kitchenObj)
-        {
-            return _cuttableKitchenObjEnumSet.Contains(kitchenObj.objEnum);
-        }
-
-        public static void Cook(KitchenObj oldObj, ICanHoldKitchenObj holder)
-        {
-            var nextObj = DataTableManager.Sigleton.GetCookedKitchenObjSo(oldObj.objEnum);
+            var process = DataTableManager.Sigleton.GetProcess(oldObj.objEnum, facility);
+            if (process == null) return;
             DestroyKitchenObj(oldObj);
-            SpawnKitchenObjRpc(nextObj.kitchenObjEnum, holder);
-        }
-
-        public static bool WillBeBurned(KitchenObjEnum kitchenObjEnum)
-        {
-            //ToDO
-            if (kitchenObjEnum == KitchenObjEnum.MeatPattyCooked)
-            {
-                return true;
-            }
-
-            return false;
+            SpawnKitchenObjRpc(process.outputEnum, holder);
         }
 
         public static void PutToPlate(KitchenObj kitchenObj, Plate plate)
         {
-            //尝试将物体放入盘子
             if (plate.TryAddIngredient(kitchenObj))
             {
-                //销毁掉物体
                 DestroyKitchenObj(kitchenObj);
             }
         }

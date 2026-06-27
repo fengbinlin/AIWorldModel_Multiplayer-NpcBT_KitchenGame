@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Newtonsoft.Json;
 using Nico.MVC;
 using Nico.Network;
 using Unity.Netcode;
@@ -15,22 +13,18 @@ namespace Kitchen
 {
     public class DeliveryManager : NetSingleton<DeliveryManager>
     {
-        //ToDo 后续将所有配置信息保存到一个位置
-        private const string _recipeDataPath =
-            "Assets/Resources/So/Recipe.json";
+        private const string _recipeSoDir = "So/Recipes/";
 
-        private Dictionary<string, RecipeData> _recipeDict;
-        private readonly List<RecipeData> _waitingQueue = new();
-
-        [SerializeField] private List<RecipeData> recipeList;
+        private List<RecipeSo> _allRecipes;
+        private readonly List<RecipeSo> _waitingQueue = new();
         private CancellationTokenSource _orderGenerateCts;
 
         public float spawnTime = 5f;
         public float spawnTimeRange = 2f;
         public int maxOrderCount = 3;
         private bool _isGeneratingOrder = false;
-        public event EventHandler<RecipeData> OnOrderAdded;
-        public event EventHandler<RecipeData> OnOrderFinished;
+        public event EventHandler<RecipeSo> OnOrderAdded;
+        public event EventHandler<RecipeSo> OnOrderFinished;
         public event EventHandler<Vector3> OnOrderSuccess;
         public event EventHandler<Vector3> OnOrderFailed;
 
@@ -43,14 +37,8 @@ namespace Kitchen
 
         private void _Init()
         {
-            var contentStr = File.ReadAllText(_recipeDataPath);
-            _recipeDict = JsonConvert.DeserializeObject<Dictionary<string, RecipeData>>(contentStr);
-            if (_recipeDict == null)
-            {
-                throw new NullReferenceException(); 
-            }
-
-            recipeList = new List<RecipeData>(_recipeDict.Values);
+            var recipes = Resources.LoadAll<RecipeSo>(_recipeSoDir);
+            _allRecipes = new List<RecipeSo>(recipes);
         }
 
 
@@ -66,15 +54,15 @@ namespace Kitchen
 
         /// <summary>
         /// 由服务器调用,在所有 客户端 上生成订单
-        /// Tag 之所以只传递一个idx,是因为参数会在网络传输中被序列化,如果传递整个RecipeData,会导致序列化失败 或者 开销过大
+        /// Tag 之所以只传递一个idx,是因为参数会在网络传输中被序列化,如果传递整个RecipeSo,会导致序列化失败 或者 开销过大
         /// </summary>
         /// <param name="recipeDataIdx"></param>
         [ClientRpc]
-        private void SpawnOrderClientRpc(int recipeDataIdx)
+        private void SpawnOrderClientRpc(int recipeIdx)
         {
-            var recipeData = recipeList[recipeDataIdx];
-            _waitingQueue.Add(recipeData);
-            OnOrderAdded?.Invoke(this, recipeData);
+            var recipe = _allRecipes[recipeIdx];
+            _waitingQueue.Add(recipe);
+            OnOrderAdded?.Invoke(this, recipe);
         }
 
         private async UniTask _GenerateOrder()
@@ -89,9 +77,8 @@ namespace Kitchen
                     cancellationToken: _orderGenerateCts.Token);
                 if (_waitingQueue.Count < maxOrderCount)
                 {
-                    //从食谱中随机选取一个
-                    var randomIndex = UnityEngine.Random.Range(0, _recipeDict.Count);
-                    SpawnOrderClientRpc(randomIndex); //生成订单
+                    var randomIndex = UnityEngine.Random.Range(0, _allRecipes.Count);
+                    SpawnOrderClientRpc(randomIndex);
                     //如果在这里添加订单,则只会生成服务端的订单 客户端的订单需要通过网络同步来实现
                     //如果在Rpc中添加 则会在所有客户端上生成订单
                 }
@@ -161,11 +148,10 @@ namespace Kitchen
             for (int i = 0; i < _waitingQueue.Count; i++)
             {
                 var order = _waitingQueue[i];
-                if (order.recipe.Length != ingredients.Count)
+                if (order.ingredients.Length != ingredients.Count)
                     continue;
-                //检查是否有相同的食材
-                Debug.Log($"{string.Join(",", order.recipe)} VS {string.Join(",", ingredients)}");
-                bool flag = order.recipe.All(ingredients.Contains);
+                Debug.Log($"{string.Join(",", order.ingredients)} VS {string.Join(",", ingredients)}");
+                bool flag = order.ingredients.All(ingredients.Contains);
 
                 //如果有一个不相同则跳过
                 if (!flag) continue;
@@ -177,7 +163,7 @@ namespace Kitchen
             return target;
         }
 
-        public ICollection<RecipeData> GetWaitingQueue()
+        public ICollection<RecipeSo> GetWaitingQueue()
         {
             return _waitingQueue;
         }

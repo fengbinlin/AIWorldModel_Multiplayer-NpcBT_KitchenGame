@@ -36,7 +36,7 @@ namespace Kitchen.UI
         }
 
 
-        private void _OnOrderFinished(object sender, RecipeData e)
+        private void _OnOrderFinished(object sender, RecipeSo e)
         {
             SetWaitingRecipes(DeliveryManager.Instance.GetWaitingQueue());
         }
@@ -51,12 +51,12 @@ namespace Kitchen.UI
             SetWaitingRecipes(DeliveryManager.Instance.GetWaitingQueue());
         }
 
-        private void _OnOrderAdded(object sender, RecipeData e)
+        private void _OnOrderAdded(object sender, RecipeSo e)
         {
             SetWaitingRecipes(DeliveryManager.Instance.GetWaitingQueue());
         }
 
-        public void SetWaitingRecipes(ICollection<RecipeData> recipes)
+        public void SetWaitingRecipes(ICollection<RecipeSo> recipes)
         {
             for (int i = 0; i < recipes.Count; i++)
             {

@@ -34,7 +34,7 @@ namespace Kitchen.UI
                 warningIcon.SetActive(false);
                 return;
             }
-            if(KitchenObjOperator.WillBeBurned(obj.Value))
+            if(DataTableManager.Sigleton.CanProcess(obj.Value, FacilityEnum.StoveCounter))
             {
                 warningIcon.SetActive(true);
             }

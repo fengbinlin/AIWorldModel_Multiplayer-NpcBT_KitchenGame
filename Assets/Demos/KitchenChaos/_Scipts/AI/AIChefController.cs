@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.AI;
 using Unity.Netcode;
 
 namespace Kitchen.AI
@@ -26,9 +27,10 @@ namespace Kitchen.AI
         public int agentId = -1;
 
         [Header("Movement")]
-        public float moveSpeed = 3.5f;
         public float interactionRange = 1.8f;
         public float stuckTimeout = 8.0f;
+
+        private NavMeshAgent _navAgent;
 
         [Header("Debug")]
         public bool showDebugGizmos = true;
@@ -39,7 +41,6 @@ namespace Kitchen.AI
         #region Private State
 
         private KitchenTask _currentTask;
-        private Vector3 _targetPosition;
         private BaseCounter _targetCounter;
         private string _substate = "idle"; // idle | moving | interacting | working | waiting
         private float _stateTimer;
@@ -59,9 +60,7 @@ namespace Kitchen.AI
         private KitchenObj _carryTargetItem;
         private Vector3 _carryDestPos;
 
-        // Movement
-        private Vector3 _moveDirection;
-        private bool _isMoving;
+        // Movement (NavMeshAgent handles actual pathfinding)
 
         // Item holding (ICanHoldKitchenObj)
         private KitchenObj _heldItem;
@@ -94,6 +93,18 @@ namespace Kitchen.AI
             // Ensure NetworkObject is present
             if (GetComponent<NetworkObject>() == null)
                 gameObject.AddComponent<NetworkObject>();
+
+            // NavMeshAgent for pathfinding
+            _navAgent = GetComponent<NavMeshAgent>();
+            if (_navAgent == null)
+                _navAgent = gameObject.AddComponent<NavMeshAgent>();
+            _navAgent.speed = 3.5f;
+            _navAgent.angularSpeed = 360f;
+            _navAgent.acceleration = 16f;
+            _navAgent.stoppingDistance = 0.5f;
+            _navAgent.autoBraking = true;
+            _navAgent.radius = 0.4f;
+            _navAgent.height = 1.8f;
         }
 
         private void Start()
@@ -139,23 +150,22 @@ namespace Kitchen.AI
                     break;
 
                 case "moving":
-                    debugState = $"moving → ({_targetPosition.x:F0},{_targetPosition.z:F0}) d={Vector3.Distance(transform.position, _targetPosition):F1}";
+                    var navDest = _navAgent.destination;
+                    debugState = $"moving → ({navDest.x:F0},{navDest.z:F0}) d={_navAgent.remainingDistance:F1}";
                     _moveTimer += Time.deltaTime;
 
-                    float dist = Vector3.Distance(transform.position, _targetPosition);
-                    if (dist < interactionRange)
+                    if (!_navAgent.pathPending && _navAgent.remainingDistance <= interactionRange)
                     {
                         AIDebugLogger.LogState(chefName, "moving", "arrived",
-                            $"at ({_targetPosition.x:F1},{_targetPosition.z:F1}) dist={dist:F2} time={_moveTimer:F1}s");
+                            $"at ({navDest.x:F1},{navDest.z:F1}) dist={_navAgent.remainingDistance:F2} time={_moveTimer:F1}s");
                         _moveTimer = 0;
                         OnArrivedAtTarget();
                     }
                     else if (_moveTimer > stuckTimeout)
                     {
-                        // Stuck too long — abandon instead of teleporting
                         Debug.LogWarning($"[{chefName}] Stuck moving for {stuckTimeout}s, abandoning task");
                         AIDebugLogger.LogWarning(chefName,
-                            $"Stuck moving for {stuckTimeout}s (dist={dist:F1}, target=({_targetPosition.x:F1},{_targetPosition.z:F1}))");
+                            $"Stuck moving for {stuckTimeout}s (remaining={_navAgent.remainingDistance:F1}, target=({navDest.x:F1},{navDest.z:F1}))");
                         AbandonTask();
                     }
                     break;
@@ -341,33 +351,32 @@ namespace Kitchen.AI
 
         public void MoveTo(Vector3 target)
         {
-            _targetPosition = target;
+            // Project target onto NavMesh
+            if (NavMesh.SamplePosition(target, out NavMeshHit hit, 3f, NavMesh.AllAreas))
+            {
+                _navAgent.SetDestination(hit.position);
+                _navAgent.isStopped = false;
+            }
+            else
+            {
+                _navAgent.SetDestination(target);
+                _navAgent.isStopped = false;
+            }
             _substate = "moving";
             _moveTimer = 0;
-            _isMoving = true;
             debugState = $"move → ({target.x:F1}, {target.z:F1})";
         }
 
         private void UpdateMovement()
         {
-            if (!_isMoving) return;
+            if (_substate != "moving") return;
 
-            Vector3 toTarget = _targetPosition - transform.position;
-            toTarget.y = 0;
-            float dist = toTarget.magnitude;
-
-            if (dist < 0.05f) return;
-
-            Vector3 moveDir = toTarget.normalized;
-            float speed = Mathf.Min(moveSpeed * Time.deltaTime, dist); // Don't overshoot
-
-            transform.position += moveDir * speed;
-
-            // Face movement direction
-            if (moveDir.magnitude > 0.01f)
+            // Clamp Y to ground level
+            Vector3 pos = transform.position;
+            if (Mathf.Abs(pos.y) > 0.1f)
             {
-                Quaternion targetRot = Quaternion.LookRotation(moveDir);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, 10f * Time.deltaTime);
+                pos.y = 0;
+                _navAgent.Warp(pos);
             }
         }
 
@@ -1354,6 +1363,8 @@ namespace Kitchen.AI
             _moveTimer = 0;
             _waitTimer = 0;
             _stateTimer = 0;
+            _navAgent.isStopped = true;
+            _navAgent.ResetPath();
             debugState = "idle";
         }
 
@@ -1407,7 +1418,8 @@ namespace Kitchen.AI
             _moveTimer = 0f;
             _waitTimer = 0f;
             _stateTimer = 0f;
-            _isMoving = false;
+            _navAgent.isStopped = true;
+            _navAgent.ResetPath();
             debugState = "idle";
         }
 
@@ -1616,11 +1628,11 @@ namespace Kitchen.AI
             Gizmos.DrawWireSphere(transform.position, 0.5f);
 
             // Draw target
-            if (_substate == "moving")
+            if (_substate == "moving" && _navAgent != null)
             {
                 Gizmos.color = Color.yellow;
-                Gizmos.DrawLine(transform.position, _targetPosition);
-                Gizmos.DrawWireSphere(_targetPosition, 0.3f);
+                Gizmos.DrawLine(transform.position, _navAgent.destination);
+                Gizmos.DrawWireSphere(_navAgent.destination, 0.3f);
             }
 
             // Draw held item indicator

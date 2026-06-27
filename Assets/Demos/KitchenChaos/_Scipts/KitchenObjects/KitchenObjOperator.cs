@@ -69,6 +69,17 @@ namespace Kitchen
             }
         }
 
+        /// <summary>
+        /// Returns true if this ingredient is at risk of burning when cooked on the stove —
+        /// i.e. it has a StoveCounter process whose output has no further process (terminal/burned state).
+        /// </summary>
+        public static bool WillBeBurned(KitchenObjEnum objEnum)
+        {
+            var process = DataTableManager.Sigleton.GetProcess(objEnum, FacilityEnum.StoveCounter);
+            if (process == null) return false;
+            return !DataTableManager.Sigleton.CanProcess(process.outputEnum, FacilityEnum.StoveCounter);
+        }
+
         public static void DestroyKitchenObj(KitchenObj kitchenObj)
         {
             if (kitchenObj == null)

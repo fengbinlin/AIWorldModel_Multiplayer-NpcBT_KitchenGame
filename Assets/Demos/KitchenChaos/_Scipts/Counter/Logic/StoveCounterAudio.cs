@@ -37,7 +37,7 @@ namespace Kitchen
                 _playingWarningSoundCts?.Cancel();
                 return;
             }
-            if (DataTableManager.Sigleton.CanProcess(obj.Value, FacilityEnum.StoveCounter))
+            if (KitchenObjOperator.WillBeBurned(obj.Value))
             {
                 //一直播放 直到 烹饪停止
                 if (!_isPlayingWarningSound)

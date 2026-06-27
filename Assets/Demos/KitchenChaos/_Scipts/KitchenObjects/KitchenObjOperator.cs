@@ -71,7 +71,6 @@ namespace Kitchen
             KitchenObjEnum.Tomato,
             KitchenObjEnum.CheeseBlock,
             KitchenObjEnum.Cabbage,
-            KitchenObjEnum.MeatPattyUncooked,
         };
 
         public static bool CanCut(KitchenObj kitchenObj)

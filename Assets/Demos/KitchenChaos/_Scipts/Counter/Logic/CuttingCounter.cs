@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 using Nico.Components;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Kitchen
 {
@@ -22,27 +23,40 @@ namespace Kitchen
             _progressBar = transform.Find("ProgressBarUI").GetComponent<ProgressBar>();
         }
 
-        private void Update()
+        private void OnEnable()
         {
-            //只在本地玩家选中此柜台且按下 F 时驱动切割
+            var input = PlayerInput.Instance;
+            input.Player.InteractAlternate.started += OnInteractAlternateStarted;
+            input.Player.InteractAlternate.canceled += OnInteractAlternateCanceled;
+        }
+
+        private void OnDisable()
+        {
+            if (PlayerInput.Instance != null)
+            {
+                var input = PlayerInput.Instance;
+                input.Player.InteractAlternate.started -= OnInteractAlternateStarted;
+                input.Player.InteractAlternate.canceled -= OnInteractAlternateCanceled;
+            }
+        }
+
+        private void OnInteractAlternateStarted(InputAction.CallbackContext ctx)
+        {
+            if (!GameManager.Instance.IsPlaying()) return;
+
             var localPlayer = Player.Player.LocalInstance;
             if (localPlayer == null) return;
+            if (localPlayer.SelectCounterController.SelectedCounter != this) return;
+            if (!HasKitchenObj()) return;
+            if (!DataTableManager.Sigleton.CanProcess(kitchenObj.objEnum, FacilityEnum.CuttingCounter)) return;
 
-            bool isSelected = localPlayer.SelectCounterController.SelectedCounter == this;
-            bool fHeld = PlayerInput.Instance.Player.InteractAlternate.IsPressed();
+            StartCuttingServerRpc();
+        }
 
-            if (isSelected && fHeld && HasKitchenObj()
-                && DataTableManager.Sigleton.CanProcess(kitchenObj.objEnum, FacilityEnum.CuttingCounter))
+        private void OnInteractAlternateCanceled(InputAction.CallbackContext ctx)
+        {
+            if (_isCutting)
             {
-                if (!_isCutting)
-                {
-                    _isCutting = true;
-                    StartCuttingServerRpc();
-                }
-            }
-            else if (_isCutting)
-            {
-                _isCutting = false;
                 StopCuttingServerRpc();
             }
         }
@@ -139,7 +153,6 @@ namespace Kitchen
 
             if (_cuttingProgress >= maxTime)
             {
-                // 切割完成，替换食材
                 KitchenObjOperator.DestroyKitchenObj(kitchenObj);
                 KitchenObjOperator.SpawnKitchenObjRpc(process.outputEnum, this);
                 _ClearCuttingStateClientRpc();

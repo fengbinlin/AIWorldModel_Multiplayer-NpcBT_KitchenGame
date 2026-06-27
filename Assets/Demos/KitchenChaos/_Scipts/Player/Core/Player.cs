@@ -77,7 +77,7 @@ namespace Kitchen.Player
         private void OnClientDisconnect(ulong clientId)
         {
             //如果掉线的玩家 是自己的玩家，就销毁自己所持有的物体
-            if (OwnerClientId == clientId)
+            if (OwnerClientId == clientId && _kitchenObj != null && _kitchenObj.NetworkObject.IsSpawned)
             {
                 KitchenObjOperator.DestroyKitchenObj(_kitchenObj);
             }

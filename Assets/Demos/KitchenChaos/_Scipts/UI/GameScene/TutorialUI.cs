@@ -51,15 +51,23 @@ namespace Kitchen.UI
 
         private void OnDisable()
         {
-            if (GameManager.Instance is not null) GameManager.Instance.stateMachine.onStateChange -= _OnStateChange;
+            try { if (GameManager.Instance is not null) GameManager.Instance.stateMachine.onStateChange -= _OnStateChange; }
+            catch (Exception) { /* Singleton destroyed during unload */ }
         }
 
 
         private void OnDestroy()
         {
-            if (PlayerInput.Instance is not null)
+            try
             {
-                PlayerInput.Instance.OnRebinding -= _OnRebinding;
+                if (PlayerInput.Instance is not null)
+                {
+                    PlayerInput.Instance.OnRebinding -= _OnRebinding;
+                }
+            }
+            catch (Exception)
+            {
+                // Singleton already destroyed during scene unload — safe to ignore
             }
         }
 

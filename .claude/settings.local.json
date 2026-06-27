@@ -5,7 +5,14 @@
       "Bash(git init *)",
       "Bash(git remote *)",
       "Bash(git add *)",
-      "Bash(git commit -m 'Initial commit: Unity multiplayer kitchen game using Netcode for GameObjects *)"
+      "Bash(git commit -m 'Initial commit: Unity multiplayer kitchen game using Netcode for GameObjects *)",
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(git commit -m 'feat: ground drop with server-authoritative physics for KitchenObj *)",
+      "Bash(git commit -m 'fix: add BoxCollider in EnsurePhysicsComponents for ground physics *)",
+      "Bash(git commit -m 'security: add server-side validation to DropObjServerRpc and PickupObjServerRpc *)",
+      "Bash(git commit -m 'fix: clear previous holder reference in SetFree to prevent stale state *)",
+      "Bash(git commit -m 'fix: singleton lifecycle errors during scene unload and disconnect *)"
     ]
   }
 }

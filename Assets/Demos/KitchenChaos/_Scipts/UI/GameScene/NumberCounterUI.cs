@@ -55,10 +55,17 @@ namespace Kitchen.UI
 
         private void OnDisable()
         {
-            if (GameManager.Instance is not null)
+            try
             {
-                GameManager.Instance.stateMachine.onStateChange -= _OnGameStateChange;
-                GameManager.Instance.OnCountDownChange -= _OnCountDownChange;
+                if (GameManager.Instance is not null)
+                {
+                    GameManager.Instance.stateMachine.onStateChange -= _OnGameStateChange;
+                    GameManager.Instance.OnCountDownChange -= _OnCountDownChange;
+                }
+            }
+            catch (Exception)
+            {
+                // Singleton already destroyed during scene unload — safe to ignore
             }
         }
     }

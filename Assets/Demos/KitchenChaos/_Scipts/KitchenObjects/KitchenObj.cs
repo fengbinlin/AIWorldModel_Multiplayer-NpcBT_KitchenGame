@@ -77,7 +77,14 @@ namespace Kitchen
         public void SetFree(Vector3 dropPosition, Vector3 dropDirection, float dropForce)
         {
             IsFree = true;
-            holder = null;
+
+            // Clear the previous holder's reference (important on server where holder still references this obj)
+            if (holder != null)
+            {
+                holder.ClearKitchenObj();
+                holder = null;
+            }
+
             follower.SetFollowTarget(null);
 
             if (IsServer)

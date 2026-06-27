@@ -26,8 +26,11 @@ namespace Kitchen
         public override void Interact(Player.Player player)
         {
             //玩家持有物体，当前柜子没有物体 -> 放置物体（会自动开始烹饪）
+            //只有能被StoveCounter处理的食材才允许放置
             if (player.HasKitchenObj() && !HasKitchenObj())
             {
+                if (!DataTableManager.Sigleton.CanProcess(player.GetKitchenObj().objEnum, FacilityEnum.StoveCounter))
+                    return;
                 KitchenObjOperator.PutKitchenObj(player, this);
                 return;
             }

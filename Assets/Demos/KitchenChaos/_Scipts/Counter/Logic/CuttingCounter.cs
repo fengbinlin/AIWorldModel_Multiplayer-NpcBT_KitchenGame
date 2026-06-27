@@ -67,6 +67,9 @@ namespace Kitchen
             //玩家持有物体，当前柜子没有物体 -> 放置物体
             if (player.HasKitchenObj() && !HasKitchenObj())
             {
+                //只有能被CuttingCounter处理的食材才允许放置
+                if (!DataTableManager.Sigleton.CanProcess(player.GetKitchenObj().objEnum, FacilityEnum.CuttingCounter))
+                    return;
                 _ClearCuttingStateServerRpc();
                 KitchenObjOperator.PutKitchenObj(player, this);
                 return;

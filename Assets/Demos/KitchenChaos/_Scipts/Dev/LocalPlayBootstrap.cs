@@ -14,11 +14,19 @@ namespace Kitchen
     /// 1. 从 LobbyScene 复制 NetworkManager GameObject 到这个场景
     /// 2. 从 LobbyScene 复制 GameManager GameObject 到这个场景（自带 PlayerInput 组件）
     /// 3. 将这个脚本挂到任意 GameObject 上，并拖入 Player 预制体引用
+    ///
+    /// AI 模式：
+    /// 4. 勾选 enableAIChefs，在场景中放置 KitchenAIManager + 4 个 AIChefController GameObject
+    /// 5. Player 预制体仍会生成（用于网络/相机），但默认由 AI 接管
     /// </summary>
     public class LocalPlayBootstrap : MonoBehaviour
     {
         [Header("拖入 Player 预制体（与 GameManager 上的相同）")]
         [SerializeField] private GameObject playerPrefab;
+
+        [Header("AI 模式")]
+        [SerializeField] private bool enableAIChefs = false;
+        [SerializeField] private bool disableHumanInput = true;
 
         private async void Start()
         {
@@ -91,6 +99,33 @@ namespace Kitchen
             }
 
             Debug.Log("[LocalPlayBootstrap] 启动完成！游戏处于 WaitingToStart 状态，按 E 准备开始");
+
+            // AI mode: initialize KitchenAIManager after everything is set up
+            if (enableAIChefs)
+            {
+                await UniTask.NextFrame();
+                var aiManager = FindObjectOfType<AI.KitchenAIManager>();
+                if (aiManager != null)
+                {
+                    aiManager.Initialize();
+                    Debug.Log("[LocalPlayBootstrap] AI 模式已激活 — KitchenAIManager 启动");
+                }
+                else
+                {
+                    Debug.LogWarning("[LocalPlayBootstrap] enableAIChefs=true 但场景中未找到 KitchenAIManager！");
+                }
+
+                // Disable human input on the local player if requested
+                if (disableHumanInput)
+                {
+                    var playerInput = PlayerInput.Instance;
+                    if (playerInput != null)
+                    {
+                        playerInput.Disable();
+                        Debug.Log("[LocalPlayBootstrap] 人类玩家输入已禁用（AI 模式）");
+                    }
+                }
+            }
         }
     }
 }

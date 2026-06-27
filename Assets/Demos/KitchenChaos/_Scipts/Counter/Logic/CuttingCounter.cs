@@ -14,7 +14,8 @@ namespace Kitchen
         private CancellationTokenSource _cuttingCts;
         private bool _isCutting;
         private float _cuttingProgress; // 0 to processValue
-        public event Action OnCuttingEvent;
+        public event Action OnCuttingStart;
+        public event Action OnCuttingStop;
         public static event EventHandler<Vector3> OnAnyCut;
 
         protected override void Awake()
@@ -124,6 +125,7 @@ namespace Kitchen
         private void _StopCuttingClientRpc()
         {
             _isCutting = false;
+            OnCuttingStop?.Invoke();
         }
 
         private async UniTask _CuttingRoutine()
@@ -171,7 +173,7 @@ namespace Kitchen
         private void _OnStartCuttingClientRpc()
         {
             _isCutting = true;
-            OnCuttingEvent?.Invoke();
+            OnCuttingStart?.Invoke();
         }
 
         [ClientRpc]

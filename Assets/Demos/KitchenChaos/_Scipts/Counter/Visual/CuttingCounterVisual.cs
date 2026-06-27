@@ -7,7 +7,7 @@ namespace Kitchen
     {
         private CuttingCounter _cuttingCounter;
         private Animator _animator;
-        private static readonly int _cutParam = Animator.StringToHash("cut");
+        private static readonly int _isCuttingParam = Animator.StringToHash("isCutting");
 
         private void Awake()
         {
@@ -17,17 +17,24 @@ namespace Kitchen
 
         private void OnEnable()
         {
-            _cuttingCounter.OnCuttingEvent += _OnCuttingEvent;
+            _cuttingCounter.OnCuttingStart += _OnCuttingStart;
+            _cuttingCounter.OnCuttingStop += _OnCuttingStop;
         }
 
         private void OnDisable()
         {
-            _cuttingCounter.OnCuttingEvent -= _OnCuttingEvent;
+            _cuttingCounter.OnCuttingStart -= _OnCuttingStart;
+            _cuttingCounter.OnCuttingStop -= _OnCuttingStop;
         }
-        
-        private void _OnCuttingEvent()
+
+        private void _OnCuttingStart()
         {
-            _animator.SetTrigger(_cutParam);
+            _animator.SetBool(_isCuttingParam, true);
+        }
+
+        private void _OnCuttingStop()
+        {
+            _animator.SetBool(_isCuttingParam, false);
         }
     }
 }

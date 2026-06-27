@@ -73,8 +73,18 @@ namespace Kitchen
 
 
         [ServerRpc(RequireOwnership = false)]
-        public void DropObjServerRpc(NetworkObjectReference objRef, Vector3 dropPosition, Vector3 dropDirection, float dropForce)
+        public void DropObjServerRpc(NetworkObjectReference objRef, Vector3 dropPosition, Vector3 dropDirection, float dropForce, ServerRpcParams rpcParams = default)
         {
+            // Server-side validation: only the holder can drop
+            if (!objRef.TryGet(out NetworkObject obj)) return;
+            var kitchenObj = obj.GetComponent<KitchenObj>();
+            if (kitchenObj == null) return;
+
+            var senderClientId = rpcParams.Receive.SenderClientId;
+            var senderPlayerObj = NetworkManager.Singleton.ConnectedClients[senderClientId].PlayerObject;
+            var holder = kitchenObj.GetHolder();
+            if (holder == null || holder.GetNetworkObject() != senderPlayerObj) return;
+
             _DropObjClientRpc(objRef, dropPosition, dropDirection, dropForce);
         }
 
@@ -88,8 +98,18 @@ namespace Kitchen
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void PickupObjServerRpc(NetworkObjectReference objRef, NetworkObjectReference holderRef)
+        public void PickupObjServerRpc(NetworkObjectReference objRef, NetworkObjectReference holderRef, ServerRpcParams rpcParams = default)
         {
+            // Server-side validation: object must be free, and holder must be the requesting player
+            if (!objRef.TryGet(out NetworkObject obj)) return;
+            if (!holderRef.TryGet(out NetworkObject holderObj)) return;
+            var kitchenObj = obj.GetComponent<KitchenObj>();
+            if (kitchenObj == null) return;
+
+            var senderClientId = rpcParams.Receive.SenderClientId;
+            var senderPlayerObj = NetworkManager.Singleton.ConnectedClients[senderClientId].PlayerObject;
+            if (!kitchenObj.IsFree || holderObj != senderPlayerObj) return;
+
             _PickupObjClientRpc(objRef, holderRef);
         }
 

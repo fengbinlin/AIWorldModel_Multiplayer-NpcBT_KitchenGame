@@ -28,6 +28,10 @@ namespace Kitchen
         [SerializeField] private bool enableAIChefs = false;
         [SerializeField] private bool disableHumanInput = true;
 
+        [Header("跳过准备阶段")]
+        [SerializeField] private bool autoReady = true;
+        [SerializeField] private float autoReadyDelay = 1.5f;
+
         private async void Start()
         {
             // 等待一帧，确保所有 Awake/Start 执行完毕
@@ -98,7 +102,7 @@ namespace Kitchen
                 playerObj.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
             }
 
-            Debug.Log("[LocalPlayBootstrap] 启动完成！游戏处于 WaitingToStart 状态，按 E 准备开始");
+            Debug.Log("[LocalPlayBootstrap] 启动完成！游戏处于 WaitingToStart 状态");
 
             // AI mode: initialize KitchenAIManager after everything is set up
             if (enableAIChefs)
@@ -125,6 +129,14 @@ namespace Kitchen
                         Debug.Log("[LocalPlayBootstrap] 人类玩家输入已禁用（AI 模式）");
                     }
                 }
+            }
+
+            // Auto-ready: skip the "press E to ready" step
+            if (autoReady)
+            {
+                await UniTask.Delay(System.TimeSpan.FromSeconds(autoReadyDelay));
+                Debug.Log("[LocalPlayBootstrap] Auto-ready: triggering ready for local player...");
+                gm.SetPlayerReadyServerRpc();
             }
         }
     }

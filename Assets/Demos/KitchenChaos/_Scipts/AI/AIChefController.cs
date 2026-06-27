@@ -1,0 +1,1642 @@
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using Unity.Netcode;
+
+namespace Kitchen.AI
+{
+    /// <summary>
+    /// AI Chef controller — the "brain" of a single AI chef.
+    ///
+    /// Implements ICanHoldKitchenObj so the AI can hold items and interact with counters
+    /// exactly like a human Player does. Uses direct movement (no NavMesh required).
+    ///
+    /// State machine:
+    ///   Idle → Moving → Interacting → Working → Complete → Idle
+    ///            ↑          ↑            ↑
+    ///            └── timeout ─┴── fail ───┘
+    /// </summary>
+    public class AIChefController : NetworkBehaviour, ICanHoldKitchenObj
+    {
+        #region Inspector Fields
+
+        [Header("Identity")]
+        public string chefName = "AI_Chef";
+        public Color chefColor = Color.white;
+        public int agentId = -1;
+
+        [Header("Movement")]
+        public float moveSpeed = 3.5f;
+        public float interactionRange = 1.8f;
+        public float stuckTimeout = 8.0f;
+
+        [Header("Debug")]
+        public bool showDebugGizmos = true;
+        public string debugState = "idle";
+
+        #endregion
+
+        #region Private State
+
+        private KitchenTask _currentTask;
+        private Vector3 _targetPosition;
+        private BaseCounter _targetCounter;
+        private string _substate = "idle"; // idle | moving | interacting | working | waiting
+        private float _stateTimer;
+        private float _moveTimer;
+        private float _waitTimer;
+        private bool _isHoldingItem;
+
+        // Execution phases (for multi-step tasks)
+        private enum ExecPhase
+        {
+            None,
+            GotoItem,
+            GotoFacility,
+            GotoDest
+        }
+        private ExecPhase _execPhase = ExecPhase.None;
+        private KitchenObj _carryTargetItem;
+        private Vector3 _carryDestPos;
+
+        // Movement
+        private Vector3 _moveDirection;
+        private bool _isMoving;
+
+        // Item holding (ICanHoldKitchenObj)
+        private KitchenObj _heldItem;
+        private Transform _holdPoint;
+
+        // References
+        private KitchenAIManager _aiManager;
+
+        #endregion
+
+        #region Public Properties
+
+        public KitchenTask CurrentTask => _currentTask;
+        public string Substate => _substate;
+        public bool IsIdle => _currentTask == null || _currentTask.status == "completed";
+        public KitchenObj HeldItem => _heldItem;
+
+        #endregion
+
+        #region Unity Lifecycle
+
+        private void Awake()
+        {
+            // Create hold point for items
+            var holdGo = new GameObject("AI_HoldPoint");
+            holdGo.transform.SetParent(transform);
+            holdGo.transform.localPosition = new Vector3(0, 1.5f, 0.6f);
+            _holdPoint = holdGo.transform;
+
+            // Ensure NetworkObject is present
+            if (GetComponent<NetworkObject>() == null)
+                gameObject.AddComponent<NetworkObject>();
+        }
+
+        private void Start()
+        {
+            _aiManager = KitchenAIManager.Instance;
+            if (_aiManager != null)
+            {
+                _aiManager.RegisterAgent(this);
+            }
+        }
+
+        private void Update()
+        {
+            // Safety: skip if destroyed or exiting play mode
+            if (this == null || !isActiveAndEnabled) return;
+            if (!IsServer && !IsHost) return;
+            if (GameManager.Instance == null || !GameManager.Instance.IsPlaying()) return;
+
+            UpdateStateMachine();
+            UpdateMovement();
+            UpdateHeldItem();
+        }
+
+        private void OnDestroy()
+        {
+            if (_aiManager != null)
+                _aiManager.UnregisterAgent(this);
+        }
+
+        #endregion
+
+        #region State Machine
+
+        private void UpdateStateMachine()
+        {
+            _stateTimer += Time.deltaTime;
+
+            switch (_substate)
+            {
+                case "idle":
+                    debugState = "idle";
+                    // Waiting for task assignment from KitchenAIManager
+                    break;
+
+                case "moving":
+                    debugState = $"moving → ({_targetPosition.x:F0},{_targetPosition.z:F0}) d={Vector3.Distance(transform.position, _targetPosition):F1}";
+                    _moveTimer += Time.deltaTime;
+
+                    float dist = Vector3.Distance(transform.position, _targetPosition);
+                    if (dist < interactionRange)
+                    {
+                        AIDebugLogger.LogState(chefName, "moving", "arrived",
+                            $"at ({_targetPosition.x:F1},{_targetPosition.z:F1}) dist={dist:F2} time={_moveTimer:F1}s");
+                        _moveTimer = 0;
+                        OnArrivedAtTarget();
+                    }
+                    else if (_moveTimer > stuckTimeout)
+                    {
+                        // Stuck too long — abandon instead of teleporting
+                        Debug.LogWarning($"[{chefName}] Stuck moving for {stuckTimeout}s, abandoning task");
+                        AIDebugLogger.LogWarning(chefName,
+                            $"Stuck moving for {stuckTimeout}s (dist={dist:F1}, target=({_targetPosition.x:F1},{_targetPosition.z:F1}))");
+                        AbandonTask();
+                    }
+                    break;
+
+                case "interacting":
+                    debugState = "interacting";
+                    if (_stateTimer > 0.15f) // brief delay to simulate interaction
+                    {
+                        ExecuteInteraction();
+                    }
+                    break;
+
+                case "working":
+                    debugState = $"working {_stateTimer:F1}s";
+                    if (_stateTimer >= (_currentTask?.duration ?? 1.0f))
+                    {
+                        AIDebugLogger.LogState(chefName, "working", "done",
+                            $"duration={_stateTimer:F1}s task={_currentTask?.label}");
+
+                        // Check if the processing output is ready
+                        if (_currentTask?.type == TaskType.PROCESS &&
+                            _targetCounter != null &&
+                            _targetCounter.HasKitchenObj())
+                        {
+                            var counterItem = _targetCounter.GetKitchenObj();
+                            if (counterItem.objEnum == _currentTask.outputType)
+                            {
+                                // Output ready — take it and deliver to ClearCounter
+                                AIDebugLogger.Log(chefName, $"Taking processed output {counterItem.objEnum} from {_targetCounter.name}");
+                                _targetCounter.Interact(this);
+
+                                if (_heldItem != null)
+                                {
+                                    var dropTarget = FindNearestFreeCounter(transform.position);
+                                    if (dropTarget != null)
+                                    {
+                                        AIDebugLogger.Log(chefName, $"Delivering {_heldItem.objEnum} to {dropTarget.name}");
+                                        _execPhase = ExecPhase.GotoDest;
+                                        _targetCounter = dropTarget;
+                                        MoveTo(GetApproachPosition(dropTarget));
+                                        break;
+                                    }
+                                }
+                                CompleteTask();
+                                break;
+                            }
+                            else
+                            {
+                                // Output not ready yet (still processing) — wait and re-check
+                                AIDebugLogger.Log(chefName, $"Working done but output not ready (counter has {counterItem.objEnum}), entering wait");
+                                _substate = "waiting";
+                                _waitTimer = 0;
+                                break;
+                            }
+                        }
+
+                        CompleteTask();
+                    }
+                    break;
+
+                case "waiting":
+                    debugState = $"waiting {_waitTimer:F1}s";
+                    _waitTimer += Time.deltaTime;
+
+                    // Check if we can proceed (periodic re-check)
+                    if (_waitTimer > 0.3f && CanProceedFromWaiting())
+                    {
+                        _substate = "interacting";
+                        _stateTimer = 0;
+                        debugState = "retrying interaction";
+                        // Don't reset _waitTimer — let the timeout catch stuck loops
+                        break;
+                    }
+
+                    // Task-dependent timeout
+                    float maxWait = GetMaxWaitTime();
+                    if (_waitTimer > maxWait)
+                    {
+                        Debug.Log($"[{chefName}] Waited {maxWait}s, abandoning: {_currentTask?.label}");
+                        AIDebugLogger.LogWarning(chefName, $"FETCH_PLATE wait timeout ({maxWait}s), abandoning");
+                        AbandonTask();
+                    }
+                    break;
+            }
+        }
+
+        private void OnArrivedAtTarget()
+        {
+            switch (_execPhase)
+            {
+                case ExecPhase.GotoItem:
+                    // Arrived at item position — pick it up.
+                    // If the original item reference became stale (consumed by another agent),
+                    // fall back to finding any available item of the required type.
+                    if (_carryTargetItem == null && _currentTask?.itemType != 0)
+                    {
+                        AIDebugLogger.Log(chefName, $"GotoItem: original item gone, searching for {_currentTask.itemType}");
+                        _carryTargetItem = FindItemAnywhere(_currentTask.itemType);
+                        if (_carryTargetItem != null)
+                        {
+                            // Re-target to the new item's position
+                            var holdingCounter = FindCounterHolding(_carryTargetItem);
+                            Vector3 newTarget = holdingCounter != null
+                                ? GetApproachPosition(holdingCounter)
+                                : _carryTargetItem.transform.position;
+                            AIDebugLogger.Log(chefName, $"GotoItem: found alternative {_carryTargetItem.objEnum}, re-targeting");
+                            MoveTo(newTarget);
+                            break; // Will re-enter GotoItem on next arrival
+                        }
+                        AIDebugLogger.LogWarning(chefName, $"GotoItem: no {_currentTask.itemType} found anywhere, abandoning");
+                        AbandonTask();
+                        break;
+                    }
+
+                    // If item is on a counter, interact with the counter (not PickupObjServerRpc)
+                    var counterHolding = FindCounterHolding(_carryTargetItem);
+                    if (counterHolding != null)
+                    {
+                        // Item is on a counter — interact with the counter to take it
+                        AIDebugLogger.LogState(chefName, "GotoItem", "counter-pickup",
+                            $"taking {_carryTargetItem?.objEnum} from {counterHolding.name}");
+                        counterHolding.Interact(this);
+                        _carryTargetItem = null;
+                    }
+                    else
+                    {
+                        // Item is free on ground — use direct pickup
+                        PickupItem();
+                    }
+
+                    if (_targetCounter != null && _heldItem != null)
+                    {
+                        // Successfully got the item, now continue to destination
+                        if (_currentTask?.type == TaskType.PROCESS)
+                        {
+                            _execPhase = ExecPhase.GotoFacility;
+                            AIDebugLogger.LogState(chefName, "GotoItem", "GotoFacility",
+                                $"carrying {_heldItem?.objEnum}, heading to {_targetCounter.name}");
+                        }
+                        else
+                        {
+                            _execPhase = ExecPhase.GotoDest;
+                            AIDebugLogger.LogState(chefName, "GotoItem", "GotoDest",
+                                $"carrying {_heldItem?.objEnum}, heading to {_targetCounter.name}");
+                        }
+                        MoveTo(GetApproachPosition(_targetCounter));
+                    }
+                    else if (_heldItem == null)
+                    {
+                        // Pickup failed — abandon
+                        AIDebugLogger.LogWarning(chefName, $"GotoItem: pickup failed for {_carryTargetItem?.objEnum}");
+                        AbandonTask();
+                    }
+                    else
+                    {
+                        // Got item but no destination — complete
+                        _substate = "interacting";
+                        _stateTimer = 0;
+                    }
+                    break;
+
+                case ExecPhase.GotoFacility:
+                    // Arrived at facility — drop held item first, then interact
+                    DropItemAtFacility();
+                    break;
+
+                case ExecPhase.GotoDest:
+                    // Arrived at destination — drop item or interact
+                    DropItemAtDestination();
+                    break;
+
+                default:
+                    // Simple task — start interaction
+                    _substate = "interacting";
+                    _stateTimer = 0;
+                    break;
+            }
+        }
+
+        #endregion
+
+        #region Movement
+
+        public void MoveTo(Vector3 target)
+        {
+            _targetPosition = target;
+            _substate = "moving";
+            _moveTimer = 0;
+            _isMoving = true;
+            debugState = $"move → ({target.x:F1}, {target.z:F1})";
+        }
+
+        private void UpdateMovement()
+        {
+            if (!_isMoving) return;
+
+            Vector3 toTarget = _targetPosition - transform.position;
+            toTarget.y = 0;
+            float dist = toTarget.magnitude;
+
+            if (dist < 0.05f) return;
+
+            Vector3 moveDir = toTarget.normalized;
+            float speed = Mathf.Min(moveSpeed * Time.deltaTime, dist); // Don't overshoot
+
+            transform.position += moveDir * speed;
+
+            // Face movement direction
+            if (moveDir.magnitude > 0.01f)
+            {
+                Quaternion targetRot = Quaternion.LookRotation(moveDir);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, 10f * Time.deltaTime);
+            }
+        }
+
+        #endregion
+
+        #region Task Execution
+
+        /// <summary>
+        /// Called by KitchenAIManager when a task is assigned to this chef.
+        /// </summary>
+        public void AssignTask(KitchenTask task)
+        {
+            _currentTask = task;
+            _execPhase = ExecPhase.None;
+            _carryTargetItem = null;
+            _waitTimer = 0;
+
+            AIDebugLogger.LogAssignment(agentId, chefName, task);
+
+            ExecuteTask(task);
+        }
+
+        private void ExecuteTask(KitchenTask task)
+        {
+            AIDebugLogger.LogState(chefName, "idle", $"executing {task.type}",
+                $"task={task.label} facility={task.targetFacility?.name ?? "none"} item={task.targetItem?.objEnum.ToString() ?? "none"}");
+
+            switch (task.type)
+            {
+                case TaskType.FETCH:
+                    ExecuteFetch(task);
+                    break;
+                case TaskType.PROCESS:
+                    ExecuteProcess(task);
+                    break;
+                case TaskType.FETCH_PLATE:
+                    ExecuteFetchPlate(task);
+                    break;
+                case TaskType.ADD_TO_PLATE:
+                    ExecuteAddToPlate(task);
+                    break;
+                case TaskType.SERVE:
+                    ExecuteServe(task);
+                    break;
+                case TaskType.TRASH:
+                    ExecuteTrash(task);
+                    break;
+            }
+        }
+
+        private void ExecuteFetch(KitchenTask task)
+        {
+            // Phase 1: Go to ContainerCounter, get item
+            // Phase 2: Go to nearest processing facility, drop item
+            var counter = task.targetFacility;
+            if (counter == null)
+            {
+                Debug.LogWarning($"[{chefName}] FETCH task has no target facility");
+                AbandonTask();
+                return;
+            }
+
+            // If we're already holding the right item (by type), skip to phase 2
+            if (_heldItem != null && task.outputType != 0 && _heldItem.objEnum == task.outputType)
+            {
+                AIDebugLogger.Log(chefName, $"ExecuteFetch: already holding {_heldItem.objEnum}, finding drop target");
+                // Find destination facility for this ingredient
+                _targetCounter = FindDropTarget(task.outputType);
+                if (_targetCounter != null && _targetCounter != counter)
+                {
+                    _execPhase = ExecPhase.GotoDest;
+                    MoveTo(GetApproachPosition(_targetCounter));
+                }
+                else
+                {
+                    // Just drop at the source counter or nearby clear counter
+                    var dropTarget = FindNearestFreeCounter(counter.transform.position);
+                    _targetCounter = dropTarget ?? counter;
+                    _execPhase = ExecPhase.GotoDest;
+                    MoveTo(GetApproachPosition(_targetCounter));
+                }
+                return;
+            }
+
+            // Phase 1: Go to ContainerCounter
+            _targetCounter = counter;
+            _execPhase = ExecPhase.None;
+            MoveTo(GetApproachPosition(counter));
+        }
+
+        /// <summary>
+        /// Find the best facility to drop a raw ingredient at.
+        /// Cuttable → CuttingCounter, Cookable → StoveCounter, Other → ClearCounter.
+        /// Now checks blackboard reservations to avoid conflicts.
+        /// </summary>
+        private BaseCounter FindDropTarget(KitchenObjEnum ingredient)
+        {
+            var bb = _aiManager?.Blackboard;
+            HashSet<BaseCounter> reservedCounters = null;
+            if (bb != null)
+            {
+                reservedCounters = new HashSet<BaseCounter>(
+                    bb.facilities
+                        .Where(f => f.state == "reserved" && f.reservedByAgent != agentId)
+                        .Select(f => f.counter));
+            }
+
+            // Raw ingredients that can be cut → CuttingCounter
+            if (DataTableManager.Sigleton.CanProcess(ingredient, FacilityEnum.CuttingCounter))
+            {
+                var cc = FindObjectsOfType<CuttingCounter>()
+                    .FirstOrDefault(c => !c.HasKitchenObj()
+                        && (reservedCounters == null || !reservedCounters.Contains(c)));
+                if (cc != null)
+                {
+                    AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → CuttingCounter {cc.name}");
+                    return cc;
+                }
+            }
+            // Raw ingredients that can be cooked → StoveCounter
+            if (DataTableManager.Sigleton.CanProcess(ingredient, FacilityEnum.StoveCounter))
+            {
+                var sc = FindObjectsOfType<StoveCounter>()
+                    .FirstOrDefault(c => !c.HasKitchenObj()
+                        && (reservedCounters == null || !reservedCounters.Contains(c)));
+                if (sc != null)
+                {
+                    AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → StoveCounter {sc.name}");
+                    return sc;
+                }
+            }
+            // Non-processable ingredients (like Bread) → ClearCounter
+            var clear = FindObjectsOfType<ClearCounter>()
+                .FirstOrDefault(c => !c.HasKitchenObj()
+                    && (reservedCounters == null || !reservedCounters.Contains(c)));
+            if (clear != null)
+            {
+                AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → ClearCounter {clear.name}");
+                return clear;
+            }
+            // Fallback: any non-storage, non-delivery counter
+            AIDebugLogger.LogWarning(chefName, $"FindDropTarget({ingredient}) → fallback nearest free");
+            return FindNearestFreeCounter(transform.position, reservedCounters);
+        }
+
+        private BaseCounter FindNearestFreeCounter(Vector3 near, HashSet<BaseCounter> reserved = null)
+        {
+            var counters = FindObjectsOfType<BaseCounter>();
+            BaseCounter best = null;
+            float bestDist = float.MaxValue;
+            foreach (var c in counters)
+            {
+                // Only ClearCounters for general purpose
+                if (!(c is ClearCounter)) continue;
+                if (c.HasKitchenObj()) continue;
+                if (reserved != null && reserved.Contains(c)) continue;
+                float d = Vector3.Distance(near, c.transform.position);
+                if (d < bestDist) { bestDist = d; best = c; }
+            }
+            if (best == null)
+            {
+                AIDebugLogger.LogWarning(chefName, "FindNearestFreeCounter: NO free counter found!");
+            }
+            return best;
+        }
+
+        private void ExecuteProcess(KitchenTask task)
+        {
+            var counter = task.targetFacility;
+            if (counter == null)
+            {
+                AIDebugLogger.LogWarning(chefName, $"ExecuteProcess: no target facility");
+                AbandonTask();
+                return;
+            }
+
+            _targetCounter = counter;
+
+            // If holding an unrelated item, drop it first at nearest free counter
+            if (_heldItem != null &&
+                _heldItem.objEnum != task.itemType &&
+                _heldItem.objEnum != task.outputType)
+            {
+                AIDebugLogger.Log(chefName, $"ExecuteProcess: dropping unrelated {_heldItem.objEnum} before PROCESS");
+                var freeCounter = FindNearestFreeCounter(transform.position);
+                if (freeCounter != null)
+                {
+                    freeCounter.Interact(this);
+                }
+                else
+                {
+                    // Drop on ground
+                    KitchenObjFactory.Instance.DropObjServerRpc(
+                        _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                        Vector3.down, 0f, default);
+                    ClearKitchenObj();
+                }
+            }
+
+            Vector3 approachPos = GetApproachPosition(counter);
+
+            if (_heldItem != null && task.itemType != 0 && _heldItem.objEnum == task.itemType)
+            {
+                // Holding the right input — go drop it and start processing
+                AIDebugLogger.Log(chefName, $"ExecuteProcess: holding {_heldItem.objEnum}, → GotoFacility {counter.name}");
+                _execPhase = ExecPhase.GotoFacility;
+                MoveTo(approachPos);
+            }
+            else if (counter.HasKitchenObj())
+            {
+                string counterItem = counter.GetKitchenObj().objEnum.ToString();
+                AIDebugLogger.Log(chefName, $"ExecuteProcess: counter {counter.name} has {counterItem}, → direct interact");
+                _execPhase = ExecPhase.None;
+                MoveTo(approachPos);
+            }
+            else
+            {
+                // Counter is empty — find the input item elsewhere and bring it here
+                KitchenObj foundItem = FindItemAnywhere(task.itemType);
+                if (foundItem != null)
+                {
+                    var holdingCounter = FindCounterHolding(foundItem);
+                    Vector3 pickupPos = holdingCounter != null
+                        ? GetApproachPosition(holdingCounter)
+                        : foundItem.transform.position;
+                    AIDebugLogger.Log(chefName, $"ExecuteProcess: self-fetching {task.itemType} from {(holdingCounter != null ? holdingCounter.name : "ground")} → {counter.name}");
+                    _carryTargetItem = foundItem;
+                    _carryDestPos = approachPos;
+                    _execPhase = ExecPhase.GotoItem;
+                    MoveTo(pickupPos);
+                }
+                else
+                {
+                    AIDebugLogger.LogWarning(chefName, $"ExecuteProcess: no {task.itemType} found, abandoning");
+                    AbandonTask();
+                }
+            }
+        }
+
+        private void ExecuteFetchPlate(KitchenTask task)
+        {
+            // Phase 1: Go to PlatesCounter (targetFacility), get plate
+            // Phase 2: Go to ClearCounter (destFacility), place plate
+            var platesCounter = task.targetFacility;
+            var dropCounter = task.destFacility;
+
+            if (_heldItem != null && _heldItem.objEnum == KitchenObjEnum.Plate)
+            {
+                AIDebugLogger.Log(chefName, "ExecuteFetchPlate: already holding a plate, delivering");
+                // Already holding a plate — go deliver it
+                _targetCounter = dropCounter ?? FindNearestFreeCounter(transform.position);
+                _execPhase = ExecPhase.GotoDest;
+                MoveTo(GetApproachPosition(_targetCounter));
+                return;
+            }
+
+            _targetCounter = platesCounter ?? FindObjectsOfType<PlatesCounter>().FirstOrDefault();
+            if (_targetCounter == null)
+            {
+                Debug.LogWarning($"[{chefName}] FETCH_PLATE: no PlatesCounter found");
+                AbandonTask();
+                return;
+            }
+            _execPhase = ExecPhase.None;
+            MoveTo(GetApproachPosition(_targetCounter));
+        }
+
+        private void ExecuteAddToPlate(KitchenTask task)
+        {
+            // Pick up the ingredient → go to the order's plate → add to plate.
+            // CRITICAL: find the plate at EXECUTION time via orderPlate, not at
+            // task generation time. The plate may have moved between cycles.
+            var ingredient = task.targetItem;
+            int orderId = task.orderId;
+
+            // Re-find the correct plate for this order right now
+            BaseCounter correctPlateCounter = null;
+            if (orderId != 0)
+            {
+                var orderPlate = _aiManager?.Blackboard?.FindPlateForOrder(orderId);
+                if (orderPlate != null)
+                {
+                    var holder = orderPlate.GetHolder();
+                    correctPlateCounter = holder as BaseCounter;
+                }
+            }
+
+            // Fallback to the task's recorded counter
+            if (correctPlateCounter == null)
+                correctPlateCounter = task.targetFacility;
+
+            // Check if already holding the right ingredient
+            if (_heldItem != null && task.itemType != 0 && _heldItem.objEnum == task.itemType)
+            {
+                AIDebugLogger.Log(chefName, $"ExecuteAddToPlate: already holding {_heldItem.objEnum}, going to plate at {(correctPlateCounter != null ? correctPlateCounter.name : "?")}");
+                _targetCounter = correctPlateCounter;
+                _execPhase = ExecPhase.GotoDest;
+                if (_targetCounter != null)
+                    MoveTo(GetApproachPosition(_targetCounter));
+                else
+                    AbandonTask();
+                return;
+            }
+
+            // Re-find the ingredient fresh (don't trust stale reference)
+            if (ingredient == null || ingredient.gameObject == null)
+            {
+                ingredient = FindItemAnywhere(task.itemType);
+                if (ingredient != null) task.targetItem = ingredient;
+            }
+
+            if (ingredient != null)
+            {
+                var holdingCounter = FindCounterHolding(ingredient);
+                Vector3 pickupPos = holdingCounter != null
+                    ? GetApproachPosition(holdingCounter)
+                    : ingredient.transform.position;
+
+                AIDebugLogger.Log(chefName, $"ExecuteAddToPlate: picking up {ingredient.objEnum} from {(holdingCounter != null ? holdingCounter.name : "ground")}");
+
+                _carryTargetItem = ingredient;
+                _targetCounter = correctPlateCounter;
+                _execPhase = ExecPhase.GotoItem;
+                MoveTo(pickupPos);
+                return;
+            }
+
+            Debug.LogWarning($"[{chefName}] ADD_TO_PLATE: no ingredient to pick up");
+            AbandonTask();
+        }
+
+        private void ExecuteServe(KitchenTask task)
+        {
+            var counter = task.targetFacility;
+            if (counter == null)
+            {
+                Debug.LogWarning($"[{chefName}] SERVE task has no target facility");
+                AbandonTask();
+                return;
+            }
+
+            _targetCounter = counter;
+
+            // Find the finished dish
+            if (task.targetItem != null)
+            {
+                _carryTargetItem = task.targetItem;
+                _carryDestPos = GetApproachPosition(counter);
+                _execPhase = ExecPhase.GotoItem;
+                MoveTo(task.targetItem.transform.position);
+            }
+            else
+            {
+                // Find any plate with ingredients
+                var plates = FindObjectsOfType<KitchenObj>();
+                KitchenObj bestPlate = null;
+                float bestDist = float.MaxValue;
+
+                foreach (var p in plates)
+                {
+                    if (p.objEnum == KitchenObjEnum.Plate && p.IsFree)
+                    {
+                        var plateComp = p.GetComponent<Plate>();
+                        if (plateComp != null && plateComp.GetIngredients().Count > 0)
+                        {
+                            float d = Vector3.Distance(transform.position, p.transform.position);
+                            if (d < bestDist)
+                            {
+                                bestDist = d;
+                                bestPlate = p;
+                            }
+                        }
+                    }
+                }
+
+                if (bestPlate != null)
+                {
+                    _carryTargetItem = bestPlate;
+                    _carryDestPos = GetApproachPosition(counter);
+                    _execPhase = ExecPhase.GotoItem;
+                    MoveTo(bestPlate.transform.position);
+                }
+                else
+                {
+                    // No plate found — abandon
+                    Debug.Log($"[{chefName}] No finished plate found for SERVE");
+                    AbandonTask();
+                }
+            }
+        }
+
+        private void ExecuteTrash(KitchenTask task)
+        {
+            // Pick up the waste item → go to TrashCounter → discard
+            var wasteItem = task.targetItem;
+            var trashCounter = task.targetFacility;
+
+            if (wasteItem == null)
+            {
+                AIDebugLogger.LogWarning(chefName, "ExecuteTrash: no waste item to pick up");
+                AbandonTask();
+                return;
+            }
+
+            // If already holding the waste item, go to trash counter
+            if (_heldItem != null && _heldItem == wasteItem)
+            {
+                AIDebugLogger.Log(chefName, $"ExecuteTrash: holding {_heldItem.objEnum}, heading to TrashCounter");
+                _targetCounter = trashCounter;
+                _execPhase = ExecPhase.GotoDest;
+                MoveTo(GetApproachPosition(trashCounter));
+                return;
+            }
+
+            // Go pick up the waste item first
+            var holdingCounter = FindCounterHolding(wasteItem);
+            Vector3 pickupPos = holdingCounter != null
+                ? GetApproachPosition(holdingCounter)
+                : wasteItem.transform.position;
+
+            AIDebugLogger.Log(chefName, $"ExecuteTrash: picking up {wasteItem.objEnum} from {(holdingCounter != null ? holdingCounter.name : "ground")}");
+
+            _carryTargetItem = wasteItem;
+            _targetCounter = trashCounter;
+            _execPhase = ExecPhase.GotoItem;
+            MoveTo(pickupPos);
+        }
+
+        #endregion
+
+        #region Interaction Execution
+
+        private void ExecuteInteraction()
+        {
+            if (_targetCounter == null)
+            {
+                CompleteTask();
+                return;
+            }
+
+            switch (_currentTask?.type)
+            {
+                case TaskType.FETCH:
+                    // Interact with ContainerCounter to spawn item into hand
+                    if (_heldItem == null)
+                    {
+                        _targetCounter.Interact(this);
+                    }
+
+                    if (_heldItem != null)
+                    {
+                        // Tag item as belonging to this order (prevents cross-order theft)
+                        if (_currentTask?.orderId != 0)
+                            _aiManager?.Blackboard?.TagItemForOrder(_heldItem, _currentTask.orderId);
+
+                        // Successfully got the item — now deliver it to a processing facility
+                        var dropTarget = FindDropTarget(_currentTask.outputType);
+                        if (dropTarget != null && dropTarget != _targetCounter)
+                        {
+                            Debug.Log($"[{chefName}] FETCH got {_heldItem.objEnum}, delivering to {dropTarget.name}");
+                            AIDebugLogger.Log(chefName, $"FETCH got {_heldItem.objEnum}, delivering to {dropTarget.name}");
+                            _targetCounter = dropTarget;
+                            _execPhase = ExecPhase.GotoDest;
+                            MoveTo(GetApproachPosition(dropTarget));
+                        }
+                        else
+                        {
+                            // No ideal drop target — find any free ClearCounter
+                            var fallback = FindNearestFreeCounter(transform.position);
+                            if (fallback != null)
+                            {
+                                Debug.Log($"[{chefName}] FETCH got {_heldItem.objEnum}, fallback to {fallback.name}");
+                                AIDebugLogger.Log(chefName, $"FETCH got {_heldItem.objEnum}, fallback drop to {fallback.name}");
+                                _targetCounter = fallback;
+                                _execPhase = ExecPhase.GotoDest;
+                                MoveTo(GetApproachPosition(fallback));
+                            }
+                            else
+                            {
+                                // Really no counter — just place on ground via DropItem
+                                Debug.LogWarning($"[{chefName}] FETCH got {_heldItem.objEnum}, no counter — dropping on ground");
+                                AIDebugLogger.LogWarning(chefName, $"FETCH: no drop target for {_heldItem.objEnum}, dropping on ground");
+                                KitchenObjFactory.Instance.DropObjServerRpc(
+                                    _heldItem.NetworkObject,
+                                    transform.position + transform.forward * 0.5f,
+                                    Vector3.down,
+                                    0f,
+                                    default);
+                                ClearKitchenObj();
+                                CompleteTask();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Still waiting for spawn
+                        _substate = "waiting";
+                        _waitTimer = 0;
+                    }
+                    break;
+
+                case TaskType.PROCESS:
+                    HandleProcessInteraction();
+                    break;
+
+                case TaskType.FETCH_PLATE:
+                    // Get plate from PlatesCounter
+                    if (_heldItem == null)
+                        _targetCounter.Interact(this);
+                    if (_heldItem != null && _heldItem.objEnum == KitchenObjEnum.Plate)
+                    {
+                        // Got plate — record it for this order, then deliver to any free ClearCounter
+                        if (_currentTask?.orderId != 0 && _heldItem is Plate plate)
+                            _aiManager?.Blackboard?.AssignPlateToOrder(_currentTask.orderId, plate);
+
+                        var dropTarget = _currentTask?.destFacility ?? FindNearestFreeCounter(transform.position);
+                        Debug.Log($"[{chefName}] Got plate, delivering to {dropTarget.name}");
+                        _targetCounter = dropTarget;
+                        _execPhase = ExecPhase.GotoDest;
+                        MoveTo(GetApproachPosition(dropTarget));
+                    }
+                    else
+                    {
+                        _substate = "waiting";
+                        _waitTimer = 0;
+                    }
+                    break;
+
+                case TaskType.ADD_TO_PLATE:
+                    // Add held ingredient to plate on counter
+                    if (_heldItem != null && _targetCounter != null && _targetCounter.HasKitchenObj())
+                    {
+                        var onCounter = _targetCounter.GetKitchenObj();
+                        if (onCounter is Plate)
+                        {
+                            Debug.Log($"[{chefName}] Adding {_heldItem.objEnum} to plate");
+                            _targetCounter.Interact(this);
+                            CompleteTask();
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[{chefName}] ADD_TO_PLATE: no Plate on {_targetCounter.name}");
+                            CompleteTask();
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[{chefName}] ADD_TO_PLATE: missing held item or plate");
+                        CompleteTask();
+                    }
+                    break;
+
+                case TaskType.SERVE:
+                    // Put plate on delivery counter
+                    if (_heldItem != null)
+                    {
+                        _targetCounter.Interact(this);
+                        // If plate is still in hand, the order was rejected.
+                        // Discard the bad plate at TrashCounter instead of polluting a ClearCounter.
+                        if (_heldItem != null && _heldItem is Plate)
+                        {
+                            AIDebugLogger.LogWarning(chefName, $"SERVE failed — discarding bad plate");
+                            var trash = FindObjectsOfType<TrashCounter>().FirstOrDefault();
+                            if (trash != null)
+                            {
+                                _targetCounter = trash;
+                                _execPhase = ExecPhase.GotoDest;
+                                MoveTo(GetApproachPosition(trash));
+                                return; // will arrive, interact with trash, then CompleteTask
+                            }
+                        }
+                        CompleteTask();
+                    }
+                    else
+                    {
+                        CompleteTask();
+                    }
+                    break;
+
+                case TaskType.TRASH:
+                    // Put waste item in trash
+                    if (_heldItem != null && _targetCounter is TrashCounter)
+                    {
+                        AIDebugLogger.Log(chefName, $"Trashing {_heldItem.objEnum}");
+                        _targetCounter.Interact(this);
+                        CompleteTask();
+                    }
+                    else if (_heldItem != null)
+                    {
+                        // Arrived at trash but can't interact? Just drop and complete
+                        AIDebugLogger.LogWarning(chefName, $"TRASH: can't trash {_heldItem.objEnum}, dropping");
+                        CompleteTask();
+                    }
+                    else
+                    {
+                        CompleteTask();
+                    }
+                    break;
+
+                default:
+                    CompleteTask();
+                    break;
+            }
+        }
+
+        private void HandleProcessInteraction()
+        {
+            var counter = _targetCounter;
+            if (counter == null || _currentTask == null) { CompleteTask(); return; }
+
+            bool hasItem = counter.HasKitchenObj();
+            var counterItem = hasItem ? counter.GetKitchenObj() : null;
+            var counterType = counterItem?.objEnum.ToString() ?? "empty";
+
+            AIDebugLogger.Log(chefName, $"HandleProcess: held={_heldItem?.objEnum.ToString() ?? "none"} " +
+                $"counterHas={hasItem} counterItem={counterType} " +
+                $"taskInput={_currentTask.itemType} taskOutput={_currentTask.outputType}");
+
+            // === CASE 1: Holding input, counter empty → place item and start ===
+            if (_heldItem != null && _currentTask.itemType != 0 &&
+                _heldItem.objEnum == _currentTask.itemType && !hasItem)
+            {
+                AIDebugLogger.LogState(chefName, "placing", _heldItem.objEnum.ToString(), $"→ {counter.name}");
+                counter.Interact(this);
+                _substate = "waiting";
+                _waitTimer = 0;
+                return;
+            }
+
+            // === CASE 2: Counter has OUTPUT → take it and complete ===
+            // Also handles edge case: AI holds input but output is already ready (abandoned cook)
+            if (hasItem && counterItem.objEnum == _currentTask.outputType)
+            {
+                // If holding something else, drop it first
+                if (_heldItem != null && _heldItem.objEnum != _currentTask.outputType)
+                {
+                    AIDebugLogger.Log(chefName, $"HandleProcess: dropping held {_heldItem.objEnum} to take ready output {counterItem.objEnum}");
+                    var dropSpot = FindNearestFreeCounter(transform.position);
+                    if (dropSpot != null) dropSpot.Interact(this);
+                    else { ClearKitchenObj(); }
+                }
+                AIDebugLogger.LogState(chefName, "taking output", counterItem.objEnum.ToString(), $"from {counter.name}");
+                counter.Interact(this);
+                // Tag the output as belonging to this order
+                if (_heldItem != null && _currentTask?.orderId != 0)
+                    _aiManager?.Blackboard?.TagItemForOrder(_heldItem, _currentTask.orderId);
+                CompleteTask();
+                return;
+            }
+
+            // === CASE 3: Counter has INPUT → start processing ===
+            if (_heldItem == null && hasItem && counterItem.objEnum == _currentTask.itemType)
+            {
+                if (counter is CuttingCounter cc)
+                {
+                    AIDebugLogger.LogState(chefName, "start cutting", _currentTask.itemType.ToString(),
+                        $"→ {_currentTask.outputType} on {counter.name}");
+                    cc.PublicStartCutting();
+                    _substate = "working";
+                    _stateTimer = 0;
+                }
+                else if (counter is StoveCounter sc)
+                {
+                    AIDebugLogger.LogState(chefName, "start/subscribe cooking", _currentTask.itemType.ToString(),
+                        $"→ {_currentTask.outputType} on {counter.name}");
+
+                    // Check if output is ALREADY ready (cooking happened before we subscribed)
+                    if (counter.HasKitchenObj() &&
+                        counter.GetKitchenObj().objEnum == _currentTask.outputType)
+                    {
+                        AIDebugLogger.Log(chefName, $"Output {_currentTask.outputType} already ready, taking it now");
+                        counter.Interact(this);
+                        CompleteTask();
+                        return;
+                    }
+
+                    sc.OnCookingStageChange += OnStoveStageChanged;
+                    _substate = "waiting";
+                    _waitTimer = 0;
+                }
+                return;
+            }
+
+            // === CASE 4: Counter has BURNED/other item → clear it to free the facility ===
+            // Handles both: AI empty-handed, and AI holding input (must clear counter first)
+            if (hasItem && counterItem != null &&
+                counterItem.objEnum != _currentTask.itemType &&
+                counterItem.objEnum != _currentTask.outputType)
+            {
+                // If holding the input, temporarily put it down
+                KitchenObj heldBeforeClear = _heldItem;
+                if (_heldItem != null && _heldItem.objEnum == _currentTask.itemType)
+                {
+                    AIDebugLogger.Log(chefName, $"HandleProcess: temporarily dropping held {_heldItem.objEnum} to clear counter");
+                    var tempDrop = FindNearestFreeCounter(transform.position);
+                    if (tempDrop != null) tempDrop.Interact(this);
+                }
+
+                AIDebugLogger.LogWarning(chefName, $"HandleProcess: clearing unwanted {counterItem.objEnum} from {counter.name}");
+                counter.Interact(this); // Take the burned/wrong item off
+
+                // Drop the cleared item on a nearby free counter (or ground as last resort)
+                if (_heldItem != null)
+                {
+                    var freeDrop = FindNearestFreeCounter(transform.position);
+                    if (freeDrop != null)
+                    {
+                        AIDebugLogger.Log(chefName, $"Moving cleared {_heldItem.objEnum} to {freeDrop.name}");
+                        freeDrop.Interact(this);
+                    }
+                    else
+                    {
+                        AIDebugLogger.LogWarning(chefName, $"Dropping cleared {_heldItem.objEnum} on ground");
+                        KitchenObjFactory.Instance.DropObjServerRpc(
+                            _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                            Vector3.down, 0f, default);
+                        ClearKitchenObj();
+                    }
+                }
+
+                // Now re-fetch the input we put aside (if any) and continue
+                if (heldBeforeClear != null)
+                {
+                    AIDebugLogger.Log(chefName, $"Re-fetching input {heldBeforeClear.objEnum} after clearing counter");
+                    _carryTargetItem = heldBeforeClear;
+                    _execPhase = ExecPhase.GotoItem;
+                    MoveTo(heldBeforeClear.transform.position);
+                    return;
+                }
+
+                // We were empty-handed — must self-fetch the input and bring it here
+                if (_currentTask.itemType != 0)
+                {
+                    AIDebugLogger.Log(chefName, $"Counter cleared — self-fetching {_currentTask.itemType} to retry PROCESS");
+                    var foundItem = FindItemAnywhere(_currentTask.itemType);
+                    if (foundItem != null)
+                    {
+                        var holdingCounter = FindCounterHolding(foundItem);
+                        Vector3 pickupPos = holdingCounter != null
+                            ? GetApproachPosition(holdingCounter)
+                            : foundItem.transform.position;
+                        _carryTargetItem = foundItem;
+                        _carryDestPos = GetApproachPosition(counter);
+                        _execPhase = ExecPhase.GotoItem;
+                        MoveTo(pickupPos);
+                        return;
+                    }
+                }
+
+                // No input available — abandon
+                AIDebugLogger.LogWarning(chefName, $"Counter {counter.name} cleared but no {_currentTask.itemType} to retry — abandoning");
+                AbandonTask();
+                return;
+            }
+
+            // === CASE 5: Counter empty and we don't hold input → abandon ===
+            if (!hasItem && _heldItem == null)
+            {
+                AIDebugLogger.LogWarning(chefName, $"HandleProcess: counter empty, nothing to process — abandoning");
+                AbandonTask();
+                return;
+            }
+
+            // === CASE 6: Other edge case → drop held item and abandon ===
+            // (e.g., agent holding unrelated item)
+            if (_heldItem != null)
+            {
+                AIDebugLogger.LogWarning(chefName, $"HandleProcess edge case: dropping unrelated {_heldItem.objEnum}");
+                var freeCounter = FindNearestFreeCounter(transform.position);
+                if (freeCounter != null) freeCounter.Interact(this);
+                else { ClearKitchenObj(); }
+            }
+            AIDebugLogger.LogWarning(chefName, $"HandleProcess: edge case — abandoning");
+            AbandonTask();
+        }
+
+        #endregion
+
+        #region Item Handling (ICanHoldKitchenObj)
+
+        public Transform GetHoldTransform() => _holdPoint;
+
+        public KitchenObj GetKitchenObj() => _heldItem;
+
+        public void SetKitchenObj(KitchenObj newKitchenObj)
+        {
+            _heldItem = newKitchenObj;
+            _isHoldingItem = newKitchenObj != null;
+        }
+
+        public bool HasKitchenObj() => _heldItem != null;
+
+        public void ClearKitchenObj()
+        {
+            _heldItem = null;
+            _isHoldingItem = false;
+        }
+
+        public NetworkObject GetNetworkObject()
+        {
+            // Try cached NetworkObject first, then GetComponent
+            return gameObject.GetComponent<NetworkObject>();
+        }
+
+        private void UpdateHeldItem()
+        {
+            if (_heldItem != null && _holdPoint != null)
+            {
+                // Visual positioning is handled by KitchenObj's holder system
+            }
+        }
+
+        private void PickupItem()
+        {
+            if (_carryTargetItem == null)
+            {
+                AIDebugLogger.LogWarning(chefName, "PickupItem: _carryTargetItem is null");
+                return;
+            }
+
+            Debug.Log($"[{chefName}] Picking up {_carryTargetItem.objEnum}");
+
+            // Verify item is actually free before attempting pickup
+            if (!_carryTargetItem.IsFree)
+            {
+                AIDebugLogger.LogWarning(chefName,
+                    $"PickupItem: {_carryTargetItem.objEnum} is NOT free (holder={(_carryTargetItem.GetHolder() as UnityEngine.Object)?.name ?? "?"})");
+                _carryTargetItem = null;
+                AbandonTask();
+                return;
+            }
+
+            // Direct pickup (server-side RPC — synchronous on host)
+            var factory = KitchenObjFactory.Instance;
+            if (factory != null)
+            {
+                KitchenObjFactory.Instance.PickupObjServerRpc(
+                    _carryTargetItem.NetworkObject,
+                    GetNetworkObject());
+            }
+
+            // Verify pickup succeeded (RPC runs synchronously on host)
+            if (_heldItem == null || _heldItem != _carryTargetItem)
+            {
+                AIDebugLogger.LogWarning(chefName,
+                    $"PickupItem: RPC call completed but _heldItem is NOT {_carryTargetItem?.objEnum}. held={_heldItem?.objEnum.ToString() ?? "null"}");
+                _carryTargetItem = null;
+                AbandonTask();
+                return;
+            }
+
+            AIDebugLogger.Log(chefName, $"PickupItem: successfully picked up {_heldItem.objEnum}");
+            _carryTargetItem = null;
+        }
+
+        private void DropItemAtFacility()
+        {
+            if (_heldItem != null && _targetCounter != null)
+            {
+                try
+                {
+                    _targetCounter.Interact(this);
+                    AIDebugLogger.Log(chefName, $"DropItemAtFacility: {_heldItem?.objEnum} → {_targetCounter.name}");
+                    Debug.Log($"[{chefName}] Dropped item at {_targetCounter.name}");
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"[{chefName}] DropItemAtFacility failed: {e.Message}");
+                    AIDebugLogger.LogError(chefName, $"DropItemAtFacility failed: {e.Message}");
+                }
+            }
+            else
+            {
+                AIDebugLogger.LogWarning(chefName, $"DropItemAtFacility: held={_heldItem != null} counter={_targetCounter != null}");
+            }
+
+            // Now start the actual work
+            _substate = "interacting";
+            _stateTimer = 0;
+        }
+
+        private void DropItemAtDestination()
+        {
+            bool valid = _heldItem != null && _targetCounter != null;
+            if (valid)
+            {
+                try
+                {
+                    _targetCounter.Interact(this);
+                    Debug.Log($"[{chefName}] Dropped item at destination {_targetCounter.name}");
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"[{chefName}] DropItemAtDestination failed: {e.Message}");
+                }
+            }
+
+            _execPhase = ExecPhase.None;
+            CompleteTask();
+        }
+
+        #endregion
+
+        #region Task Completion
+
+        private void CleanupTask()
+        {
+            // Unsubscribe from stove events
+            if (_targetCounter is StoveCounter sc)
+                sc.OnCookingStageChange -= OnStoveStageChanged;
+
+            // Capture task info before nulling
+            int taskOrderId = _currentTask?.orderId ?? 0;
+            TaskType? taskType = _currentTask?.type;
+
+            if (_currentTask != null)
+            {
+                // Status is already set by CompleteTask/AbandonTask before calling CleanupTask
+                _aiManager?.OnAgentTaskCompleted(this, _currentTask);
+                _currentTask = null;
+            }
+
+            // Drop held item so scheduler can find it for other tasks
+            if (_heldItem != null)
+            {
+                BaseCounter dropCounter = null;
+
+                // For SERVE tasks, discard bad plates at TrashCounter
+                if (taskType == TaskType.SERVE && _heldItem is Plate)
+                {
+                    dropCounter = FindObjectsOfType<TrashCounter>().FirstOrDefault() as BaseCounter;
+                }
+                // Prefer the order's own plate location
+                if (dropCounter == null && taskOrderId != 0)
+                {
+                    var blackboard = _aiManager?.Blackboard;
+                    if (blackboard != null)
+                    {
+                        var orderPlate = blackboard.FindPlateForOrder(taskOrderId);
+                        if (orderPlate != null && _heldItem is Plate)
+                        {
+                            var holder = orderPlate.GetHolder();
+                            if (holder is BaseCounter bc && !bc.HasKitchenObj())
+                                dropCounter = bc;
+                        }
+                    }
+                }
+
+                // Fallback to nearest free counter, or any counter if all occupied
+                if (dropCounter == null)
+                {
+                    dropCounter = FindNearestFreeCounter(transform.position);
+                    if (dropCounter == null)
+                    {
+                        // All counters occupied — use the nearest ClearCounter anyway
+                        float bestDist = float.MaxValue;
+                        foreach (var c in FindObjectsOfType<ClearCounter>())
+                        {
+                            float d = Vector3.Distance(transform.position, c.transform.position);
+                            if (d < bestDist) { bestDist = d; dropCounter = c; }
+                        }
+                    }
+                }
+
+                if (dropCounter != null)
+                {
+                    AIDebugLogger.Log(chefName, $"CleanupTask: dropping {_heldItem.objEnum} at {dropCounter.name}");
+                    dropCounter.Interact(this);
+                }
+                else
+                {
+                    AIDebugLogger.Log(chefName, $"CleanupTask: dropping {_heldItem.objEnum} on ground");
+                    KitchenObjFactory.Instance.DropObjServerRpc(
+                        _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                        Vector3.down, 0f, default);
+                    ClearKitchenObj();
+                }
+            }
+
+            _substate = "idle";
+            _execPhase = ExecPhase.None;
+            _targetCounter = null;
+            _carryTargetItem = null;
+            _moveTimer = 0;
+            _waitTimer = 0;
+            _stateTimer = 0;
+            debugState = "idle";
+        }
+
+        private void CompleteTask()
+        {
+            AIDebugLogger.LogTaskComplete(agentId, chefName, _currentTask, "completed");
+            if (_currentTask != null) _currentTask.status = "completed";
+            CleanupTask();
+        }
+
+        private void AbandonTask()
+        {
+            AIDebugLogger.LogTaskAbandon(agentId, chefName, _currentTask,
+                $"substate={_substate} phase={_execPhase} timer={_stateTimer:F1}");
+            if (_currentTask != null) _currentTask.status = "abandoned";
+            CleanupTask();
+        }
+
+        /// <summary>
+        /// Force-abandon the current task without calling back to the manager.
+        /// Used by KitchenAIManager deadlock detection to cleanly reset agent state.
+        /// </summary>
+        public void ForceAbandonTask()
+        {
+            if (_currentTask == null) return;
+
+            // Unsubscribe from stove events
+            if (_targetCounter is StoveCounter sc)
+                sc.OnCookingStageChange -= OnStoveStageChanged;
+
+            // Drop held item so scheduler can find it
+            if (_heldItem != null)
+            {
+                var dropCounter = FindNearestFreeCounter(transform.position);
+                if (dropCounter != null)
+                    dropCounter.Interact(this);
+                else
+                {
+                    KitchenObjFactory.Instance.DropObjServerRpc(
+                        _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                        Vector3.down, 0f, default);
+                    ClearKitchenObj();
+                }
+            }
+
+            _currentTask = null;
+            _substate = "idle";
+            _execPhase = ExecPhase.None;
+            _targetCounter = null;
+            _carryTargetItem = null;
+            _moveTimer = 0f;
+            _waitTimer = 0f;
+            _stateTimer = 0f;
+            _isMoving = false;
+            debugState = "idle";
+        }
+
+        /// <summary>
+        /// Periodically check if waiting can end early (e.g., plate spawned, item cooked).
+        /// </summary>
+        private bool CanProceedFromWaiting()
+        {
+            if (_currentTask == null || _targetCounter == null) return false;
+
+            switch (_currentTask.type)
+            {
+                case TaskType.FETCH_PLATE:
+                    // Check if we got a plate from PlatesCounter
+                    if (_heldItem != null && _heldItem.objEnum == KitchenObjEnum.Plate)
+                        return true;
+                    // Or check if PlatesCounter now has plates
+                    if (_targetCounter is PlatesCounter pc && pc.plateCount > 0)
+                        return true;
+                    break;
+
+                case TaskType.FETCH:
+                    // Got the ingredient
+                    if (_heldItem != null) return true;
+                    break;
+
+                case TaskType.PROCESS:
+                    // Check if processing is done (output item on counter)
+                    if (_targetCounter.HasKitchenObj())
+                    {
+                        var objOnCounter = _targetCounter.GetKitchenObj();
+                        debugState = $"wait-chk {objOnCounter.objEnum} vs {_currentTask.outputType}";
+                        if (_currentTask.outputType != 0 &&
+                            objOnCounter.objEnum == _currentTask.outputType)
+                        {
+                            Debug.Log($"[{chefName}] PROCESS output ready: {objOnCounter.objEnum} on {_targetCounter.name}");
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        debugState = "wait-chk counter empty";
+                    }
+                    break;
+
+                case TaskType.ADD_TO_PLATE:
+                    // Ingredient is in hand and plate is on counter
+                    if (_heldItem != null && _targetCounter.HasKitchenObj() &&
+                        _targetCounter.GetKitchenObj() is Plate)
+                        return true;
+                    break;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Called when a StoveCounter changes cooking stage.
+        /// If the desired output is ready, grab it before it burns.
+        /// </summary>
+        private void OnStoveStageChanged(KitchenObjEnum? currentStage)
+        {
+            if (_currentTask == null || _targetCounter == null) return;
+            if (_currentTask.type != TaskType.PROCESS) return;
+            if (!currentStage.HasValue) return;
+
+            AIDebugLogger.Log(chefName, $"Stove stage changed: {currentStage.Value} (want {_currentTask.outputType})");
+
+            if (currentStage.Value == _currentTask.outputType &&
+                _targetCounter.HasKitchenObj())
+            {
+                Debug.Log($"[{chefName}] Stove output ready: {currentStage.Value}, grabbing before it burns!");
+                AIDebugLogger.LogState(chefName, "stove grab", currentStage.Value.ToString(),
+                    "output ready, taking before burn");
+                // Unsubscribe immediately
+                if (_targetCounter is StoveCounter sc)
+                    sc.OnCookingStageChange -= OnStoveStageChanged;
+                // Take the item
+                _targetCounter.Interact(this);
+
+                // Deliver cooked output to a ClearCounter so scheduler can find it
+                if (_heldItem != null)
+                {
+                    var dropTarget = FindNearestFreeCounter(transform.position);
+                    if (dropTarget != null)
+                    {
+                        AIDebugLogger.Log(chefName, $"Delivering cooked {_heldItem.objEnum} to {dropTarget.name}");
+                        _execPhase = ExecPhase.GotoDest;
+                        _targetCounter = dropTarget;
+                        MoveTo(GetApproachPosition(dropTarget));
+                        return; // GotoDest will drop + CompleteTask
+                    }
+                }
+
+                CompleteTask();
+            }
+        }
+
+        private float GetMaxWaitTime()
+        {
+            if (_currentTask == null) return 2f;
+            switch (_currentTask.type)
+            {
+                case TaskType.FETCH_PLATE: return 10f;  // plates spawn every 4s
+                case TaskType.PROCESS:     return 12f;  // cooking can take multiple stages
+                case TaskType.FETCH:       return 5f;
+                default:                   return 4f;
+            }
+        }
+
+        /// <summary>
+        /// Find an item of the given type anywhere: on ground or on any counter.
+        /// Only returns items that are actually free to pick up (not being processed).
+        /// </summary>
+        private KitchenObj FindItemAnywhere(KitchenObjEnum itemType)
+        {
+            KitchenObj bestItem = null;
+            float bestDist = float.MaxValue;
+
+            // Check ground items (free-standing)
+            foreach (var item in FindObjectsOfType<KitchenObj>())
+            {
+                if (item == null || item.objEnum != itemType) continue;
+                if (!item.IsFree) continue;
+                float d = Vector3.Distance(transform.position, item.transform.position);
+                if (d < bestDist) { bestDist = d; bestItem = item; }
+            }
+
+            // Check items on counters (IsFree is always false for counter-held items,
+            // but they can be picked up via counter.Interact())
+            foreach (var counter in FindObjectsOfType<BaseCounter>())
+            {
+                if (counter == null || !counter.HasKitchenObj()) continue;
+                var item = counter.GetKitchenObj();
+                if (item == null || item.objEnum != itemType) continue;
+                // Skip items on StoveCounter or CuttingCounter (being actively processed)
+                if (counter is StoveCounter || counter is CuttingCounter) continue;
+                // Skip items on PlateCounter, DeliveryCounter, TrashCounter
+                if (counter is PlatesCounter || counter is DeliveryCounter) continue;
+                float d = Vector3.Distance(transform.position, counter.transform.position);
+                if (d < bestDist) { bestDist = d; bestItem = item; }
+            }
+
+            return bestItem;
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Find the BaseCounter that currently holds the given KitchenObj.
+        /// Returns null if the item is not on any counter (free on ground or being carried).
+        /// </summary>
+        private BaseCounter FindCounterHolding(KitchenObj item)
+        {
+            if (item == null) return null;
+            foreach (var c in FindObjectsOfType<BaseCounter>())
+            {
+                if (c.HasKitchenObj() && c.GetKitchenObj() == item)
+                    return c;
+            }
+            return null;
+        }
+
+        #region Utility
+
+        /// <summary>
+        /// Get a position just outside the facility for the AI to stand.
+        /// Adds an offset based on agent ID to prevent multiple agents from
+        /// crowding the exact same spot.
+        /// </summary>
+        private Vector3 GetApproachPosition(BaseCounter counter)
+        {
+            Vector3 counterPos = counter.transform.position;
+            Vector3 fromDir = (transform.position - counterPos).normalized;
+            if (fromDir.magnitude < 0.1f) fromDir = Vector3.back;
+
+            // Pick the approach side based on relative position
+            float dx = Mathf.Abs(fromDir.x);
+            float dz = Mathf.Abs(fromDir.z);
+
+            Vector3 approach;
+            if (dx > dz)
+                approach = counterPos + new Vector3(Mathf.Sign(fromDir.x) * interactionRange, 0, 0);
+            else
+                approach = counterPos + new Vector3(0, 0, Mathf.Sign(fromDir.z) * interactionRange);
+
+            // Add lateral offset per agent to avoid crowding
+            float lateralOffset = (agentId % 3 - 1) * 0.7f; // -0.7, 0, or +0.7
+            if (dx > dz)
+                approach += new Vector3(0, 0, lateralOffset);
+            else
+                approach += new Vector3(lateralOffset, 0, 0);
+
+            return approach;
+        }
+
+        #endregion
+
+        #region Debug
+
+        private void OnDrawGizmos()
+        {
+            if (!showDebugGizmos) return;
+
+            // Draw chef position
+            Gizmos.color = chefColor;
+            Gizmos.DrawWireSphere(transform.position, 0.5f);
+
+            // Draw target
+            if (_substate == "moving")
+            {
+                Gizmos.color = Color.yellow;
+                Gizmos.DrawLine(transform.position, _targetPosition);
+                Gizmos.DrawWireSphere(_targetPosition, 0.3f);
+            }
+
+            // Draw held item indicator
+            if (_heldItem != null)
+            {
+                Gizmos.color = Color.green;
+                Gizmos.DrawWireSphere(transform.position + Vector3.up * 1.5f, 0.2f);
+            }
+
+            // Draw name
+#if UNITY_EDITOR
+            UnityEditor.Handles.Label(transform.position + Vector3.up * 2.5f,
+                $"{chefName}\n{debugState}");
+#endif
+        }
+
+        #endregion
+    }
+}

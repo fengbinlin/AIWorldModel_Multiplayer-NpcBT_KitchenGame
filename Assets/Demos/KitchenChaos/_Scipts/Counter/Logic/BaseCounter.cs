@@ -16,7 +16,7 @@ namespace Kitchen
             topSpawnPoint = transform.Find("TopPoint");
         }
 
-        public abstract void Interact(Player.Player player);
+        public abstract void Interact(ICanHoldKitchenObj holder);
 
         public virtual Transform GetHoldTransform()
         {

@@ -1,0 +1,2866 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>厨房协作模拟 — 多智能体团队任务调度</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background:#1a1a2e; color:#e0e0e0; height:100vh; overflow-y:auto; overflow-x:hidden; }
+#main-container { display:flex; flex-direction:column; padding:6px; gap:4px; max-width:1200px; margin:0 auto; }
+#top-row { display:flex; gap:6px; }
+#canvas-panel { flex:0 0 auto; background:#252540; border-radius:10px; padding:6px; display:flex; flex-direction:column; align-items:center; }
+#canvas-panel h2 { font-size:14px; margin:2px 0 4px; color:#a0b4ff; }
+canvas { border-radius:6px; cursor:crosshair; }
+#sidebar { flex:1; display:flex; flex-direction:column; gap:4px; overflow-y:auto; min-width:280px; max-width:380px; }
+#mid-row { display:flex; gap:6px; }
+.panel { background:#252540; border-radius:8px; padding:10px; }
+.panel h3 { font-size:13px; color:#a0b4ff; margin-bottom:6px; border-bottom:1px solid #3a3a5c; padding-bottom:4px; display:flex; align-items:center; gap:6px; }
+.panel h3 .badge { font-size:11px; background:#3a3a5c; padding:2px 7px; border-radius:10px; color:#ccc; }
+.order-card { background:#2a2a48; border-radius:6px; padding:8px; margin-bottom:5px; border-left:3px solid #f39c12; font-size:12px; }
+.order-card.urgent { border-left-color:#e74c3c; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+.order-card .order-header { display:flex; justify-content:space-between; align-items:center; }
+.order-card .order-name { font-weight:bold; font-size:13px; }
+.order-card .order-time { font-family:monospace; color:#f39c12; }
+.order-card .order-time.low { color:#e74c3c; }
+.order-card .order-progress { margin-top:4px; height:4px; background:#3a3a5c; border-radius:2px; overflow:hidden; }
+.order-card .order-progress .fill { height:100%; background:#2ecc71; transition:width 0.3s; }
+.task-row { font-size:11px; padding:4px 6px; margin:2px 0; background:#2a2a48; border-radius:4px; display:flex; align-items:center; gap:6px; cursor:pointer; transition:background 0.15s; }
+.task-row:hover { background:#3a3a5c; }
+.task-row .task-agent { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.task-row .task-name { flex:1; }
+.task-row .task-status { font-size:10px; padding:1px 6px; border-radius:8px; background:#3a3a5c; }
+.task-row .task-status.assigned { background:#3498db33; color:#3498db; }
+.task-row .task-status.executing { background:#f39c1233; color:#f39c12; }
+.task-row .task-status.pending { background:#8883; color:#888; }
+.task-row .task-score { font-family:monospace; font-size:10px; color:#2ecc71; }
+.task-row.stock { border-left:2px solid #2ecc71; }
+.agent-row { display:flex; align-items:center; gap:8px; padding:5px 6px; background:#2a2a48; border-radius:4px; margin:2px 0; cursor:pointer; font-size:12px; }
+.agent-row:hover { background:#3a3a5c; }
+.agent-dot { width:14px; height:14px; border-radius:50%; border:2px solid #fff3; }
+.agent-status { font-size:10px; padding:1px 6px; border-radius:8px; }
+.agent-status.idle { background:#8883; color:#aaa; }
+.agent-status.moving { background:#3498db33; color:#3498db; }
+.agent-status.working { background:#f39c1233; color:#f39c12; }
+.agent-status.waiting { background:#e74c3c33; color:#e74c3c; }
+.facility-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.facility-card { font-size:10px; padding:4px 6px; background:#2a2a48; border-radius:4px; display:flex; justify-content:space-between; align-items:center; }
+.facility-card .f-state { font-size:9px; padding:1px 5px; border-radius:6px; }
+.facility-card .f-state.free { background:#2ecc7133; color:#2ecc71; }
+.facility-card .f-state.reserved { background:#f39c1233; color:#f39c12; }
+.facility-card .f-state.occupied { background:#e74c3c33; color:#e74c3c; }
+#score-detail { font-size:11px; }
+#score-detail table { width:100%; border-collapse:collapse; }
+#score-detail td { padding:3px 6px; border-bottom:1px solid #3a3a5c; }
+#score-detail td:last-child { text-align:right; font-family:monospace; }
+#score-detail .total-row { font-weight:bold; color:#2ecc71; }
+#score-detail .neg { color:#e74c3c; }
+#score-detail .pos { color:#2ecc71; }
+.btn-row { display:flex; gap:6px; margin-top:6px; }
+.btn { padding:6px 14px; border:none; border-radius:6px; cursor:pointer; font-size:12px; font-family:inherit; transition:opacity 0.2s; }
+.btn:hover { opacity:0.85; }
+.btn-primary { background:#3498db; color:#fff; }
+.btn-secondary { background:#3a3a5c; color:#ccc; }
+.btn-danger { background:#e74c3c; color:#fff; }
+.speed-indicator { font-family:monospace; font-size:11px; color:#888; }
+</style>
+</head>
+<body>
+<div id="main-container">
+  <!-- Top row: Canvas + Right Sidebar -->
+  <div id="top-row">
+    <div id="canvas-panel">
+      <h2>🏪 厨房俯视图</h2>
+      <canvas id="kitchen-canvas"></canvas>
+    </div>
+    <div id="sidebar">
+      <div class="panel" id="stats-panel">
+        <h3>📈 订单统计</h3>
+        <div style="display:flex;gap:8px;font-size:13px;">
+          <div style="flex:1;text-align:center;background:#2a2a48;border-radius:6px;padding:6px;">
+            <div style="font-size:20px;font-weight:bold;color:#2ecc71;" id="stat-completed">0</div>
+            <div style="font-size:10px;color:#888;">✅ 已完成</div>
+          </div>
+          <div style="flex:1;text-align:center;background:#2a2a48;border-radius:6px;padding:6px;">
+            <div style="font-size:20px;font-weight:bold;color:#e74c3c;" id="stat-expired">0</div>
+            <div style="font-size:10px;color:#888;">⏰ 超时</div>
+          </div>
+          <div style="flex:1;text-align:center;background:#2a2a48;border-radius:6px;padding:6px;">
+            <div style="font-size:20px;font-weight:bold;color:#3498db;" id="stat-active">0</div>
+            <div style="font-size:10px;color:#888;">📋 进行中</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel" id="orders-panel">
+        <h3>📋 活跃订单 <span class="badge" id="order-count">0</span></h3>
+        <div id="orders-list"><div style="color:#888;font-size:12px;">等待订单...</div></div>
+      </div>
+      <div class="panel">
+        <h3>📝 任务看板 <span class="badge" id="task-count">0</span></h3>
+        <div id="tasks-list" style="max-height:240px;overflow-y:auto;"></div>
+      </div>
+      <div class="panel" id="score-panel" style="display:none;">
+        <h3>📊 任务评分明细 <span style="font-size:10px;color:#888;" id="score-title"></span></h3>
+        <div id="score-detail"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Middle row: Chef status + Facility occupancy (below canvas) -->
+  <div id="mid-row">
+    <div class="panel" style="flex:1;">
+      <h3>👨‍🍳 厨师状态</h3>
+      <div id="agents-list"></div>
+    </div>
+    <div class="panel" style="flex:1;">
+      <h3>🏗 设施占用</h3>
+      <div class="facility-grid" id="facility-grid"></div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="btn-row" style="justify-content:center;padding:4px 0;">
+    <button class="btn btn-primary" id="btn-toggle">⏸ 暂停</button>
+    <button class="btn btn-secondary" id="btn-speed">⏩ 1x</button>
+    <button class="btn btn-danger" id="btn-add-order">📋 加急订单</button>
+    <button class="btn btn-secondary" id="btn-edit-mode" style="background:#6c5ce7;">🔧 编辑设施</button>
+    <select id="facility-add-type" style="display:none;padding:6px 8px;border-radius:6px;background:#3a3a5c;color:#ccc;border:1px solid #555;font-size:11px;">
+      <option value="storage">📦 货箱(storage)</option>
+      <option value="cutting_board">🔪 砧板(cutting)</option>
+      <option value="frying_pan">🍳 煎锅(frying)</option>
+      <option value="assembly_table">📋 组装台(assembly)</option>
+      <option value="serving_counter">🛎️ 出餐口(serving)</option>
+    </select>
+    <span style="font-size:10px;color:#556;margin-left:12px;" id="time-info"></span>
+  </div>
+  <div id="edit-hint" style="display:none;text-align:center;font-size:10px;color:#f39c12;margin-top:2px;">
+    🖱 拖动设施移动 | 双击删除 | 点击画布空白处添加设施 | 再按「编辑设施」退出
+  </div>
+
+  <!-- Algorithm explanation -->
+  <div style="background:#252540;border-radius:8px;padding:10px;margin-top:2px;font-size:11px;color:#aab;">
+    <h3 style="font-size:12px;color:#a0b4ff;margin-bottom:4px;">📐 调度算法说明</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+      <div><b style="color:#f39c12;">① 全局黑板</b><br>所有订单、物品、设施、AI 状态实时共享。每 0.5s 扫描一次全部可行工序。</div>
+      <div><b style="color:#f39c12;">② 候选动作生成</b><br>菜谱每一步 + 原料搬运 + 开放备货，全部进入候选池。不绑定订单的备货任务也有基准分。</div>
+      <div><b style="color:#f39c12;">③ 统一效用评估</b><br>总分 = 搬运成本 + 设施等待 + 订单紧迫度 + 进度解锁价值 + 角色效率加成。闲逛 = 0 分。</div>
+      <div><b style="color:#f39c12;">④ 贪心匹配</b><br>所有 (AI × 任务) 评分排序，取最高分分配。每个设施/物品互斥锁保证无冲突。</div>
+      <div><b style="color:#f39c12;">⑤ 强制上菜</b><br>闲置 AI + 已完成的菜品 → 直接分配最高优先级出餐任务，跳过评分竞争。</div>
+      <div><b style="color:#f39c12;">⑥ 涌现行为</b><br>进度分值倾斜后端工序 + 角色微加成 → 自然形成流水线分工、协助搬运、提前备货。</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================================
+//  CONFIGURATION
+// ============================================================================
+const CFG = {
+  CANVAS_W: 780, CANVAS_H: 500,
+  AGENT_SPEED: 95,        // pixels per second
+  AGENT_COUNT: 4,
+  SCHEDULE_INTERVAL: 0.5, // seconds
+  ORDER_INTERVAL: 18,     // seconds between auto orders
+  ORDER_TIME: 55,         // seconds per order
+  MAX_OPEN_ITEMS: 1,      // max open-prep items of each type (lower = less clutter)
+  FACILITY_RADIUS: 28,    // agent interaction radius
+  ITEM_SLOT_RADIUS: 36,  // how far items sit from facility center
+};
+
+// ============================================================================
+//  RECIPE DEFINITIONS
+// ============================================================================
+const ITEM_META = {
+  // Raw ingredients — vivid colors with food emoji
+  RawMeat:      { name:'生肉',     color:'#e74c3c', fill:'#f8d7da', icon:'🥩', stage:'raw' },
+  Bread:        { name:'面包',     color:'#f39c12', fill:'#fef3cd', icon:'🍞', stage:'raw' },
+  Lettuce:      { name:'生菜',     color:'#27ae60', fill:'#d4efdf', icon:'🥬', stage:'raw' },
+  Tomato:       { name:'番茄',     color:'#c0392b', fill:'#fadbd8', icon:'🍅', stage:'raw' },
+  // Processed intermediates
+  SlicedMeat:   { name:'生肉片',   color:'#c0392b', fill:'#f5b7b1', icon:'🥓', stage:'intermediate' },
+  ChoppedLettuce:{ name:'切好的生菜', color:'#27ae60', fill:'#a9dfbf', icon:'🥬', stage:'intermediate' },
+  TomatoSlices: { name:'番茄片',   color:'#d35400', fill:'#f5cba7', icon:'🍅', stage:'intermediate' },
+  // Cooked
+  CookedPatty:  { name:'熟肉片',   color:'#8b4513', fill:'#e8c9a0', icon:'🍖', stage:'cooked' },
+  // Finished dishes — gold glow
+  Burger:       { name:'汉堡',     color:'#d35400', fill:'#fdebd0', icon:'🍔', stage:'finished' },
+  Salad:        { name:'沙拉',     color:'#27ae60', fill:'#d5f5e3', icon:'🥗', stage:'finished' },
+};
+
+const RECIPES = {
+  burger: {
+    name: '肉汉堡', icon:'🍔', color:'#d35400',
+    steps: [
+      { id:'get_meat',    label:'取生肉',   facility:'meat_storage',    inputs:[],        outputs:['RawMeat'],     duration:1.0 },
+      { id:'cut_meat',    label:'切生肉',   facility:'cutting_board',   inputs:['RawMeat'],     outputs:['SlicedMeat'],  duration:2.0 },
+      { id:'fry_meat',    label:'煎肉片',   facility:'frying_pan',      inputs:['SlicedMeat'],  outputs:['CookedPatty'], duration:3.0 },
+      { id:'get_bread',   label:'取面包',   facility:'bread_storage',   inputs:[],        outputs:['Bread'],       duration:1.0 },
+      { id:'get_lettuce', label:'取生菜',   facility:'lettuce_storage', inputs:[],        outputs:['Lettuce'],     duration:1.0 },
+      { id:'assemble',    label:'组装汉堡', facility:'assembly_table',   inputs:['CookedPatty','Bread','Lettuce'], outputs:['Burger'], duration:2.5 },
+      { id:'serve',       label:'出餐',     facility:'serving_counter',  inputs:['Burger'], outputs:[],             duration:0.8 },
+    ]
+  },
+  salad: {
+    name: '沙拉', icon:'🥗', color:'#27ae60',
+    steps: [
+      { id:'get_lettuce_s', label:'取生菜',   facility:'lettuce_storage', inputs:[],       outputs:['Lettuce'],       duration:1.0 },
+      { id:'cut_lettuce',   label:'切生菜',   facility:'cutting_board',   inputs:['Lettuce'],     outputs:['ChoppedLettuce'], duration:2.0 },
+      { id:'get_tomato',    label:'取番茄',   facility:'tomato_storage',  inputs:[],       outputs:['Tomato'],        duration:1.0 },
+      { id:'cut_tomato',    label:'切番茄',   facility:'cutting_board',   inputs:['Tomato'],      outputs:['TomatoSlices'],  duration:1.5 },
+      { id:'assemble',      label:'混合沙拉', facility:'assembly_table',   inputs:['ChoppedLettuce','TomatoSlices'], outputs:['Salad'], duration:2.0 },
+      { id:'serve',         label:'出餐',     facility:'serving_counter',  inputs:['Salad'], outputs:[],            duration:0.8 },
+    ]
+  }
+};
+
+// ============================================================================
+//  FACILITY DEFINITIONS
+// ============================================================================
+const FACILITY_DEFS = [
+  { id:'meat_storage',    name:'肉柜',   type:'storage', x:65,  y:60,  w:50, h:50, color:'#c0392b' },
+  { id:'bread_storage',   name:'面包箱', type:'storage', x:65,  y:150, w:50, h:50, color:'#d4a017' },
+  { id:'lettuce_storage', name:'生菜箱', type:'storage', x:65,  y:240, w:50, h:50, color:'#27ae60' },
+  { id:'tomato_storage',  name:'番茄箱', type:'storage', x:65,  y:330, w:50, h:50, color:'#e74c3c' },
+  { id:'cutting_board_1', name:'砧板①', type:'cutting_board', x:240, y:70,  w:60, h:50, color:'#deb887' },
+  { id:'cutting_board_2', name:'砧板②', type:'cutting_board', x:240, y:290, w:60, h:50, color:'#deb887' },
+  { id:'frying_pan_1',    name:'煎锅①', type:'frying_pan', x:400, y:70,  w:55, h:50, color:'#555' },
+  { id:'frying_pan_2',    name:'煎锅②', type:'frying_pan', x:400, y:290, w:55, h:50, color:'#555' },
+  { id:'assembly_table_1',name:'组装台①',type:'assembly_table', x:540, y:70,  w:65, h:55, color:'#ecf0f1' },
+  { id:'assembly_table_2',name:'组装台②',type:'assembly_table', x:540, y:290, w:65, h:55, color:'#ecf0f1' },
+  { id:'serving_counter', name:'出餐口', type:'serving_counter', x:700, y:200, w:60, h:70, color:'#f39c12' },
+];
+
+const AGENT_DEFS = [
+  { id:'A0', name:'厨师·红', color:'#e74c3c', x:200, y:440 },
+  { id:'A1', name:'厨师·蓝', color:'#3498db', x:340, y:450 },
+  { id:'A2', name:'厨师·绿', color:'#2ecc71', x:480, y:445 },
+  { id:'A3', name:'厨师·橙', color:'#f39c12', x:620, y:450 },
+];
+
+// ============================================================================
+//  GLOBAL STATE (Blackboard)
+// ============================================================================
+let facilities = [];
+let agents = [];
+let items = [];
+let orders = [];
+let taskPool = [];
+let nextId = 1;
+let simTime = 0;
+let scheduleTimer = 0;
+let orderTimer = 0;
+let running = true;
+let speedMul = 1;
+let selectedAgentId = null;
+let selectedTaskId = null;
+let scoreHistory = {}; // agentId -> last scoring details
+let agentRoleCount = {}; // agentId -> { actionType -> count }
+let statsCompleted = 0;
+let statsExpired = 0;
+let cancelLogCount = 0, cancelLogLastTime = 0; // rate-limit CANCEL logs
+
+// Facility editor state
+let dragFacility = null, dragOffsetX = 0, dragOffsetY = 0;
+let hoverFacility = null;
+let editorMode = false; // toggle with button
+let sidebarThrottle = 0;
+const SIDEBAR_INTERVAL = 0.3; // update sidebar max 3 times/sec
+const MAX_TOTAL_ITEMS = Infinity; // items persist indefinitely — no hard cap
+
+function genId() { return nextId++; }
+
+// ============================================================================
+//  HELPER: distance, clamping, facility approach position
+// ============================================================================
+function dist(a, b) { return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+// Get a position just outside the facility (agent stands beside, not on top)
+function getFacilityApproachPos(fac, fromX, fromY) {
+  const margin = 18; // how far outside the facility edge
+  // Determine which side the agent is approaching from
+  const cx = fac.x + fac.w / 2;
+  const cy = fac.y + fac.h / 2;
+  const dx = fromX - cx;
+  const dy = fromY - cy;
+  const adx = Math.abs(dx);
+  const ady = Math.abs(dy);
+
+  // Approach from the longer axis side
+  if (adx * fac.h > ady * fac.w) {
+    // Approach from left or right
+    const sideX = dx > 0 ? fac.x + fac.w + margin : fac.x - margin;
+    const clampedY = clamp(fromY, fac.y - margin, fac.y + fac.h + margin);
+    return { x: clamp(sideX, 10, CFG.CANVAS_W - 10), y: clamp(clampedY, 10, CFG.CANVAS_H - 10) };
+  } else {
+    // Approach from top or bottom
+    const sideY = dy > 0 ? fac.y + fac.h + margin : fac.y - margin;
+    const clampedX = clamp(fromX, fac.x - margin, fac.x + fac.w + margin);
+    return { x: clamp(clampedX, 10, CFG.CANVAS_W - 10), y: clamp(sideY, 10, CFG.CANVAS_H - 10) };
+  }
+}
+
+// Get a position around the facility perimeter for placing items (Overcooked style)
+// Uses item ID hash for deterministic, non-overlapping placement
+function getItemPlacementPos(fac, itemId) {
+  // Knuth multiplicative hash for even angle distribution
+  const hash = (itemId * 2654435761) & 0x7fffffff;
+  const angle = (hash % 1000) / 1000 * Math.PI * 2;
+  const r = CFG.ITEM_SLOT_RADIUS;
+  return {
+    x: clamp(fac.x + fac.w / 2 + Math.cos(angle) * r, 10, CFG.CANVAS_W - 10),
+    y: clamp(fac.y + fac.h / 2 + Math.sin(angle) * r, 10, CFG.CANVAS_H - 10)
+  };
+}
+
+// ============================================================================
+//  FACILITY CLASS
+// ============================================================================
+function createFacility(def) {
+  return {
+    id: def.id, name: def.name, type: def.type,
+    x: def.x, y: def.y, w: def.w, h: def.h,
+    cx: def.x + def.w/2, cy: def.y + def.h/2,
+    color: def.color,
+    state: 'free', // 'free' | 'reserved' | 'occupied'
+    reservedBy: null, // agentId
+    occupiedBy: null, // agentId
+    timer: 0,
+  };
+}
+
+// ============================================================================
+//  ITEM CLASS
+// ============================================================================
+function createItem(type, x, y, orderId) {
+  const meta = ITEM_META[type] || { name:type, color:'#fff', icon:'?', size:5 };
+  return {
+    id: genId(), type, x, y,
+    carriedBy: null,   // agentId
+    reservedBy: null,  // taskId
+    orderId: orderId || null,
+    meta,
+  };
+}
+
+// ============================================================================
+//  AGENT CLASS
+// ============================================================================
+function createAgent(def) {
+  return {
+    id: def.id, name: def.name, color: def.color,
+    x: def.x, y: def.y,
+    targetX: def.x, targetY: def.y,
+    carrying: null,      // itemId
+    task: null,          // current task object
+    substate: 'idle',    // 'idle'|'moving'|'working'|'waiting'
+    substateTimer: 0,
+    waitTimer: 0,        // how long agent has been waiting
+    moveTimer: 0,        // how long agent has been moving (stuck detection)
+    label: '',
+    wanderTarget: null,
+    wanderTimer: 0,
+  };
+}
+
+// ============================================================================
+//  ORDER CLASS
+// ============================================================================
+function createOrder(recipeKey) {
+  const recipe = RECIPES[recipeKey];
+  return {
+    id: genId(),
+    recipeKey,
+    recipe,
+    timeTotal: CFG.ORDER_TIME,
+    timeRemaining: CFG.ORDER_TIME,
+    completedSteps: new Set(),
+    status: 'pending', // 'pending'|'in_progress'|'completed'|'expired'
+  };
+}
+
+// ============================================================================
+//  TASK CLASS
+// ============================================================================
+function createTask(type, data) {
+  return {
+    id: genId(),
+    type, // 'FETCH'|'PROCESS'|'CARRY'|'ASSEMBLE'|'SERVE'
+    orderId: data.orderId || null,
+    recipeKey: data.recipeKey || null,
+    stepId: data.stepId || null,
+    stock: data.stock || false, // true = open prep task
+    facilityId: data.facilityId || null,
+    itemId: data.itemId || null,
+    itemType: data.itemType || null,
+    outputType: data.outputType || null,
+    inputTypes: data.inputTypes || [],
+    destFacilityId: data.destFacilityId || null,
+    destPos: data.destPos || null,
+    label: data.label || '',
+    score: -Infinity,
+    scoreDetail: null,
+    assignedAgent: null,
+    status: 'pending', // 'pending'|'assigned'|'executing'|'completed'
+    reservedItems: [],
+    reservedFacility: null,
+    duration: data.duration || 1.0,
+  };
+}
+
+// ============================================================================
+//  UTILITY: find items by type
+// ============================================================================
+function findItemsByType(type, excludeReserved = true, excludeOtherOrders = false) {
+  return items.filter(it => {
+    if (it.type !== type) return false;
+    if (excludeReserved && it.reservedBy) return false;
+    if (excludeOtherOrders && it.orderId) return false; // exclude order-bound items as public stock
+    return true;
+  });
+}
+function findItemAtFacility(type, facilityId, allowReservedByTaskId = null) {
+  const fac = facilities.find(f => f.id === facilityId);
+  if (!fac) return null;
+  // Compare to facility CENTER (not top-left) since items are placed around center
+  const fc = { x: fac.x + fac.w / 2, y: fac.y + fac.h / 2 };
+  return items.find(it =>
+    it.type === type && !it.carriedBy &&
+    (!it.reservedBy || it.reservedBy === allowReservedByTaskId) &&
+    dist(it, fc) < CFG.ITEM_SLOT_RADIUS + 18
+  );
+}
+// Check if an item is within the perimeter of a storage-type facility
+function isItemAtStorage(item) {
+  return facilities.some(f =>
+    f.type === 'storage' &&
+    dist(item, {x: f.x + f.w/2, y: f.y + f.h/2}) < CFG.ITEM_SLOT_RADIUS + 18
+  );
+}
+// Check if an item is within the perimeter of any non-storage facility
+function isItemAtNonStorageFacility(item) {
+  return facilities.some(f =>
+    f.type !== 'storage' &&
+    dist(item, {x: f.x + f.w/2, y: f.y + f.h/2}) < CFG.ITEM_SLOT_RADIUS + 18
+  );
+}
+function findItemNear(pos, type, excludeReserved = true) {
+  return items.find(it =>
+    it.type === type && (!excludeReserved || !it.reservedBy) && !it.carriedBy &&
+    dist(it, pos) < CFG.FACILITY_RADIUS + 10
+  );
+}
+
+// ============================================================================
+//  UTILITY: find facilities of type
+// ============================================================================
+function findFacilitiesOfType(type) {
+  return facilities.filter(f => f.type === type || f.id === type);
+}
+function findFreeFacilityOfType(type) {
+  return facilities.find(f => (f.type === type || f.id === type) && f.state === 'free');
+}
+function bestFacilityOfType(type, pos) {
+  // Match by facility type OR facility ID (recipe steps use IDs like 'meat_storage')
+  const cands = facilities.filter(f => (f.type === type || f.id === type) && f.state === 'free');
+  if (cands.length === 0) {
+    // also consider reserved ones (will have wait penalty)
+    const all = facilities.filter(f => f.type === type || f.id === type);
+    if (all.length === 0) return null;
+    all.sort((a,b) => dist(a, pos) - dist(b, pos));
+    return all[0];
+  }
+  if (cands.length === 1) return cands[0];
+  // Multiple free facilities: prefer the one that already has the most items nearby.
+  // This avoids scattering ingredients across identical workstations.
+  cands.sort((a, b) => {
+    const countA = items.filter(it => !it.reservedBy && !it.carriedBy &&
+      dist(it, {x: a.x + a.w/2, y: a.y + a.h/2}) < CFG.ITEM_SLOT_RADIUS + 18).length;
+    const countB = items.filter(it => !it.reservedBy && !it.carriedBy &&
+      dist(it, {x: b.x + b.w/2, y: b.y + b.h/2}) < CFG.ITEM_SLOT_RADIUS + 18).length;
+    if (countA !== countB) return countB - countA; // more items → higher priority
+    return dist(a, pos) - dist(b, pos);             // tie-break by distance
+  });
+  return cands[0];
+}
+
+// ============================================================================
+//  TASK GENERATION
+// ============================================================================
+function generateAllTasks() {
+  const tasks = [];
+
+  // --- Order-bound tasks ---
+  for (const order of orders) {
+    if (order.status === 'completed' || order.status === 'expired') continue;
+    const recipe = order.recipe;
+
+    // === STEP ROLLBACK: if a completed FETCH step's output is stranded at a
+    //     non-storage facility, undo the step so a fresh FETCH can compete ===
+    for (const step of recipe.steps) {
+      if (!order.completedSteps.has(step.id)) continue;
+      if (step.inputs.length > 0 || step.outputs.length === 0) continue; // only FETCH steps
+      const outType = step.outputs[0];
+      const correctFac = bestFacilityOfType(step.facility, {x:0,y:0});
+      if (!correctFac) continue;
+      // Is the output item at its correct facility?
+      const itemAtCorrect = findItemAtFacility(outType, correctFac.id);
+      if (itemAtCorrect) continue; // all good, step stays completed
+      // Is the output item stranded at a non-storage facility?
+      const strandedItem = items.find(it =>
+        it.type === outType && it.orderId === order.id &&
+        !it.carriedBy && !it.reservedBy &&
+        isItemAtNonStorageFacility(it)
+      );
+      if (strandedItem) {
+        // Roll back: allow a fresh FETCH to compete with CARRY-from-nonstorage.
+        // Keep orderId intact — the item still belongs to this order,
+        // so other orders won't steal it as public stock.
+        order.completedSteps.delete(step.id);
+      }
+    }
+
+    // Pass 1: Generate CARRY tasks for EVERY available input, regardless of whether
+    //         all inputs for the step are ready. This ensures items move toward
+    //         their destination facility as soon as they exist.
+    for (const step of recipe.steps) {
+      if (order.completedSteps.has(step.id)) continue;
+      if (step.inputs.length === 0) continue; // FETCH steps have no inputs
+      if (step.id === 'serve') continue;      // SERVE handles its own transport
+
+      const facility = bestFacilityOfType(step.facility, {x:0,y:0});
+      if (!facility) continue;
+
+      for (const inType of step.inputs) {
+        // Check if any item of this type exists (available)
+        const avail = findItemsByType(inType);
+        if (avail.length === 0) continue;
+
+        // Check if any item of this type is already at the facility
+        const itemAtFac = findItemAtFacility(inType, facility.id);
+        if (itemAtFac) continue;
+
+        // Generate CARRY for an unreserved item with strict source priority.
+        // RAW ingredients: ONLY from storage or loose — never rob other workstations.
+        // INTERMEDIATE/COOKED: allow from other non-storage, but never from another order.
+        let srcItem = avail.find(it => !it.reservedBy && isItemAtStorage(it));
+        if (!srcItem) {
+          const isAtAnyFacility = (it) => facilities.some(f =>
+            dist(it, {x: f.x + f.w/2, y: f.y + f.h/2}) < CFG.ITEM_SLOT_RADIUS + 18
+          );
+          srcItem = avail.find(it => !it.reservedBy && !isAtAnyFacility(it));
+        }
+        // Tier 3: non-storage items — only for intermediate/cooked, and only if
+        // the item doesn't belong to a different order (don't steal from orders).
+        if (!srcItem) {
+          const meta = ITEM_META[inType];
+          const isRaw = meta && meta.stage === 'raw';
+          if (!isRaw) {
+            srcItem = avail.find(it =>
+              !it.reservedBy && isItemAtNonStorageFacility(it) &&
+              (!it.orderId || it.orderId === order.id)
+            );
+          }
+        }
+        // NO absolute last resort. If no valid source, item stays where it is.
+        if (srcItem) {
+          // Anti-pingpong: don't move item if it's already at ANY facility of the correct type
+          const alreadyAtSameTypeFacility = facilities.some(f =>
+            (f.type === facility.type) &&
+            dist(srcItem, {x: f.x + f.w/2, y: f.y + f.h/2}) < CFG.ITEM_SLOT_RADIUS + 18
+          );
+          if (alreadyAtSameTypeFacility) continue;
+          // Avoid duplicate CARRY for same item+dest
+          const dupCheck = agents.some(a =>
+            a.task && a.task.type === 'CARRY' && a.task.itemId === srcItem.id &&
+            a.task.destFacilityId === facility.id && a.task.status !== 'completed'
+          );
+          if (!dupCheck) {
+            tasks.push(createTask('CARRY', {
+              orderId: order.id, recipeKey: order.recipeKey, stepId: step.id,
+              facilityId: facility.id, itemId: srcItem.id, itemType: inType,
+              destFacilityId: facility.id,
+              label: `搬运${ITEM_META[inType]?.name||inType}到${facility.name}`,
+              duration: 0.3,
+            }));
+          }
+        }
+      }
+    }
+
+    // Pass 2: Generate main tasks (FETCH/PROCESS/ASSEMBLE/SERVE) only when all inputs exist
+    for (const step of recipe.steps) {
+      if (order.completedSteps.has(step.id)) continue;
+
+      const alreadyActive = agents.some(a =>
+        a.task && a.task.orderId === order.id && a.task.stepId === step.id &&
+        a.task.status !== 'completed' && a.task.type !== 'CARRY'
+      );
+      if (alreadyActive) continue;
+
+      // Auto-complete FETCH step if unowned output item already exists (from expired orders or open prep)
+      if (step.inputs.length === 0 && step.outputs.length > 0) {
+        const existingItem = findItemsByType(step.outputs[0]).find(it => !it.reservedBy && !it.orderId);
+        if (existingItem) {
+          existingItem.orderId = order.id;
+          order.completedSteps.add(step.id);
+          continue;
+        }
+      }
+
+      // Check if ALL input items exist (include reserved — they'll be free soon)
+      let allInputsAvailable = true;
+      for (const inType of step.inputs) {
+        if (findItemsByType(inType, false).length === 0) { allInputsAvailable = false; break; }
+      }
+      if (!allInputsAvailable) continue;
+
+      const facility = bestFacilityOfType(step.facility, {x:0,y:0});
+      if (!facility && step.facility) continue;
+
+      // For multi-input steps (ASSEMBLE), require ALL inputs at the facility.
+      // Don't generate if items are missing — prevents agents from standing around
+      // and self-fetching from other workstations.
+      if (step.inputs.length >= 2 && facility) {
+        const allAtFac = step.inputs.every(inType => findItemAtFacility(inType, facility.id));
+        if (!allAtFac) continue;
+      }
+
+      let taskType, label;
+      if (step.inputs.length === 0 && step.outputs.length > 0) {
+        taskType = 'FETCH'; label = step.label;
+      } else if (step.id === 'serve') {
+        taskType = 'SERVE'; label = step.label;
+      } else if (step.inputs.length >= 2) {
+        taskType = 'ASSEMBLE'; label = step.label;
+      } else {
+        taskType = 'PROCESS'; label = step.label;
+      }
+
+      const taskFacility = facility || facilities.find(f => (f.type === step.facility || f.id === step.facility) && f.state !== 'free') || facilities.find(f => f.type === step.facility || f.id === step.facility);
+      if (!taskFacility) continue;
+
+      tasks.push(createTask(taskType, {
+        orderId: order.id, recipeKey: order.recipeKey, stepId: step.id,
+        facilityId: taskFacility.id,
+        itemType: step.inputs[0] || null,
+        inputTypes: step.inputs,
+        outputType: step.outputs[0] || null,
+        label: `${order.recipe.name}: ${label}`,
+        duration: step.duration,
+      }));
+    }
+  }
+
+  // --- Open preparation tasks (stock tasks) ---
+  for (const [recipeKey, recipe] of Object.entries(RECIPES)) {
+    for (const step of recipe.steps) {
+      // Skip if this step is already being executed as open prep
+      const alreadyActive = agents.some(a =>
+        a.task && a.task.stock && a.task.recipeKey === recipeKey &&
+        a.task.stepId === step.id && a.task.status !== 'completed'
+      );
+      if (alreadyActive) continue;
+
+      if (step.inputs.length === 0 && step.outputs.length > 0) {
+        // Fetch ingredient step - generate open fetch
+        const count = items.filter(it => it.type === step.outputs[0] && !it.orderId).length;
+        if (count < CFG.MAX_OPEN_ITEMS) {
+          const facility = bestFacilityOfType(step.facility, {x:0,y:0});
+          if (facility) {
+            tasks.push(createTask('FETCH', {
+              stock: true, recipeKey, stepId: step.id,
+              facilityId: facility.id,
+              outputType: step.outputs[0],
+              label: `备货: ${step.label} (${ITEM_META[step.outputs[0]]?.name})`,
+              duration: step.duration,
+            }));
+          }
+        }
+      } else if (step.inputs.length === 1 && step.outputs.length > 0) {
+        // Single-input process - generate open process if input available
+        const outCount = items.filter(it => it.type === step.outputs[0] && !it.orderId).length;
+        if (outCount < CFG.MAX_OPEN_ITEMS) {
+          const inputItem = findItemsByType(step.inputs[0]).find(it => !it.orderId && !it.reservedBy);
+          if (inputItem) {
+            const facility = bestFacilityOfType(step.facility, inputItem);
+            if (facility) {
+              tasks.push(createTask('PROCESS', {
+                stock: true, recipeKey, stepId: step.id,
+                facilityId: facility.id,
+                itemType: step.inputs[0],
+                outputType: step.outputs[0],
+                label: `备货: ${step.label} → ${ITEM_META[step.outputs[0]]?.name}`,
+                duration: step.duration,
+              }));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // --- Transport tasks for stranded items ---
+  for (const item of items) {
+    if (item.reservedBy || item.carriedBy || item.orderId) continue;
+    // Find if this item could be useful somewhere
+    for (const [recipeKey, recipe] of Object.entries(RECIPES)) {
+      for (const step of recipe.steps) {
+        if (step.inputs.includes(item.type) && step.facility) {
+          // Check if item is already near any facility of the right type
+          const nearAnyRightFacility = facilities.some(f =>
+            (f.type === step.facility || f.id === step.facility) &&
+            dist(item, { x: f.x + f.w/2, y: f.y + f.h/2 }) < CFG.ITEM_SLOT_RADIUS + 18
+          );
+          if (nearAnyRightFacility) continue; // already at a useful facility
+          const facType = facilities.filter(f => (f.type === step.facility || f.id === step.facility) && f.state !== 'occupied');
+          if (facType.length > 0) {
+            const best = facType.reduce((a,b) => dist(item, a) < dist(item, b) ? a : b);
+            if (!tasks.some(t => t.type === 'CARRY' && t.itemId === item.id && t.destFacilityId === best.id)) {
+              tasks.push(createTask('CARRY', {
+                stock: true,
+                facilityId: best.id, itemId: item.id, itemType: item.type,
+                destFacilityId: best.id,
+                label: `整理: 搬运${ITEM_META[item.type]?.name}到${best.name}`,
+                duration: 0.3,
+              }));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return tasks;
+}
+
+// ============================================================================
+//  SCORING
+// ============================================================================
+const SCORE_WEIGHTS = {
+  distance: -0.08,   // per 100px
+  facilityWait: -0.4,// per second
+  orderUrgency: 1.5, // multiplier on urgency [0,5]
+  unlockValue: 2.5,  // per downstream step unlocked
+  roleBonus: 0.04,   // per similar task previously done
+  stockBase: 0.70,   // base value for open prep
+  freshPickBonus: 3.0,  // strong reward for fetching fresh from storage
+  stalePickPenalty: -8.0, // heavy penalty for robbing other workstations
+  stalePickWorkstationMultiplier: 4.0, // extra multiplier for cutting/frying dest
+};
+
+function scoreTask(agent, task) {
+  const detail = {
+    agent: agent.name,
+    task: task.label,
+    distance: 0,
+    facilityWait: 0,
+    orderUrgency: 0,
+    unlockValue: 0,
+    roleBonus: 0,
+    stockBase: 0,
+    freshPickBonus: 0,
+    stalePickPenalty: 0,
+    total: 0,
+  };
+
+  // --- Distance cost (use facility center, not top-left) ---
+  let targetPos = null;
+  const fac = facilities.find(f => f.id === task.facilityId);
+  if (task.type === 'CARRY') {
+    const item = items.find(it => it.id === task.itemId);
+    if (item) targetPos = item;
+    else if (fac) targetPos = { x: fac.x + fac.w/2, y: fac.y + fac.h/2 };
+  } else if (fac) {
+    targetPos = { x: fac.x + fac.w/2, y: fac.y + fac.h/2 };
+  }
+  if (targetPos) {
+    const d = dist(agent, targetPos);
+    detail.distance = (d / 100) * SCORE_WEIGHTS.distance;
+  }
+
+  // --- Facility wait cost ---
+  if (fac) {
+    if (fac.state === 'occupied') {
+      detail.facilityWait = fac.timer * SCORE_WEIGHTS.facilityWait;
+    } else if (fac.state === 'reserved') {
+      detail.facilityWait = 1.5 * SCORE_WEIGHTS.facilityWait; // estimate
+    }
+  }
+
+  // --- Order urgency ---
+  if (task.orderId) {
+    const order = orders.find(o => o.id === task.orderId);
+    if (order) {
+      const urgency = clamp((1 - order.timeRemaining / order.timeTotal) * 5, 0, 5);
+      detail.orderUrgency = urgency * SCORE_WEIGHTS.orderUrgency;
+    }
+  }
+
+  // --- Unlock value (progress-based: later steps = higher score) ---
+  if (task.stepId && task.recipeKey) {
+    const recipe = RECIPES[task.recipeKey];
+    const stepIdx = recipe.steps.findIndex(s => s.id === task.stepId);
+    if (stepIdx >= 0) {
+      // Progress toward completion (0.14 for first step, 1.0 for last)
+      const progress = (stepIdx + 1) / recipe.steps.length;
+      detail.unlockValue = progress * 5.0 * SCORE_WEIGHTS.unlockValue;
+    }
+  }
+  if (task.stock) {
+    detail.stockBase = SCORE_WEIGHTS.stockBase;
+  }
+
+  // --- Role bonus ---
+  const roleKey = task.type;
+  const counts = agentRoleCount[agent.id] || {};
+  const similarCount = counts[roleKey] || 0;
+  detail.roleBonus = Math.min(similarCount * SCORE_WEIGHTS.roleBonus, 0.25);
+
+  // --- Fresh pick bonus: CARRY from storage gives big bonus, from other facilities gives penalty ---
+  //     Penalty scales with destination type: cutting/frying need raw mats → huge penalty for stale
+  if (task.type === 'CARRY' && task.itemId) {
+    const srcItem = items.find(it => it.id === task.itemId);
+    if (srcItem) {
+      if (isItemAtStorage(srcItem)) {
+        detail.freshPickBonus = SCORE_WEIGHTS.freshPickBonus;
+      } else if (isItemAtNonStorageFacility(srcItem)) {
+        let penalty = SCORE_WEIGHTS.stalePickPenalty;
+        // Dynamic multiplier: cutting/frying stations need fresh ingredients
+        if (task.destFacilityId) {
+          const destFac = facilities.find(f => f.id === task.destFacilityId);
+          if (destFac && (destFac.type === 'cutting_board' || destFac.type === 'frying_pan')) {
+            penalty *= SCORE_WEIGHTS.stalePickWorkstationMultiplier; // -32 total
+          }
+        }
+        detail.stalePickPenalty = penalty;
+      }
+    }
+  }
+
+  // --- Total ---
+  detail.total = detail.distance + detail.facilityWait + detail.orderUrgency +
+                 detail.unlockValue + detail.roleBonus + detail.stockBase +
+                 detail.freshPickBonus + detail.stalePickPenalty;
+  detail.total = Math.round(detail.total * 1000) / 1000;
+
+  return detail;
+}
+
+// ============================================================================
+//  GREEDY TASK ASSIGNMENT
+// ============================================================================
+function assignTasks() {
+  // Release completed task reservations
+  for (const agent of agents) {
+    if (agent.task && (agent.task.status === 'completed')) {
+      releaseTaskReservations(agent.task);
+      agent.task = null;
+      agent.substate = 'idle';
+    }
+  }
+
+  // Generate all candidate tasks
+  taskPool = generateAllTasks();
+
+  // Remove tasks that are already assigned/executing
+  const activeTaskIds = new Set();
+  for (const agent of agents) {
+    if (agent.task && agent.task.status !== 'completed') {
+      activeTaskIds.add(agent.task.id);
+    }
+  }
+  taskPool = taskPool.filter(t => !activeTaskIds.has(t.id));
+
+  // Get idle agents
+  const idleAgents = agents.filter(a => !a.task || a.task.status === 'completed');
+  if (idleAgents.length === 0) return;
+
+  // Score all (agent, task) pairs
+  const scored = [];
+  for (const agent of idleAgents) {
+    for (const task of taskPool) {
+      // Skip if task requires items that are reserved
+      if (task.itemId) {
+        const item = items.find(it => it.id === task.itemId);
+        if (item && item.reservedBy && item.reservedBy !== task.id) continue;
+      }
+      // For SERVE/CARRY tasks that find items by type, verify an unreserved item exists
+      if (!task.itemId && task.itemType && (task.type === 'SERVE' || task.type === 'CARRY')) {
+        const avail = findItemsByType(task.itemType).find(it => !it.reservedBy);
+        if (!avail) continue; // all items of this type are taken
+      }
+      // Skip if facility is occupied
+      if (task.facilityId) {
+        const fac = facilities.find(f => f.id === task.facilityId);
+        if (fac && fac.state === 'occupied') continue;
+      }
+
+      const detail = scoreTask(agent, task);
+      if (detail.total > -Infinity) {
+        scored.push({ agent, task, detail });
+      }
+    }
+  }
+
+  // Sort by score descending
+  scored.sort((a, b) => b.detail.total - a.detail.total);
+
+  // Greedy assignment
+  const assignedAgents = new Set();
+  const assignedTasks = new Set();
+  const assignments = [];
+
+  for (const entry of scored) {
+    if (assignedAgents.has(entry.agent.id)) continue;
+    if (assignedTasks.has(entry.task.id)) continue;
+
+    // Double-check facility availability
+    if (entry.task.facilityId) {
+      const fac = facilities.find(f => f.id === entry.task.facilityId);
+      if (fac && fac.state === 'occupied') continue;
+    }
+
+    // Reserve facility (skip for CARRY tasks which just drop items)
+    if (entry.task.facilityId && entry.task.type !== 'CARRY') {
+      const fac = facilities.find(f => f.id === entry.task.facilityId);
+      if (fac) {
+        if (fac.state === 'reserved' && fac.reservedBy !== entry.agent.id) continue;
+        if (fac.state === 'occupied') continue;
+        fac.state = 'reserved';
+        fac.reservedBy = entry.agent.id;
+        entry.task.reservedFacility = fac.id;
+      }
+    }
+
+    // Reserve items by ID or by type (SERVE/CARRY may only have itemType)
+    let itemToReserve = null;
+    if (entry.task.itemId) {
+      itemToReserve = items.find(it => it.id === entry.task.itemId);
+    } else if (entry.task.itemType && (entry.task.type === 'SERVE' || entry.task.type === 'CARRY')) {
+      itemToReserve = findItemsByType(entry.task.itemType).find(it => !it.reservedBy);
+      if (itemToReserve) entry.task.itemId = itemToReserve.id; // Set for execution
+    }
+    if (itemToReserve && !itemToReserve.reservedBy) {
+      itemToReserve.reservedBy = entry.task.id;
+      entry.task.reservedItems.push(itemToReserve.id);
+    }
+    // For PROCESS/ASSEMBLE, reserve input items at facility
+    if ((entry.task.type === 'PROCESS' || entry.task.type === 'ASSEMBLE') && entry.task.facilityId) {
+      const fac = facilities.find(f => f.id === entry.task.facilityId);
+      for (const inType of (entry.task.inputTypes || [])) {
+        const item = findItemAtFacility(inType, entry.task.facilityId);
+        if (item && !item.reservedBy) {
+          item.reservedBy = entry.task.id;
+          entry.task.reservedItems.push(item.id);
+        }
+      }
+      if (entry.task.itemType) {
+        const item = findItemAtFacility(entry.task.itemType, entry.task.facilityId);
+        if (item && !item.reservedBy) {
+          item.reservedBy = entry.task.id;
+          entry.task.reservedItems.push(item.id);
+        }
+      }
+    }
+
+    // Assign
+    entry.task.status = 'assigned';
+    entry.task.assignedAgent = entry.agent.id;
+    entry.task.score = entry.detail.total;
+    entry.task.scoreDetail = entry.detail;
+    entry.agent.task = entry.task;
+    entry.agent.substate = 'moving';
+    entry.agent.moveTimer = 0;
+
+    // Store scoring history
+    scoreHistory[entry.agent.id] = {
+      task: entry.task,
+      detail: entry.detail,
+      candidates: scored.filter(s => s.agent.id === entry.agent.id).slice(0, 6),
+    };
+
+    assignedAgents.add(entry.agent.id);
+    assignedTasks.add(entry.task.id);
+    assignments.push(entry);
+
+    // Initialize agent execution
+    initAgentTaskExecution(entry.agent, entry.task);
+  }
+
+  // Idle agents without tasks -> wander
+  for (const agent of idleAgents) {
+    if (!assignedAgents.has(agent.id)) {
+      agent.task = null;
+      agent.substate = 'idle';
+      agent.label = '闲逛中...';
+      if (!agent.wanderTarget) {
+        pickWanderTarget(agent);
+      }
+    }
+  }
+
+  // === FORCED SERVE: idle agents + unserved dishes → immediate assignment ===
+  const stillIdle = agents.filter(a =>
+    (!a.task || a.task.status === 'completed') && !assignedAgents.has(a.id)
+  );
+  if (stillIdle.length > 0) {
+    const finishedTypes = ['Burger', 'Salad'];
+    for (const fType of finishedTypes) {
+      const unserved = items.filter(it =>
+        it.type === fType && it.orderId && !it.reservedBy && !it.carriedBy
+      );
+      for (const dish of unserved) {
+        if (stillIdle.length === 0) break;
+        // Find nearest idle agent
+        stillIdle.sort((a, b) => dist(a, dish) - dist(b, dish));
+        const agent = stillIdle.shift();
+        const fac = facilities.find(f => f.id === 'serving_counter');
+        if (!fac || (fac.state === 'occupied')) continue;
+
+        const serveTask = createTask('SERVE', {
+          orderId: dish.orderId, recipeKey: null, stepId: 'serve',
+          facilityId: 'serving_counter',
+          itemId: dish.id, itemType: dish.type,
+          label: `🚀 出餐: ${ITEM_META[dish.type]?.name} #${dish.orderId}`,
+          duration: 0.8,
+        });
+        // Reserve item
+        dish.reservedBy = serveTask.id;
+        serveTask.reservedItems.push(dish.id);
+        // Reserve facility
+        if (fac.state === 'free' || (fac.state === 'reserved' && fac.reservedBy === agent.id)) {
+          fac.state = 'reserved';
+          fac.reservedBy = agent.id;
+          serveTask.reservedFacility = fac.id;
+        }
+        serveTask.status = 'assigned';
+        serveTask.assignedAgent = agent.id;
+        serveTask.score = 99; // Absolute highest priority
+        serveTask.scoreDetail = {
+          agent: agent.name, task: serveTask.label,
+          distance: 0, facilityWait: 0, orderUrgency: 99,
+          unlockValue: 0, roleBonus: 0, stockBase: 0, total: 99
+        };
+        agent.task = serveTask;
+        agent.substate = 'moving';
+        agent.moveTimer = 0;
+        scoreHistory[agent.id] = { task: serveTask, detail: serveTask.scoreDetail, candidates: [] };
+        initAgentTaskExecution(agent, serveTask);
+        assignedAgents.add(agent.id);
+      }
+      if (stillIdle.length === 0) break;
+    }
+  }
+
+  // Update task pool: remove assigned tasks
+  taskPool = taskPool.filter(t => !assignedTasks.has(t.id));
+
+  return assignments;
+}
+
+// ============================================================================
+//  RELEASE RESERVATIONS
+// ============================================================================
+function releaseTaskReservations(task) {
+  if (task.reservedFacility) {
+    const fac = facilities.find(f => f.id === task.reservedFacility);
+    if (fac && fac.reservedBy === task.assignedAgent) {
+      fac.state = 'free';
+      fac.reservedBy = null;
+    }
+  }
+  for (const itemId of (task.reservedItems || [])) {
+    const item = items.find(it => it.id === itemId);
+    if (item && item.reservedBy === task.id) {
+      item.reservedBy = null;
+    }
+  }
+  task.reservedItems = [];
+  task.reservedFacility = null;
+}
+
+// ============================================================================
+//  INIT AGENT TASK EXECUTION
+// ============================================================================
+function initAgentTaskExecution(agent, task) {
+  const fac = facilities.find(f => f.id === task.facilityId);
+  agent.label = task.label;
+  agent.waitTimer = 0;
+
+  // Helper: get approach position for a facility
+  const approach = (f) => getFacilityApproachPos(f, agent.x, agent.y);
+
+  switch (task.type) {
+    case 'FETCH': {
+      const pos = approach(fac);
+      agent.targetX = pos.x;
+      agent.targetY = pos.y;
+      agent._execPhase = 'goto_facility';
+      break;
+    }
+    case 'CARRY': {
+      let item = items.find(it => it.id === task.itemId);
+      // Fallback: if specific item is gone, find another unreserved, uncarried item of same type
+      if (!item || item.carriedBy) {
+        // Release old item's reservation if it was reserved by this task
+        const oldItem = items.find(it => it.id === task.itemId && it.reservedBy === task.id);
+        if (oldItem) oldItem.reservedBy = null;
+        const fallback = items.find(it =>
+          it.type === task.itemType && !it.carriedBy &&
+          (!it.reservedBy || it.reservedBy === task.id) &&
+          it.id !== task.itemId
+        );
+        if (fallback) {
+          item = fallback;
+          task.itemId = fallback.id;
+          if (!fallback.reservedBy) {
+            fallback.reservedBy = task.id;
+            task.reservedItems.push(fallback.id);
+          }
+        }
+      }
+      if (item && !item.carriedBy) {
+        agent.targetX = item.x;
+        agent.targetY = item.y;
+        agent._execPhase = 'goto_item';
+        agent._carryItemId = item.id;
+        const destPos = approach(fac);
+        agent._carryDest = { x: destPos.x, y: destPos.y };
+      }
+      break;
+    }
+    case 'PROCESS': {
+      const itemAtFac = task.itemType ? findItemAtFacility(task.itemType, task.facilityId, task.id) : null;
+      // FIX: accept items reserved by THIS task (scheduler reserves them in advance)
+      if (itemAtFac && (!itemAtFac.reservedBy || itemAtFac.reservedBy === task.id)) {
+        const pos = approach(fac);
+        agent.targetX = pos.x;
+        agent.targetY = pos.y;
+        agent._execPhase = 'goto_facility';
+      } else {
+        const srcItem = items.find(it => it.type === task.itemType && (!it.reservedBy || it.reservedBy === task.id) && !it.carriedBy);
+        if (srcItem) {
+          agent.targetX = srcItem.x;
+          agent.targetY = srcItem.y;
+          agent._execPhase = 'goto_item';
+          agent._carryItemId = srcItem.id;
+          const destPos = approach(fac);
+          agent._carryDest = { x: destPos.x, y: destPos.y };
+          if (!srcItem.reservedBy) {
+            srcItem.reservedBy = task.id;
+            task.reservedItems.push(srcItem.id);
+          }
+        } else {
+          const pos = approach(fac);
+          agent.targetX = pos.x;
+          agent.targetY = pos.y;
+          agent._execPhase = 'goto_facility';
+        }
+      }
+      break;
+    }
+    case 'ASSEMBLE': {
+      const pos = approach(fac);
+      agent.targetX = pos.x;
+      agent.targetY = pos.y;
+      agent._execPhase = 'goto_facility';
+      break;
+    }
+    case 'SERVE': {
+      // Find the dish — try specific ID first, then type search (including reserved)
+      let item = null;
+      if (task.itemId) {
+        item = items.find(it => it.id === task.itemId);
+      }
+      if (!item && task.itemType) {
+        item = findItemsByType(task.itemType, false).find(it => !it.reservedBy || it.reservedBy === task.id);
+      }
+      if (!item && task.itemType) {
+        // Last resort: any item of this type, even if reserved or carried
+        item = items.find(it => it.type === task.itemType);
+      }
+      if (item) {
+        agent.targetX = item.x;
+        agent.targetY = item.y;
+        agent._execPhase = 'goto_item';
+        agent._carryItemId = item.id;
+        const destPos = fac ? getFacilityApproachPos(fac, agent.x, agent.y) : { x: agent.x, y: agent.y - 50 };
+        agent._carryDest = { x: destPos.x, y: destPos.y };
+        console.log(`[SERVE] ${agent.name} → ${item.meta.name} #${item.id} at (${Math.round(item.x)},${Math.round(item.y)})`);
+      } else {
+        console.log(`[SERVE FAIL] ${agent.name} — no dish found! itemType=${task.itemType} itemId=${task.itemId}`);
+      }
+      break;
+    }
+  }
+
+  // Safety: if no execution phase was set, cancel task (log rate-limited)
+  if (!agent._execPhase) {
+    cancelLogCount++;
+    if (simTime - cancelLogLastTime > 2.0) {
+      if (cancelLogCount > 1) {
+        console.log(`[CANCEL] ${cancelLogCount} tasks had no exec phase in last 2s (latest: ${agent.name} — ${task.label})`);
+      }
+      cancelLogCount = 0;
+      cancelLogLastTime = simTime;
+    }
+    releaseTaskReservations(task);
+    task.status = 'completed';
+    agent.task = null;
+    agent.substate = 'idle';
+    agent.label = '';
+    agent.waitTimer = 0;
+    agent._carryItemId = null;
+    agent._carryDest = null;
+  }
+}
+
+// ============================================================================
+//  PICK WANDER TARGET
+// ============================================================================
+function pickWanderTarget(agent) {
+  const margin = 40;
+  agent.wanderTarget = {
+    x: margin + Math.random() * (CFG.CANVAS_W - margin * 2),
+    y: margin + Math.random() * (CFG.CANVAS_H - margin * 2),
+  };
+  agent.wanderTimer = 2 + Math.random() * 3;
+}
+
+// ============================================================================
+//  UPDATE AGENT
+// ============================================================================
+function updateAgent(agent, dt) {
+  if (agent.substate === 'idle') {
+    // Wander
+    if (agent.wanderTarget) {
+      const d = dist(agent, agent.wanderTarget);
+      if (d < 8) {
+        pickWanderTarget(agent);
+      } else {
+        const dx = agent.wanderTarget.x - agent.x;
+        const dy = agent.wanderTarget.y - agent.y;
+        const mag = Math.sqrt(dx*dx + dy*dy);
+        agent.x += (dx/mag) * CFG.AGENT_SPEED * 0.4 * dt;
+        agent.y += (dy/mag) * CFG.AGENT_SPEED * 0.4 * dt;
+      }
+      agent.wanderTimer -= dt;
+      if (agent.wanderTimer <= 0) pickWanderTarget(agent);
+    }
+    // Update carried item position
+    if (agent.carrying) {
+      const item = items.find(it => it.id === agent.carrying);
+      if (item) { item.x = agent.x; item.y = agent.y; }
+    }
+    return;
+  }
+
+  const task = agent.task;
+  if (!task) return;
+
+  const fac = facilities.find(f => f.id === task.facilityId);
+
+  if (agent.substate === 'moving') {
+    agent.moveTimer += dt;
+    const tx = agent.targetX, ty = agent.targetY;
+    const d = dist(agent, {x:tx, y:ty});
+    if (d < 6 || agent.moveTimer > 8.0) {
+      if (agent.moveTimer > 8.0) {
+        console.log(`[STUCK MOVE] ${agent.name} stuck moving for 8s, snapping to target`);
+      }
+      agent.x = tx; agent.y = ty;
+      agent.moveTimer = 0;
+      handleAgentArrival(agent, task, fac);
+    } else {
+      const dx = tx - agent.x, dy = ty - agent.y;
+      const mag = Math.sqrt(dx*dx + dy*dy);
+      if (mag > 0.01) {
+        agent.x += (dx/mag) * CFG.AGENT_SPEED * dt;
+        agent.y += (dy/mag) * CFG.AGENT_SPEED * dt;
+      }
+    }
+  } else if (agent.substate === 'working') {
+    agent.substateTimer -= dt;
+    if (agent.substateTimer <= 0) {
+      completeAgentTask(agent, task, fac);
+    }
+  } else if (agent.substate === 'waiting') {
+    agent.waitTimer += dt;
+
+    // Check if we can proceed now (all items at facility)
+    let canProceed = false;
+    let missingTypes = [];
+    if (fac && (fac.state === 'free' || (fac.state === 'reserved' && fac.reservedBy === agent.id))) {
+      let itemsReady = true;
+      for (const inType of (task.inputTypes || [])) {
+        const found = findItemAtFacility(inType, task.facilityId, task.id);
+        if (!found) {
+          itemsReady = false;
+          missingTypes.push(inType);
+          // DIAGNOSTIC: log ALL items of this type near the facility
+          const allNearby = items.filter(it =>
+            it.type === inType && !it.carriedBy &&
+            dist(it, {x: fac.x + fac.w/2, y: fac.y + fac.h/2}) < CFG.ITEM_SLOT_RADIUS + 30
+          );
+          if (allNearby.length > 0) {
+            console.log(`[WAIT-MISS] ${agent.name} at ${fac.name} needs ${ITEM_META[inType]?.name}, ${allNearby.length} nearby BUT NOT FOUND:`,
+              allNearby.map(it => `#${it.id} reservedBy=${it.reservedBy} dist=${Math.round(dist(it,{x:fac.x+fac.w/2,y:fac.y+fac.h/2}))}px`));
+          }
+        }
+      }
+      if (task.itemType && !task.inputTypes?.length) {
+        if (!findItemAtFacility(task.itemType, task.facilityId, task.id)) {
+          itemsReady = false;
+          missingTypes.push(task.itemType);
+        }
+      }
+      if (itemsReady) canProceed = true;
+    } else if (agent.waitTimer > 0.3 && agent.waitTimer < 0.35 && fac) {
+      // DIAGNOSTIC: facility is occupied/reserved by someone else
+      console.log(`[WAIT-FAC] ${agent.name} at ${fac.name} — facility ${fac.state}${fac.state==='occupied'?' by '+fac.occupiedBy:''}${fac.state==='reserved'?' for '+fac.reservedBy:''}`);
+    }
+
+    if (canProceed) {
+      if (!agent._loggedWaitOk) { agent._loggedWaitOk = true; console.log(`[WAIT-OK] ${agent.name} at ${fac.name} — all items ready, starting work`); }
+      // All items ready — start working
+      fac.state = 'occupied';
+      fac.occupiedBy = agent.id;
+      fac.timer = task.duration;
+      agent.substate = 'working';
+      agent.substateTimer = task.duration;
+      agent.waitTimer = 0;
+      agent._fetchMissing = false;
+      agent.label = task.label + ' (执行中)';
+    } else if (agent.waitTimer > 0.4 && missingTypes.length > 0 && !agent._fetchMissing) {
+      // Before self-fetching, check if another agent is already working on getting
+      // the needed item. If so, wait — don't rob from distant workstations.
+      let pendingDelivery = false;
+      for (const mType of missingTypes) {
+        // Another agent is CARRY'ing this item type to my facility
+        const hasActiveCarry = agents.some(a =>
+          a.task && a.task.status !== 'completed' &&
+          a.task.type === 'CARRY' &&
+          a.task.itemType === mType &&
+          a.task.destFacilityId === task.facilityId
+        );
+        // Another agent is FETCH'ing this item type (from any storage)
+        const hasActiveFetch = agents.some(a =>
+          a.task && a.task.status !== 'completed' &&
+          a.task.type === 'FETCH' &&
+          a.task.outputType === mType
+        );
+        // Another agent is CARRY'ing this item to another facility of same type
+        const hasActiveCarrySameType = agents.some(a =>
+          a.task && a.task.status !== 'completed' &&
+          a.task.type === 'CARRY' &&
+          a.task.itemType === mType &&
+          facilities.some(f => f.id === a.task.destFacilityId && f.type === fac.type)
+        );
+        if (hasActiveCarry || hasActiveFetch || hasActiveCarrySameType) {
+          pendingDelivery = true; break;
+        }
+      }
+      if (pendingDelivery) {
+        // Someone is already on it — wait longer before self-fetch
+        // (effectively extends the wait beyond 0.4s without triggering self-fetch)
+        agent.waitTimer = 0.35; // keep just below trigger threshold, re-check next frame
+      } else {
+      // Self-fetch: utility-aligned priority tiers (fallback — scoring system is primary gate)
+      // RAW ingredients (stage 'raw'): ONLY Tier1(storage) or Tier2(loose). NEVER rob workstations.
+      // INTERMEDIATE/COOKED: Tier3(nonstorage) allowed — these come from other workstations.
+      let bestItem = null;
+      let bestTier = 3, bestDist = Infinity;
+
+      // Gather all candidates across ALL missing types
+      const allCandidates = [];
+      for (const mType of missingTypes) {
+        for (const it of items) {
+          if (it.type === mType && !it.carriedBy &&
+              (!it.reservedBy || it.reservedBy === task.id)) {
+            if (!allCandidates.some(c => c.id === it.id)) {
+              allCandidates.push(it);
+            }
+          }
+        }
+      }
+
+      // DIAGNOSTIC: log what's missing and what's available (rate-limited per agent)
+      if (!agent._lastFetchLogTime) agent._lastFetchLogTime = 0;
+      if (simTime - agent._lastFetchLogTime > 1.5) {
+        agent._lastFetchLogTime = simTime;
+        console.log(`[SELF-FETCH] ${agent.name} at ${fac.name} needs [${missingTypes.map(t => ITEM_META[t]?.name).join(',')}], ${allCandidates.length} candidates:`,
+          allCandidates.map(c => {
+            const d = dist(agent, c);
+            const tier = isItemAtStorage(c) ? 'T1(storage)' :
+                         isItemAtNonStorageFacility(c) ? 'T3(nonstorage)' : 'T2(loose)';
+            return `${ITEM_META[c.type]?.name}#${c.id} ${tier} d=${Math.round(d)}`;
+          }));
+      }
+
+      for (const c of allCandidates) {
+        const d = dist(agent, c);
+        const meta = ITEM_META[c.type];
+        const isRaw = meta && meta.stage === 'raw';
+        // Tier 1: storage items — always best
+        if (isItemAtStorage(c) && d < 800 && (1 < bestTier || (1 === bestTier && d < bestDist))) {
+          bestTier = 1; bestDist = d; bestItem = c;
+        }
+        // Tier 2: loose items — acceptable for any type
+        else if (!isItemAtStorage(c) && !isItemAtNonStorageFacility(c) && d < 500 && (2 < bestTier || (2 === bestTier && d < bestDist))) {
+          bestTier = 2; bestDist = d; bestItem = c;
+        }
+        // Tier 3: non-storage items — ONLY for non-raw (intermediate/cooked),
+        //   AND only if the item doesn't belong to a different order.
+        //   Raw ingredients (生肉,面包,生菜,番茄) NEVER taken from other workstations.
+        else if (isItemAtNonStorageFacility(c) && !isRaw &&
+                 (!c.orderId || c.orderId === task.orderId) &&
+                 d < 300 && (3 < bestTier || (3 === bestTier && d < bestDist))) {
+          bestTier = 3; bestDist = d; bestItem = c;
+        }
+      }
+      if (bestItem) {
+        console.log(`[SELF-FETCH PICK] ${agent.name} → ${ITEM_META[bestItem.type]?.name}#${bestItem.id} Tier${bestTier} dist=${Math.round(bestDist)}`);
+        // Go fetch it
+        if (!bestItem.reservedBy) {
+          bestItem.reservedBy = task.id;
+          task.reservedItems.push(bestItem.id);
+        }
+        agent._fetchMissing = true;
+        agent._execPhase = 'goto_item';
+        agent._carryItemId = bestItem.id;
+        agent._carryDest = { x: fac.x + fac.w/2, y: fac.y + fac.h/2 };
+        agent.targetX = bestItem.x;
+        agent.targetY = bestItem.y;
+        agent.substate = 'moving';
+        agent.moveTimer = 0;
+        agent.waitTimer = 0;
+        agent.label = `🔍 自取: ${ITEM_META[bestItem.type]?.name || '食材'}`;
+      } else if (missingTypes.every(t => ITEM_META[t]?.stage === 'raw')) {
+        // All missing items are raw ingredients, and no Tier1/Tier2 candidates.
+        // Blocked Tier3 by design — wait for storage to produce fresh items.
+        // Keep waitTimer just below self-fetch threshold to avoid unnecessary abandon.
+        agent.waitTimer = 0.35;
+      }
+    } // closes inner else (self-fetch logic)
+    } else if (agent.waitTimer > 2.0) {
+      // Waited too long — abandon
+      releaseTaskReservations(task);
+      task.status = 'completed';
+      agent.task = null;
+      agent.substate = 'idle';
+      agent.label = '';
+      agent.waitTimer = 0;
+      agent._execPhase = null;
+      agent._carryItemId = null;
+      agent._carryDest = null;
+      agent._fetchMissing = false;
+      setTimeout(() => { if (running) assignTasks(); }, 50);
+    }
+  }
+
+  // Update carried item
+  if (agent.carrying) {
+    const item = items.find(it => it.id === agent.carrying);
+    if (item) { item.x = agent.x; item.y = agent.y; }
+  }
+
+  // Collision avoidance: push away from other agents and facility edges
+  applySeparation(agent, dt);
+}
+
+function applySeparation(agent, dt) {
+  // Agent-to-agent separation
+  const agentRadius = 26;
+  for (const other of agents) {
+    if (other.id === agent.id) continue;
+    const dx = agent.x - other.x;
+    const dy = agent.y - other.y;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    if (d < agentRadius && d > 0.01) {
+      const force = (agentRadius - d) / agentRadius * 1.2 * dt * CFG.AGENT_SPEED;
+      agent.x += (dx / d) * force;
+      agent.y += (dy / d) * force;
+    }
+  }
+  // Agent-to-facility boundary repulsion
+  const margin = 10;
+  for (const fac of facilities) {
+    const closestX = clamp(agent.x, fac.x - margin, fac.x + fac.w + margin);
+    const closestY = clamp(agent.y, fac.y - margin, fac.y + fac.h + margin);
+    const dx = agent.x - closestX;
+    const dy = agent.y - closestY;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    if (d < margin + 5 && d > 0.01) {
+      const force = (margin + 5 - d) / (margin + 5) * 1.0 * dt * CFG.AGENT_SPEED;
+      agent.x += (dx / d) * force;
+      agent.y += (dy / d) * force;
+    }
+  }
+}
+
+// ============================================================================
+//  HANDLE AGENT ARRIVAL AT TARGET
+// ============================================================================
+function handleAgentArrival(agent, task, fac) {
+  const phase = agent._execPhase;
+
+  if (task.type === 'FETCH' && phase === 'goto_facility') {
+    // Arrived at storage, produce item
+    if (fac.state === 'free' || fac.state === 'reserved') {
+      fac.state = 'occupied';
+      fac.occupiedBy = agent.id;
+      fac.timer = task.duration;
+      agent.substate = 'working';
+      agent.substateTimer = task.duration;
+      agent.label = task.label + ' (取料中)';
+    } else {
+      agent.substate = 'waiting';
+      agent.waitTimer = 0;
+      agent.label = task.label + ' (等待设施)';
+    }
+    return;
+  }
+
+  if (task.type === 'CARRY' && phase === 'goto_item') {
+    // Arrived at item, pick it up
+    const item = items.find(it => it.id === agent._carryItemId);
+    if (item && !item.carriedBy) {
+      agent.carrying = item.id;
+      item.carriedBy = agent.id;
+      item.reservedBy = null;
+      agent.targetX = agent._carryDest.x;
+      agent.targetY = agent._carryDest.y;
+      agent._execPhase = 'goto_dest';
+      agent.substate = 'moving';
+      agent.moveTimer = 0;
+      agent.label = task.label + ' (搬运中)';
+    } else {
+      // Item gone — cancel
+      releaseTaskReservations(task);
+      task.status = 'completed';
+      agent.task = null;
+      agent.substate = 'idle';
+      agent.label = '';
+      agent._execPhase = null;
+    }
+    return;
+  }
+
+  if (task.type === 'CARRY' && phase === 'goto_dest') {
+    // Arrived at destination, drop item INSIDE the facility (center)
+    const item = items.find(it => it.id === agent._carryItemId);
+    if (item) {
+      item.carriedBy = null;
+      // Place item beside facility (Overcooked style)
+      const dropPos = fac ? getItemPlacementPos(fac, item.id) : { x: agent.x, y: agent.y };
+      item.x = dropPos.x;
+      item.y = dropPos.y;
+      agent.carrying = null;
+    }
+    if (item) item.reservedBy = null;
+    finishTask(agent, task);
+    return;
+  }
+
+  if ((task.type === 'PROCESS' || task.type === 'ASSEMBLE') && phase === 'goto_item') {
+    // Arrived at item, pick it up (handles both normal PROCESS and self-fetch ASSEMBLE)
+    const item = items.find(it => it.id === agent._carryItemId);
+    if (item && !item.carriedBy) {
+      agent.carrying = item.id;
+      item.carriedBy = agent.id;
+      item.reservedBy = null;
+      agent.targetX = agent._carryDest.x;
+      agent.targetY = agent._carryDest.y;
+      agent._execPhase = 'goto_facility';
+      agent.substate = 'moving';
+      agent.moveTimer = 0;
+      agent.label = task.label + ' (搬运食材)';
+    }
+    return;
+  }
+
+  if ((task.type === 'PROCESS' || task.type === 'ASSEMBLE') &&
+      (phase === 'goto_facility' || phase === 'goto_item')) {
+    // Arrived at facility approach point, drop carried item beside the facility
+    if (agent.carrying) {
+      const item = items.find(it => it.id === agent.carrying);
+      if (item) {
+        item.carriedBy = null;
+        item.reservedBy = null; // release item reservation after dropping
+        const dropPos = getItemPlacementPos(fac, item.id);
+        item.x = dropPos.x;
+        item.y = dropPos.y;
+        agent.carrying = null;
+      }
+    }
+
+    // If this was a self-fetch trip, go back to waiting (check if more items needed)
+    if (agent._fetchMissing) {
+      agent._fetchMissing = false;
+      agent._execPhase = 'goto_facility';
+      agent.substate = 'waiting';
+      agent.waitTimer = 0;
+      agent.label = task.label + ' (检查食材)';
+      return;
+    }
+
+    // Check if facility is available
+    if (fac.state === 'free' || fac.state === 'reserved') {
+      // Check if required items are at facility
+      let itemsReady = true;
+      for (const inType of (task.inputTypes || [])) {
+        if (!findItemAtFacility(inType, task.facilityId, task.id)) itemsReady = false;
+      }
+      if (task.itemType && !task.inputTypes?.length) {
+        if (!findItemAtFacility(task.itemType, task.facilityId, task.id)) itemsReady = false;
+      }
+
+      if (itemsReady) {
+        fac.state = 'occupied';
+        fac.occupiedBy = agent.id;
+        fac.timer = task.duration;
+        agent.substate = 'working';
+        agent.substateTimer = task.duration;
+        agent.label = task.label + ' (执行中)';
+      } else {
+        // Items not ready, wait
+        agent.substate = 'waiting';
+        agent.waitTimer = 0;
+        agent.label = task.label + ' (等待食材)';
+      }
+    } else {
+      agent.substate = 'waiting';
+      agent.waitTimer = 0;
+      agent.label = task.label + ' (等待设施)';
+    }
+    return;
+  }
+
+  if (task.type === 'SERVE' && phase === 'goto_item') {
+    // Arrived at finished dish — find it by ID, or by type, or just take nearest
+    let item = items.find(it => it.id === agent._carryItemId);
+    if (!item && task.itemType) {
+      // Fallback: find any unreserved dish of the right type nearby
+      item = items.find(it =>
+        it.type === task.itemType && !it.carriedBy &&
+        (!it.reservedBy || it.reservedBy === task.id) &&
+        dist(agent, it) < 50
+      );
+    }
+    if (!item && task.itemType) {
+      // Last resort: any dish of the right type
+      item = items.find(it => it.type === task.itemType && !it.carriedBy);
+    }
+    if (item && !item.carriedBy) {
+      agent.carrying = item.id;
+      item.carriedBy = agent.id;
+      item.reservedBy = null;
+      agent.targetX = agent._carryDest.x;
+      agent.targetY = agent._carryDest.y;
+      agent._execPhase = 'goto_dest';
+      agent.substate = 'moving';
+      agent.moveTimer = 0;
+      agent.label = task.label + ' (送餐中)';
+      console.log(`[SERVE PICKUP] ${agent.name} picked up ${item.meta.name} #${item.id}, heading to counter`);
+    } else {
+      console.log(`[SERVE STUCK] ${agent.name} at dish location but item gone (carryItemId=${agent._carryItemId})`);
+      releaseTaskReservations(task);
+      task.status = 'completed';
+      agent.task = null;
+      agent.substate = 'idle';
+      agent.label = '';
+      agent._execPhase = null;
+      agent._carryItemId = null;
+    }
+    return;
+  }
+
+  if (task.type === 'SERVE' && phase === 'goto_dest') {
+    // Arrived at serving counter, complete order
+    const item = items.find(it => it.id === agent._carryItemId);
+    if (item) {
+      console.log(`[SERVE DONE] ${agent.name} served ${item.meta.name} #${item.id}, order #${task.orderId} completed`);
+      items = items.filter(it => it.id !== item.id);
+      agent.carrying = null;
+    } else {
+      // Item not found by ID — try to remove any carried item
+      if (agent.carrying) {
+        const carriedItem = items.find(it => it.id === agent.carrying);
+        if (carriedItem) {
+          console.log(`[SERVE DONE fallback] ${agent.name} served carried ${carriedItem.meta.name}`);
+          items = items.filter(it => it.id !== carriedItem.id);
+        }
+        agent.carrying = null;
+      }
+    }
+    if (task.orderId) {
+      const order = orders.find(o => o.id === task.orderId);
+      if (order) {
+        order.status = 'completed';
+        order.completedSteps.add(task.stepId);
+        statsCompleted++;
+        for (const it of items) {
+          if (it.orderId === order.id) {
+            it.orderId = null;
+            it.reservedBy = null;
+          }
+        }
+      }
+    }
+    finishTask(agent, task);
+    return;
+  }
+}
+
+// ============================================================================
+//  COMPLETE AGENT TASK (after working timer)
+// ============================================================================
+function completeAgentTask(agent, task, fac) {
+  if (fac) {
+    fac.state = 'free';
+    fac.occupiedBy = null;
+    fac.reservedBy = null;
+    fac.timer = 0;
+  }
+
+  // Record role count
+  if (!agentRoleCount[agent.id]) agentRoleCount[agent.id] = {};
+  agentRoleCount[agent.id][task.type] = (agentRoleCount[agent.id][task.type] || 0) + 1;
+
+  // Produce output items at facility perimeter (Overcooked style)
+  const dropPos = fac ? getItemPlacementPos(fac, nextId) : { x: agent.x, y: agent.y };
+  if (task.type === 'FETCH' && task.outputType) {
+    const newItem = createItem(task.outputType, dropPos.x, dropPos.y, task.orderId);
+    items.push(newItem);
+    if (task.orderId) {
+      const order = orders.find(o => o.id === task.orderId);
+      if (order) order.completedSteps.add(task.stepId);
+    }
+  } else if (task.type === 'PROCESS' && task.outputType) {
+    // Consume input item at facility perimeter
+    const inType = task.itemType || (task.inputTypes[0]);
+    if (inType) {
+      const inputItem = findItemAtFacility(inType, task.facilityId, task.id);
+      if (inputItem) {
+        items = items.filter(it => it.id !== inputItem.id);
+      }
+    }
+    // Produce output at perimeter
+    const newItem = createItem(task.outputType, dropPos.x, dropPos.y, task.orderId);
+    items.push(newItem);
+    if (task.orderId) {
+      const order = orders.find(o => o.id === task.orderId);
+      if (order) order.completedSteps.add(task.stepId);
+    }
+  } else if (task.type === 'ASSEMBLE' && task.outputType) {
+    // Consume all input items at facility perimeter
+    for (const inType of task.inputTypes) {
+      const inputItem = findItemAtFacility(inType, task.facilityId, task.id);
+      if (inputItem) {
+        items = items.filter(it => it.id !== inputItem.id);
+      }
+    }
+    // Produce output at perimeter
+    const newItem = createItem(task.outputType, dropPos.x, dropPos.y, task.orderId);
+    items.push(newItem);
+    if (task.orderId) {
+      const order = orders.find(o => o.id === task.orderId);
+      if (order) order.completedSteps.add(task.stepId);
+    }
+  }
+
+  // Release reservations
+  releaseTaskReservations(task);
+
+  task.status = 'completed';
+  agent.task = null;
+  agent.substate = 'idle';
+  agent.label = '';
+  agent._execPhase = null;
+  agent._carryItemId = null;
+  agent._carryDest = null;
+
+  // Immediately try to assign new task
+  setTimeout(() => { if (running) assignTasks(); }, 50);
+}
+
+// ============================================================================
+//  FINISH TASK (no working phase)
+// ============================================================================
+function finishTask(agent, task) {
+  releaseTaskReservations(task);
+  task.status = 'completed';
+  agent.task = null;
+  agent.substate = 'idle';
+  agent.label = '';
+  agent._execPhase = null;
+  agent._carryItemId = null;
+  agent._carryDest = null;
+  setTimeout(() => { if (running) assignTasks(); }, 50);
+}
+
+// ============================================================================
+//  ADD ORDER
+// ============================================================================
+function addOrder(recipeKey) {
+  const order = createOrder(recipeKey);
+  order.status = 'in_progress';
+  orders.push(order);
+  orderTimer = 0; // reset auto-order timer
+  // Trigger immediate scheduling
+  assignTasks();
+  return order;
+}
+
+// ============================================================================
+//  UPDATE ORDERS
+// ============================================================================
+function updateOrders(dt) {
+  for (const order of orders) {
+    if (order.status === 'in_progress' || order.status === 'pending') {
+      order.timeRemaining -= dt;
+      if (order.timeRemaining <= 0) {
+        order.status = 'expired';
+        statsExpired++;
+        // Release all items associated with this order
+        for (const item of items) {
+          if (item.orderId === order.id) {
+            item.reservedBy = null;
+            item.orderId = null; // Make available for other orders
+          }
+        }
+        // Cancel active tasks for this order
+        for (const agent of agents) {
+          if (agent.task && agent.task.orderId === order.id) {
+            releaseTaskReservations(agent.task);
+            agent.task = null;
+            agent.substate = 'idle';
+            agent.label = '';
+            agent._execPhase = null;
+            agent._carryItemId = null;
+          }
+        }
+      }
+    }
+  }
+  // Remove old completed/expired orders
+  orders = orders.filter(o => o.status === 'in_progress' || o.status === 'pending' ||
+    (o.status === 'completed' && o.timeRemaining > -8) ||
+    (o.status === 'expired' && o.timeRemaining > -12));
+}
+
+// ============================================================================
+//  UPDATE FACILITIES (tick timers)
+// ============================================================================
+function updateFacilities(dt) {
+  for (const fac of facilities) {
+    if (fac.state === 'occupied' && fac.timer > 0) {
+      fac.timer -= dt;
+    }
+  }
+}
+
+// ============================================================================
+//  CLEANUP STALE ITEMS
+// ============================================================================
+function cleanupItems() {
+  // Release items from completed/expired orders back to public stock.
+  // Items themselves persist indefinitely — they don't disappear.
+  for (const item of items) {
+    if (item.orderId) {
+      const order = orders.find(o => o.id === item.orderId);
+      if (!order || order.status === 'completed' || order.status === 'expired') {
+        if (!item.carriedBy && !item.reservedBy) {
+          item.orderId = null;
+        }
+      }
+    }
+  }
+}
+
+// ============================================================================
+//  MAIN UPDATE
+// ============================================================================
+function update(dt) {
+  const realDt = dt * speedMul;
+  simTime += realDt;
+
+  // Update facilities
+  updateFacilities(realDt);
+
+  // Update orders
+  updateOrders(realDt);
+
+  // Update agents
+  for (const agent of agents) {
+    updateAgent(agent, realDt);
+  }
+
+  // Schedule timer
+  scheduleTimer += realDt;
+  if (scheduleTimer >= CFG.SCHEDULE_INTERVAL) {
+    scheduleTimer = 0;
+    assignTasks();
+    // Check for agents stuck waiting (reassign if facility/item now available)
+    for (const agent of agents) {
+      if (agent.substate === 'waiting' && agent.task) {
+        const fac = facilities.find(f => f.id === agent.task.facilityId);
+        const task = agent.task;
+        // Check if facility is now free
+        if (fac && (fac.state === 'free' || (fac.state === 'reserved' && fac.reservedBy === agent.id))) {
+          // Check if required items are now at facility
+          let itemsReady = true;
+          for (const inType of (task.inputTypes || [])) {
+            if (!findItemAtFacility(inType, task.facilityId, task.id)) { itemsReady = false; break; }
+          }
+          if (task.itemType && !task.inputTypes?.length) {
+            if (!findItemAtFacility(task.itemType, task.facilityId, task.id)) itemsReady = false;
+          }
+          if (itemsReady) {
+            fac.state = 'occupied';
+            fac.occupiedBy = agent.id;
+            fac.timer = task.duration;
+            agent.substate = 'working';
+            agent.substateTimer = task.duration;
+            agent.label = task.label + ' (执行中)';
+          }
+        }
+      }
+    }
+  }
+
+  // Auto-order timer
+  orderTimer += realDt;
+  if (orderTimer >= CFG.ORDER_INTERVAL && orders.filter(o => o.status === 'in_progress').length < 5) {
+    orderTimer = 0;
+    const recipeKey = Math.random() < 0.5 ? 'burger' : 'salad';
+    addOrder(recipeKey);
+  }
+
+  // Deadlock detection: if ALL agents are idle or waiting > 1.5s, force-break
+  const allStuck = agents.every(a =>
+    a.substate === 'idle' || a.substate === 'waiting'
+  );
+  const anyWaitingLong = agents.some(a => a.substate === 'waiting' && a.waitTimer > 1.5);
+  if (allStuck && anyWaitingLong && agents.some(a => a.substate === 'waiting')) {
+    console.log('[DEADLOCK] All agents idle/waiting — force-breaking all waits');
+    for (const agent of agents) {
+      if (agent.substate === 'waiting' && agent.task) {
+        releaseTaskReservations(agent.task);
+        agent.task.status = 'completed';
+        agent.task = null;
+        agent.substate = 'idle';
+        agent.label = '';
+        agent.waitTimer = 0;
+        agent._execPhase = null;
+        agent._carryItemId = null;
+      }
+    }
+    scheduleTimer = 0;
+    assignTasks();
+  }
+
+  // If any agent is idle and schedule tick is far away, trigger early assignment
+  const hasIdle = agents.some(a => !a.task || a.task.status === 'completed');
+  if (hasIdle && scheduleTimer > 0.1 && scheduleTimer < CFG.SCHEDULE_INTERVAL - 0.1) {
+    const idleNow = agents.filter(a => !a.task || a.task.status === 'completed');
+    if (idleNow.length > 0) {
+      scheduleTimer = 0;
+      assignTasks();
+    }
+  }
+
+  // Cleanup
+  cleanupItems();
+}
+
+// ============================================================================
+//  RENDERING
+// ============================================================================
+const canvas = document.getElementById('kitchen-canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = CFG.CANVAS_W;
+canvas.height = CFG.CANVAS_H;
+
+function drawFloor() {
+  // Tile pattern
+  const tileSize = 30;
+  for (let x = 0; x < CFG.CANVAS_W; x += tileSize) {
+    for (let y = 0; y < CFG.CANVAS_H; y += tileSize) {
+      ctx.fillStyle = ((Math.floor(x/tileSize) + Math.floor(y/tileSize)) % 2 === 0) ? '#3a3a55' : '#343450';
+      ctx.fillRect(x, y, tileSize, tileSize);
+    }
+  }
+}
+
+function drawFacility(fac) {
+  ctx.save();
+  const { x, y, w, h, color } = fac;
+
+  // Counter/work-surface zone (where items sit beside the facility)
+  const pad = CFG.ITEM_SLOT_RADIUS + 6;
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  roundRect(ctx, x - pad, y - pad, w + pad*2, h + pad*2, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Facility shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(x+2, y+2, w, h);
+  // Facility main body
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w, h);
+  // Border
+  ctx.strokeStyle = '#fff5';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x, y, w, h);
+
+  // Status indicator + progress bar
+  if (fac.state === 'occupied') {
+    const maxT = fac.type === 'storage' ? 1.0 :
+                 (fac.type === 'cutting_board' ? 2.0 :
+                  (fac.type === 'frying_pan' ? 3.0 :
+                   (fac.type === 'assembly_table' ? 2.5 : 1.0)));
+    const pct = clamp(fac.timer / maxT, 0, 1);
+
+    // Glow pulse around the facility when occupied
+    const glowAlpha = 0.15 + 0.08 * Math.sin(simTime * 4);
+    ctx.shadowColor = '#f39c12';
+    ctx.shadowBlur = 12 + 4 * Math.sin(simTime * 4);
+    ctx.strokeStyle = `rgba(243, 156, 18, ${glowAlpha})`;
+    ctx.lineWidth = 4;
+    roundRect(ctx, x - 2, y - 2, w + 4, h + 4, 10);
+    ctx.stroke();
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+
+    // Progress bar background (red-tinted, thick)
+    const barH = 10;
+    const barY = y - barH - 5;
+    ctx.fillStyle = 'rgba(40,0,0,0.85)';
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1;
+    roundRect(ctx, x, barY, w, barH, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    // Progress bar fill (green → yellow gradient based on remaining)
+    const fillW = w * pct;
+    if (fillW > 0) {
+      const grad = ctx.createLinearGradient(x, barY, x, barY + barH);
+      if (pct > 0.5) {
+        grad.addColorStop(0, '#4fdc6c');
+        grad.addColorStop(1, '#2ecc71');
+      } else if (pct > 0.25) {
+        grad.addColorStop(0, '#f9ca24');
+        grad.addColorStop(1, '#f39c12');
+      } else {
+        grad.addColorStop(0, '#ff6b6b');
+        grad.addColorStop(1, '#e74c3c');
+      }
+      ctx.fillStyle = grad;
+      roundRect(ctx, x, barY, Math.max(fillW, 4), barH, 4);
+      ctx.fill();
+    }
+
+    // Timer text inside the progress bar
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 8px "Microsoft YaHei", monospace';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 2;
+    ctx.fillText(`${fac.timer.toFixed(1)}s`, x + w / 2, barY + barH - 2);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+
+    // Small action emoji above the bar
+    const actionIcons = {
+      storage: '📦', cutting_board: '🔪', frying_pan: '🔥',
+      assembly_table: '🤲', serving_counter: '🛎️'
+    };
+    ctx.font = '12px "Segoe UI Emoji", sans-serif';
+    ctx.fillText(actionIcons[fac.type] || '⚙️', x + w / 2, barY - 3);
+  } else if (fac.state === 'reserved') {
+    // Reserved indicator — brighter, more visible
+    const barH = 8;
+    const barY = y - barH - 5;
+    ctx.fillStyle = 'rgba(243,156,18,0.3)';
+    roundRect(ctx, x, barY, w, barH, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#f39c12';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 3]);
+    roundRect(ctx, x, barY, w, barH, 4);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Small clock icon
+    ctx.fillStyle = '#f39c12';
+    ctx.font = '9px "Segoe UI Emoji", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⏳', x + w / 2, barY + barH - 1.5);
+  }
+
+  // Label
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 10px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(fac.name, x + w/2, y + h/2 + 4);
+
+  // Type icon
+  ctx.font = '16px sans-serif';
+  const icons = {
+    storage: '📦', cutting_board: '🔪', frying_pan: '🍳',
+    assembly_table: '📋', serving_counter: '🛎️'
+  };
+  ctx.fillText(icons[fac.type] || '', x + w/2, y + 14);
+
+  // Editor highlights
+  if (editorMode) {
+    if (fac === dragFacility) {
+      // Currently dragging — bright outline
+      ctx.strokeStyle = '#ff0';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([]);
+      ctx.strokeRect(x - 2, y - 2, w + 4, h + 4);
+    } else if (fac === hoverFacility) {
+      // Hovered — subtle highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#fff8';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 2]);
+      ctx.strokeRect(x - 1, y - 1, w + 2, h + 2);
+      ctx.setLineDash([]);
+    }
+    // Edit mode indicator: small ⚙ icon in top-right
+    ctx.fillStyle = '#fffa';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('⚙', x + w - 2, y + 10);
+  }
+
+  ctx.restore();
+}
+
+function drawItem(item) {
+  if (item.carriedBy) return; // drawn with agent
+  ctx.save();
+  const { x, y } = item;
+  const meta = item.meta;
+  const iconSize = 18; // emoji size
+
+  // Shadow plate/disc under the item
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 2, iconSize * 0.9, iconSize * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Background disc
+  const bgRadius = iconSize * 0.85;
+  ctx.fillStyle = meta.fill || meta.color;
+  ctx.globalAlpha = 0.75;
+  ctx.beginPath();
+  ctx.arc(x, y, bgRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Border
+  ctx.strokeStyle = meta.color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, bgRadius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Finished dish glow
+  if (meta.stage === 'finished') {
+    const glow = 0.3 + 0.2 * Math.sin(simTime * 3 + item.id);
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = 10 + glow * 8;
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, bgRadius + 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+  }
+
+  // Reserved indicator (dashed ring)
+  if (item.reservedBy) {
+    ctx.strokeStyle = '#f39c12';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.arc(x, y, bgRadius + 6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Large emoji icon centered
+  ctx.font = `${iconSize}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(meta.icon, x, y);
+
+  // Label below
+  ctx.font = 'bold 9px "Microsoft YaHei", sans-serif';
+  ctx.textBaseline = 'top';
+  const labelW = ctx.measureText(meta.name).width;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(x - labelW / 2 - 3, y + bgRadius + 4, labelW + 6, 13);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(meta.name, x, y + bgRadius + 5);
+
+  ctx.restore();
+}
+
+function drawAgent(agent) {
+  ctx.save();
+  const { x: baseX, y: baseY, color } = agent;
+  const R = 13; // body radius
+
+  // Shake effect when working — simulates chopping/frying/assembling action
+  let shakeX = 0, shakeY = 0;
+  if (agent.substate === 'working') {
+    const seed = agent.id.charCodeAt(agent.id.length - 1);
+    shakeX = Math.sin(simTime * 22 + seed) * 2.5;
+    shakeY = Math.cos(simTime * 19 + seed * 1.7) * 2.5;
+  }
+  const x = baseX + shakeX;
+  const y = baseY + shakeY;
+
+  // Floor shadow (subtly offset by shake too)
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(x + 1, baseY + 2, R * 0.9, R * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Chef body (colored circle)
+  const bodyGrad = ctx.createRadialGradient(x - 3, y - 4, R * 0.1, x, y, R);
+  bodyGrad.addColorStop(0, '#fff');
+  bodyGrad.addColorStop(0.25, color);
+  bodyGrad.addColorStop(1, '#00000044');
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.arc(x, y, R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#fffc';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Chef hat (white oval on top)
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(x, y - R - 2, 7, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Hat puff on top
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x, y - R - 8, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Simple face
+  const dx = agent.targetX - agent.x;
+  const dy = agent.targetY - agent.y;
+  const facingRight = Math.abs(dy) < Math.abs(dx) ? dx > 0 : dy < 0;
+  const eyeOffX = facingRight ? 3 : -3;
+  // Eyes
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(x + eyeOffX - 2, y - 2, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + eyeOffX + 3, y - 2, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  // Smile
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.arc(x + eyeOffX + 0.5, y + 1, 3, 0.1 * Math.PI, 0.9 * Math.PI);
+  ctx.stroke();
+
+  // Direction arrow (small, subtle)
+  if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+    const ang = Math.atan2(dy, dx);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(ang) * (R + 2), y + Math.sin(ang) * (R + 2));
+    ctx.lineTo(x + Math.cos(ang + 2.8) * 5, y + Math.sin(ang + 2.8) * 5);
+    ctx.lineTo(x + Math.cos(ang - 2.8) * 5, y + Math.sin(ang - 2.8) * 5);
+    ctx.fill();
+  }
+
+  // Name label
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 8px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(agent.name, x, y - R - 14);
+
+  // Task label
+  if (agent.label) {
+    const shortLabel = agent.label.length > 12 ? agent.label.substring(0, 11) + '…' : agent.label;
+    const lw = ctx.measureText(shortLabel).width;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(x - lw / 2 - 4, y - R - 28, lw + 8, 12);
+    ctx.fillStyle = agent.substate === 'working' ? '#f39c12' :
+                    agent.substate === 'waiting' ? '#e74c3c' :
+                    agent.substate === 'moving' ? '#3498db' : '#aaa';
+    ctx.font = '9px "Microsoft YaHei", sans-serif';
+    ctx.fillText(shortLabel, x, y - R - 19);
+  }
+
+  // Carried item
+  if (agent.carrying) {
+    const item = items.find(it => it.id === agent.carrying);
+    if (item) {
+      ctx.fillStyle = item.meta.fill || item.meta.color;
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.arc(x + 8, y - 10, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = item.meta.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.font = '12px "Segoe UI Emoji", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(item.meta.icon, x + 8, y - 10);
+    }
+  }
+
+  // Selected highlight
+  if (agent.id === selectedAgentId) {
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 2]);
+    ctx.beginPath();
+    ctx.arc(x, y, R + 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  ctx.restore();
+}
+
+function drawFlowArrows() {
+  // Draw subtle arrows showing workflow direction
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 12]);
+
+  // Storage -> Cutting
+  drawArrow(120, 80, 235, 95);
+  drawArrow(120, 310, 235, 315);
+  // Cutting -> Frying
+  drawArrow(305, 95, 395, 95);
+  drawArrow(305, 315, 395, 315);
+  // Frying -> Assembly
+  drawArrow(460, 95, 535, 95);
+  drawArrow(460, 315, 535, 315);
+  // Assembly -> Serving
+  drawArrow(610, 150, 695, 220);
+  drawArrow(610, 340, 695, 240);
+
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawArrow(x1, y1, x2, y2) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
+
+function render() {
+  ctx.clearRect(0, 0, CFG.CANVAS_W, CFG.CANVAS_H);
+
+  drawFloor();
+  drawFlowArrows();
+
+  // Facilities
+  for (const fac of facilities) drawFacility(fac);
+
+  // Items
+  for (const item of items) drawItem(item);
+
+  // Agents
+  for (const agent of agents) drawAgent(agent);
+
+  // Legend
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(CFG.CANVAS_W - 140, 4, 136, 40);
+  ctx.fillStyle = '#fff';
+  ctx.font = '9px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('🔴占用 🟡预约 🟢空闲', CFG.CANVAS_W - 132, 16);
+  ctx.fillText('调度: 0.5s | 速度: ' + speedMul + 'x', CFG.CANVAS_W - 132, 30);
+}
+
+// ============================================================================
+//  SIDEBAR UI UPDATE
+// ============================================================================
+function updateSidebar() {
+  // Orders
+  const ordersDiv = document.getElementById('orders-list');
+  const activeOrders = orders.filter(o => o.status === 'in_progress' || o.status === 'pending');
+  document.getElementById('order-count').textContent = activeOrders.length;
+
+  if (activeOrders.length === 0) {
+    ordersDiv.innerHTML = '<div style="color:#888;font-size:12px;">暂无活跃订单</div>';
+  } else {
+    ordersDiv.innerHTML = activeOrders.map(o => {
+      const urgency = o.timeRemaining / o.timeTotal;
+      const cls = urgency < 0.25 ? 'urgent' : '';
+      const timeCls = urgency < 0.25 ? 'low' : '';
+      const doneCount = o.completedSteps.size;
+      const totalSteps = o.recipe.steps.length;
+      const pct = (doneCount / totalSteps * 100);
+      return `<div class="order-card ${cls}">
+        <div class="order-header">
+          <span class="order-name">${o.recipe.icon} ${o.recipe.name} #${o.id}</span>
+          <span class="order-time ${timeCls}">⏱ ${Math.ceil(o.timeRemaining)}s</span>
+        </div>
+        <div class="order-progress"><div class="fill" style="width:${pct}%"></div></div>
+        <div style="font-size:10px;color:#888;margin-top:3px;">步骤: ${doneCount}/${totalSteps}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Task board
+  const tasksDiv = document.getElementById('tasks-list');
+  const allVisibleTasks = [];
+  // Active agent tasks
+  for (const agent of agents) {
+    if (agent.task && agent.task.status !== 'completed') {
+      allVisibleTasks.push({ ...agent.task, _source: 'agent', _agentId: agent.id });
+    }
+  }
+  // Pending tasks (top 10)
+  for (const task of taskPool.slice(0, 10)) {
+    if (!allVisibleTasks.some(t => t.id === task.id)) {
+      allVisibleTasks.push({ ...task, _source: 'pool' });
+    }
+  }
+  // Recently completed
+  for (const agent of agents) {
+    if (agent.task && agent.task.status === 'completed') {
+      allVisibleTasks.push({ ...agent.task, _source: 'done', _agentId: agent.id });
+    }
+  }
+
+  document.getElementById('task-count').textContent = allVisibleTasks.length;
+
+  tasksDiv.innerHTML = allVisibleTasks.slice(0, 20).map(t => {
+    const statusCls = t.status === 'executing' ? 'executing' : t.status === 'assigned' ? 'assigned' : 'pending';
+    const statusText = t.status === 'executing' ? '执行中' : t.status === 'assigned' ? '已分配' : t.status === 'completed' ? '完成' : '待分配';
+    const agentForTask = t.assignedAgent ? agents.find(a => a.id === t.assignedAgent) : null;
+    const agentColor = agentForTask ? agentForTask.color : '#888';
+    const stockCls = t.stock ? ' stock' : '';
+    const scoreText = t.score > -Infinity ? t.score.toFixed(2) : '—';
+    return `<div class="task-row${stockCls}" onclick="selectTask(${t.id})" data-taskid="${t.id}">
+      <div class="task-agent" style="background:${agentColor}"></div>
+      <span class="task-name">${t.label}</span>
+      <span class="task-score">${scoreText}</span>
+      <span class="task-status ${statusCls}">${statusText}</span>
+    </div>`;
+  }).join('');
+
+  // Agent status
+  const agentsDiv = document.getElementById('agents-list');
+  agentsDiv.innerHTML = agents.map(a => {
+    const stCls = a.substate === 'idle' ? 'idle' :
+                  a.substate === 'moving' ? 'moving' :
+                  a.substate === 'waiting' ? 'waiting' : 'working';
+    const stText = a.substate === 'idle' ? '空闲' :
+                   a.substate === 'moving' ? '移动' :
+                   a.substate === 'waiting' ? '等待' : '工作中';
+    const taskLabel = a.task ? a.task.label : (a.substate === 'idle' ? '闲逛' : '—');
+    const roleCounts = agentRoleCount[a.id] || {};
+    const topRole = Object.entries(roleCounts).sort((a,b) => b[1]-a[1])[0];
+    const roleText = topRole ? `${topRole[0]}×${topRole[1]}` : '—';
+    return `<div class="agent-row" onclick="selectAgent('${a.id}')">
+      <div class="agent-dot" style="background:${a.color}"></div>
+      <span style="flex:1;">${a.name}</span>
+      <span style="font-size:10px;color:#888;">特长:${roleText}</span>
+      <span class="agent-status ${stCls}">${stText}</span>
+    </div>`;
+  }).join('');
+
+  // Facility status
+  const facDiv = document.getElementById('facility-grid');
+  facDiv.innerHTML = facilities.map(f => {
+    const stCls = f.state;
+    const stText = f.state === 'free' ? '空闲' : f.state === 'reserved' ? '已预约' : '占用中';
+    const occText = f.occupiedBy ? ` (${agents.find(a=>a.id===f.occupiedBy)?.name.substring(0,3)||'?'})` : '';
+    return `<div class="facility-card">
+      <span>${f.name}</span>
+      <span class="f-state ${stCls}">${stText}${occText}</span>
+    </div>`;
+  }).join('');
+
+  // Stats
+  document.getElementById('stat-completed').textContent = statsCompleted;
+  document.getElementById('stat-expired').textContent = statsExpired;
+  const activeCount = orders.filter(o => o.status === 'in_progress' || o.status === 'pending').length;
+  document.getElementById('stat-active').textContent = activeCount;
+
+  // Time info
+  document.getElementById('time-info').textContent =
+    `模拟时间: ${Math.floor(simTime)}s | 实体: ${items.length} | 订单: ${orders.length}`;
+}
+
+// ============================================================================
+//  SCORING DETAIL DISPLAY
+// ============================================================================
+function selectAgent(agentId) {
+  selectedAgentId = agentId;
+  selectedTaskId = null;
+  showScoreDetail();
+}
+
+function selectTask(taskId) {
+  selectedTaskId = taskId;
+  selectedAgentId = null;
+  showScoreDetail();
+}
+
+function showScoreDetail() {
+  const panel = document.getElementById('score-panel');
+  const detailDiv = document.getElementById('score-detail');
+  const titleSpan = document.getElementById('score-title');
+
+  let detail = null;
+  let title = '';
+
+  if (selectedAgentId) {
+    const agent = agents.find(a => a.id === selectedAgentId);
+    // Prefer current task's score detail over stale history
+    if (agent && agent.task && agent.task.scoreDetail) {
+      detail = agent.task.scoreDetail;
+      title = `${agent.task.label} (${detail.agent})`;
+    } else if (agent && agent.task) {
+      title = `${agent.task.label} — 评分: ${agent.task.score?.toFixed(3) || '?'}`;
+    }
+    if (!detail) {
+      const hist = scoreHistory[selectedAgentId];
+      if (hist) {
+        detail = hist.detail;
+        title = `${hist.task.label} (${hist.detail.agent})`;
+      }
+    }
+    if (agent && !detail) {
+      title = `${agent.name} — 暂无任务评分`;
+    }
+  } else if (selectedTaskId) {
+    // Find task
+    let task = agents.flatMap(a => a.task ? [a.task] : []).find(t => t.id === selectedTaskId);
+    if (!task) task = taskPool.find(t => t.id === selectedTaskId);
+    if (task && task.scoreDetail) {
+      detail = task.scoreDetail;
+      title = `${task.label}`;
+    }
+  }
+
+  if (detail) {
+    panel.style.display = 'block';
+    titleSpan.textContent = title;
+    const absDist = Math.abs(detail.distance);
+    const absWait = Math.abs(detail.facilityWait);
+    detailDiv.innerHTML = `<table>
+      <tr><td>🏃 移动成本</td><td class="neg">${detail.distance.toFixed(3)} (${Math.round(absDist/SCORE_WEIGHTS.distance*100)}px)</td></tr>
+      <tr><td>⏳ 设施等待</td><td class="neg">${detail.facilityWait.toFixed(3)}</td></tr>
+      <tr><td>🔥 订单紧迫度</td><td class="pos">${detail.orderUrgency.toFixed(3)}</td></tr>
+      <tr><td>🔓 解锁下游价值</td><td class="pos">${detail.unlockValue.toFixed(3)}</td></tr>
+      <tr><td>⭐ 角色效率加成</td><td class="pos">${detail.roleBonus.toFixed(3)}</td></tr>
+      <tr><td>📦 备货基准值</td><td class="${detail.stockBase > 0 ? 'pos' : ''}">${detail.stockBase.toFixed(3)}</td></tr>
+      ${detail.freshPickBonus !== 0 ? `<tr><td>🆕 从货箱取新食材</td><td class="pos">${detail.freshPickBonus.toFixed(3)}</td></tr>` : ''}
+      ${detail.stalePickPenalty !== 0 ? `<tr><td>⚠️ 从其他设施搬运（非货箱）</td><td class="neg">${detail.stalePickPenalty.toFixed(3)}</td></tr>` : ''}
+      <tr class="total-row"><td>📊 总分</td><td>${detail.total.toFixed(3)}</td></tr>
+    </table>`;
+  } else {
+    panel.style.display = 'block';
+    titleSpan.textContent = title || '点击 AI 或任务查看评分';
+    detailDiv.innerHTML = '<div style="color:#888;">点击左侧场景中的 AI 或右侧任务查看详细评分</div>';
+  }
+}
+
+// ============================================================================
+//  CANVAS MOUSE INTERACTION (facility editor + agent click)
+// ============================================================================
+function canvasToWorld(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * CFG.CANVAS_W / rect.width,
+    y: (e.clientY - rect.top) * CFG.CANVAS_H / rect.height,
+  };
+}
+
+function hitTestFacility(mx, my) {
+  // Reverse iterate to pick topmost in draw order
+  for (let i = facilities.length - 1; i >= 0; i--) {
+    const f = facilities[i];
+    if (mx >= f.x && mx <= f.x + f.w && my >= f.y && my <= f.y + f.h) {
+      return f;
+    }
+  }
+  return null;
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  const { x, y } = canvasToWorld(e);
+  if (!editorMode) {
+    // Agent selection only
+    let best = null, bestD = 20;
+    for (const a of agents) {
+      const d = Math.sqrt((a.x-x)**2 + (a.y-y)**2);
+      if (d < bestD) { bestD = d; best = a; }
+    }
+    if (best) { selectAgent(best.id); return; }
+    selectedAgentId = null; selectedTaskId = null; showScoreDetail();
+    return;
+  }
+  // Editor mode: hit test facility
+  const fac = hitTestFacility(x, y);
+  if (fac) {
+    dragFacility = fac;
+    dragOffsetX = x - fac.x;
+    dragOffsetY = y - fac.y;
+    canvas.style.cursor = 'grabbing';
+  }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  const { x, y } = canvasToWorld(e);
+  if (dragFacility) {
+    dragFacility.x = clamp(x - dragOffsetX, 0, CFG.CANVAS_W - dragFacility.w);
+    dragFacility.y = clamp(y - dragOffsetY, 0, CFG.CANVAS_H - dragFacility.h);
+    dragFacility.cx = dragFacility.x + dragFacility.w / 2;
+    dragFacility.cy = dragFacility.y + dragFacility.h / 2;
+  } else if (editorMode) {
+    const fac = hitTestFacility(x, y);
+    if (fac !== hoverFacility) {
+      hoverFacility = fac;
+      canvas.style.cursor = fac ? 'grab' : 'default';
+    }
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  if (dragFacility) {
+    dragFacility = null;
+    canvas.style.cursor = editorMode ? 'default' : 'crosshair';
+  }
+});
+
+canvas.addEventListener('dblclick', (e) => {
+  if (!editorMode) return;
+  const { x, y } = canvasToWorld(e);
+  const fac = hitTestFacility(x, y);
+  if (fac && facilities.length > 2) { // keep at least 2 facilities
+    // Release any reservations on this facility
+    for (const agent of agents) {
+      if (agent.task && agent.task.facilityId === fac.id) {
+        releaseTaskReservations(agent.task);
+        agent.task = null; agent.substate = 'idle'; agent.label = '';
+      }
+    }
+    // Remove items near this facility
+    const cx = fac.x + fac.w/2, cy = fac.y + fac.h/2;
+    items = items.filter(it => dist(it, {x:cx, y:cy}) > CFG.ITEM_SLOT_RADIUS + 18 || it.carriedBy);
+    // Remove facility
+    facilities = facilities.filter(f => f.id !== fac.id);
+    hoverFacility = null;
+    setTimeout(() => { if (running) assignTasks(); }, 50);
+  }
+});
+
+canvas.addEventListener('click', (e) => {
+  if (editorMode || dragFacility) return; // editor handles its own clicks
+  const { x, y } = canvasToWorld(e);
+  let best = null, bestD = 20;
+  for (const a of agents) {
+    const d = Math.sqrt((a.x-x)**2 + (a.y-y)**2);
+    if (d < bestD) { bestD = d; best = a; }
+  }
+  if (best) selectAgent(best.id);
+  else { selectedAgentId = null; selectedTaskId = null; showScoreDetail(); }
+});
+
+// ============================================================================
+//  INITIALIZATION
+// ============================================================================
+function init() {
+  // Create facilities
+  facilities = FACILITY_DEFS.map(d => createFacility(d));
+
+  // Create agents
+  agents = AGENT_DEFS.map(d => createAgent(d));
+  for (const agent of agents) {
+    agentRoleCount[agent.id] = {};
+  }
+
+  // Initial orders
+  addOrder('burger');
+  setTimeout(() => addOrder('salad'), 3000);
+
+  // Initial assignment
+  assignTasks();
+
+  // Set up buttons
+  document.getElementById('btn-toggle').addEventListener('click', () => {
+    running = !running;
+    document.getElementById('btn-toggle').textContent = running ? '⏸ 暂停' : '▶ 运行';
+  });
+
+  document.getElementById('btn-speed').addEventListener('click', () => {
+    const speeds = [0.5, 1, 2, 4];
+    const idx = speeds.indexOf(speedMul);
+    speedMul = speeds[(idx + 1) % speeds.length];
+    document.getElementById('btn-speed').textContent =
+      speedMul === 1 ? '⏩ 1x' : `⏩ ${speedMul}x`;
+  });
+
+  document.getElementById('btn-add-order').addEventListener('click', () => {
+    const key = Math.random() < 0.5 ? 'burger' : 'salad';
+    addOrder(key);
+    const btn = document.getElementById('btn-add-order');
+    btn.style.background = '#2ecc71';
+    setTimeout(() => { btn.style.background = '#e74c3c'; }, 200);
+  });
+
+  // Editor mode toggle
+  const btnEdit = document.getElementById('btn-edit-mode');
+  const selType = document.getElementById('facility-add-type');
+  const hintDiv = document.getElementById('edit-hint');
+  btnEdit.addEventListener('click', () => {
+    editorMode = !editorMode;
+    if (editorMode) {
+      btnEdit.textContent = '🔧 退出编辑';
+      btnEdit.style.background = '#e74c3c';
+      selType.style.display = 'inline-block';
+      hintDiv.style.display = 'block';
+      canvas.style.cursor = 'default';
+      running = false;
+      document.getElementById('btn-toggle').textContent = '▶ 运行';
+    } else {
+      btnEdit.textContent = '🔧 编辑设施';
+      btnEdit.style.background = '#6c5ce7';
+      selType.style.display = 'none';
+      hintDiv.style.display = 'none';
+      canvas.style.cursor = 'crosshair';
+      dragFacility = null;
+      hoverFacility = null;
+    }
+  });
+
+  // Canvas click to add facility in editor mode
+  canvas.addEventListener('click', function addFacOnClick(e) {
+    if (!editorMode || dragFacility) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * CFG.CANVAS_W / rect.width;
+    const my = (e.clientY - rect.top) * CFG.CANVAS_H / rect.height;
+    // Don't add if clicking on existing facility
+    if (hitTestFacility(mx, my)) return;
+    // Don't add if clicking on agent
+    const nearAgent = agents.some(a => Math.sqrt((a.x-mx)**2 + (a.y-my)**2) < 20);
+    if (nearAgent) return;
+
+    const selVal = selType.value;
+    const typeNames = {
+      storage: '货箱', cutting_board: '砧板', frying_pan: '煎锅',
+      assembly_table: '组装台', serving_counter: '出餐口'
+    };
+    const colors = {
+      storage: '#e74c3c', cutting_board: '#deb887', frying_pan: '#555',
+      assembly_table: '#ecf0f1', serving_counter: '#f39c12'
+    };
+
+    // Generate unique ID
+    const existing = facilities.filter(f => f.type === selVal).length;
+    const id = selVal + '_' + (existing + 1);
+    // Ensure unique
+    let suffix = existing + 1;
+    while (facilities.some(f => f.id === id)) { suffix++; }
+
+    const newFac = createFacility({
+      id: selVal + '_' + suffix,
+      name: typeNames[selVal] + '·新',
+      type: selVal,
+      x: mx - 30, y: my - 25, w: 60, h: 50,
+      color: colors[selVal]
+    });
+    facilities.push(newFac);
+    setTimeout(() => { if (!running) assignTasks(); }, 50);
+  });
+}
+
+// ============================================================================
+//  MAIN GAME LOOP
+// ============================================================================
+let lastTime = performance.now();
+
+function gameLoop(timestamp) {
+  let rawDt = (timestamp - lastTime) / 1000;
+  lastTime = timestamp;
+
+  // Clamp dt to avoid spiral of death
+  if (rawDt > 0.2) rawDt = 0.2;
+  if (rawDt <= 0) rawDt = 0.016;
+
+  if (running) {
+    update(rawDt);
+  }
+
+  render();
+
+  // Throttle sidebar updates to prevent flickering
+  sidebarThrottle += rawDt;
+  if (sidebarThrottle >= SIDEBAR_INTERVAL) {
+    sidebarThrottle = 0;
+    updateSidebar();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ============================================================================
+//  START
+// ============================================================================
+init();
+lastTime = performance.now();
+requestAnimationFrame(gameLoop);
+console.log('🏪 厨房协作模拟已就绪');
+console.log('  - 4个AI厨师 | 2种菜谱 | 全局调度系统');
+console.log('  - 点击AI或任务查看评分明细');
+console.log('  - 观察流水线分工和备货涌现行为');
+</script>
+</body>
+</html>

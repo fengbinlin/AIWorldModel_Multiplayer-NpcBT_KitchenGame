@@ -15,7 +15,15 @@
       "Bash(git commit -m 'fix: singleton lifecycle errors during scene unload and disconnect *)",
       "Bash(git commit -m 'fix: prevent CuttingCounter from processing cooking-only items \\(MeatPattyCooked\\) *)",
       "Bash(git commit -m 'fix: remove MeatPattyUncooked from cuttable set to prevent cutting raw meat from skipping cooking *)",
-      "Bash(git commit -m 'fix: resolve holder replacement warnings and kinematic velocity error *)"
+      "Bash(git commit -m 'fix: resolve holder replacement warnings and kinematic velocity error *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\B0_Space\\\\UnityProject\\\\AIWorldModel_Multiplayer-NpcBT_KitchenGame\\\\Assets\" -Depth 1)",
+      "Bash(Select-Object Mode, Length, LastWriteTime, FullName)",
+      "Bash(Sort-Object Mode, Name)",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\B0_Space\\\\UnityProject\\\\AIWorldModel_Multiplayer-NpcBT_KitchenGame\\\\Assets\" -Recurse -Depth 2 | Where-Object { $_.PSIsContainer } | Select-Object FullName | Sort-Object FullName)",
+      "Bash(git commit -m 'fix: prevent placing unprocessable items on StoveCounter and CuttingCounter *)",
+      "Bash(git checkout *)",
+      "Bash(git cherry-pick *)",
+      "Bash(git commit *)"
     ]
   }
 }

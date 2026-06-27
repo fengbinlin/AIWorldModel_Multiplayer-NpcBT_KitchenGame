@@ -19,17 +19,17 @@ namespace Kitchen
             re.sprite = _kitchenObjSo.sprite;
         }
 
-        public override void Interact(Player.Player player)
+        public override void Interact(ICanHoldKitchenObj holder)
         {
-            Debug.Log(player + "  " + player.NetworkObjectId + "尝试获取道具" + $"它是否有道具:{player.HasKitchenObj()}");
-            if (player.HasKitchenObj())
+            Debug.Log(holder + "尝试获取道具" + $"它是否有道具:{holder.HasKitchenObj()}");
+            if (holder.HasKitchenObj())
             {
                 Debug.Log("获取失败");
                 return;
             }
 
             Debug.Log("请求生成道具");
-            KitchenObjOperator.SpawnKitchenObjRpc(_kitchenObjSo.kitchenObjEnum, player);
+            KitchenObjOperator.SpawnKitchenObjRpc(_kitchenObjSo.kitchenObjEnum, holder);
             _OnInteractServerRpc();
         }
 

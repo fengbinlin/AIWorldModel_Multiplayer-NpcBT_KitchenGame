@@ -16,6 +16,7 @@ namespace Kitchen
         private float _cuttingProgress; // 0 to processValue
         public event Action OnCuttingStart;
         public event Action OnCuttingStop;
+        public event Action OnCuttingComplete;
         public static event EventHandler<Vector3> OnAnyCut;
 
         protected override void Awake()
@@ -62,28 +63,28 @@ namespace Kitchen
             }
         }
 
-        public override void Interact(Player.Player player)
+        public override void Interact(ICanHoldKitchenObj holder)
         {
             //玩家持有物体，当前柜子没有物体 -> 放置物体
-            if (player.HasKitchenObj() && !HasKitchenObj())
+            if (holder.HasKitchenObj() && !HasKitchenObj())
             {
                 //只有能被CuttingCounter处理的食材才允许放置
-                if (!DataTableManager.Sigleton.CanProcess(player.GetKitchenObj().objEnum, FacilityEnum.CuttingCounter))
+                if (!DataTableManager.Sigleton.CanProcess(holder.GetKitchenObj().objEnum, FacilityEnum.CuttingCounter))
                     return;
                 _ClearCuttingStateServerRpc();
-                KitchenObjOperator.PutKitchenObj(player, this);
+                KitchenObjOperator.PutKitchenObj(holder, this);
                 return;
             }
 
             //玩家没有持有物体，当前柜子有物体 -> 拿起物体
-            if (!player.HasKitchenObj() && HasKitchenObj())
+            if (!holder.HasKitchenObj() && HasKitchenObj())
             {
                 _ClearCuttingStateServerRpc();
-                KitchenObjOperator.PutKitchenObj(this, player);
+                KitchenObjOperator.PutKitchenObj(this, holder);
                 return;
             }
 
-            if (CounterOperator.TryPlateOperator(player, this)) return;
+            if (CounterOperator.TryPlateOperator(holder, this)) return;
         }
 
         public override void ClearKitchenObj()
@@ -94,6 +95,22 @@ namespace Kitchen
                 _isCutting = false;
             }
             base.ClearKitchenObj();
+        }
+
+        /// <summary>
+        /// Public entry point for AI to start cutting programmatically.
+        /// </summary>
+        public void PublicStartCutting()
+        {
+            StartCuttingServerRpc();
+        }
+
+        /// <summary>
+        /// Public entry point for AI to stop cutting programmatically.
+        /// </summary>
+        public void PublicStopCutting()
+        {
+            StopCuttingServerRpc();
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -190,6 +207,7 @@ namespace Kitchen
         [ClientRpc]
         private void _OnCutCompleteClientRpc(Vector3 position)
         {
+            OnCuttingComplete?.Invoke();
             OnAnyCut?.Invoke(this, position);
         }
     }

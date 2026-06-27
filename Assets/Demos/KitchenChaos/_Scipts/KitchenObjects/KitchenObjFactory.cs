@@ -81,9 +81,15 @@ namespace Kitchen
             if (kitchenObj == null) return;
 
             var senderClientId = rpcParams.Receive.SenderClientId;
-            var senderPlayerObj = NetworkManager.Singleton.ConnectedClients[senderClientId].PlayerObject;
             var holder = kitchenObj.GetHolder();
-            if (holder == null || holder.GetNetworkObject() != senderPlayerObj) return;
+            if (holder == null) return;
+
+            // Allow if: holder is player object OR holder is owned by the sender (AI chefs)
+            var senderPlayerObj = NetworkManager.Singleton.ConnectedClients[senderClientId].PlayerObject;
+            var holderNetObj = holder.GetNetworkObject();
+            bool isValid = holderNetObj == senderPlayerObj ||
+                           holderNetObj.OwnerClientId == senderClientId;
+            if (!isValid) return;
 
             _DropObjClientRpc(objRef, dropPosition, dropDirection, dropForce);
         }
@@ -100,15 +106,20 @@ namespace Kitchen
         [ServerRpc(RequireOwnership = false)]
         public void PickupObjServerRpc(NetworkObjectReference objRef, NetworkObjectReference holderRef, ServerRpcParams rpcParams = default)
         {
-            // Server-side validation: object must be free, and holder must be the requesting player
+            // Server-side validation: object must be free, and holder must be a valid entity
             if (!objRef.TryGet(out NetworkObject obj)) return;
             if (!holderRef.TryGet(out NetworkObject holderObj)) return;
             var kitchenObj = obj.GetComponent<KitchenObj>();
             if (kitchenObj == null) return;
 
+            if (!kitchenObj.IsFree) return;
+
+            // Allow if: holder is player object OR holder is owned by the sender (AI chefs)
             var senderClientId = rpcParams.Receive.SenderClientId;
             var senderPlayerObj = NetworkManager.Singleton.ConnectedClients[senderClientId].PlayerObject;
-            if (!kitchenObj.IsFree || holderObj != senderPlayerObj) return;
+            bool isValid = holderObj == senderPlayerObj ||
+                           holderObj.OwnerClientId == senderClientId;
+            if (!isValid) return;
 
             _PickupObjClientRpc(objRef, holderRef);
         }

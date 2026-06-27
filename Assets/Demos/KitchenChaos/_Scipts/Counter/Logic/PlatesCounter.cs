@@ -101,13 +101,13 @@ namespace Kitchen
             OnPlateCountChanged?.Invoke(plateCount);
         }
 
-        public override void Interact(Player.Player player)
+        public override void Interact(ICanHoldKitchenObj holder)
         {
-            if (player.HasKitchenObj()) return;
+            if (holder.HasKitchenObj()) return;
             if (plateCount <= 0) return;
 
             //当拿走盘子后 重新开启生成盘子的任务
-            KitchenObjOperator.SpawnKitchenObjRpc(_kitchenObjEnum, player);
+            KitchenObjOperator.SpawnKitchenObjRpc(_kitchenObjEnum, holder);
             RemovePlateServerRpc();
             OnPlateCountChanged?.Invoke(plateCount);
         }

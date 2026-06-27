@@ -6,15 +6,15 @@ namespace Kitchen
     public class DeliveryCounter : BaseCounter
     {
         HashSet<KitchenObjEnum> _order = new HashSet<KitchenObjEnum>();
-        public override void Interact(Player.Player player)
+        public override void Interact(ICanHoldKitchenObj holder)
         {
             //检查玩家拿的物体是否符合订单需求
-            if (!player.HasKitchenObj()) return;
+            if (!holder.HasKitchenObj()) return;
             //首先玩家必须拿的是盘子
-            var playerKitchenObj = player.GetKitchenObj();
+            var playerKitchenObj = holder.GetKitchenObj();
             if (playerKitchenObj is not Plate plate) return;
-            
-            //ToDO 其次检查盘子里的东西是否合格 
+
+            //ToDO 其次检查盘子里的东西是否合格
             var ingredients = plate.GetIngredients();
             if (DeliveryManager.Instance.TryDeliverOrder(transform.position,ingredients))
             {

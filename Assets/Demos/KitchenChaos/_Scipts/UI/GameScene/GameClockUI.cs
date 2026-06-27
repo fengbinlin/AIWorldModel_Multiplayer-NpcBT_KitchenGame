@@ -61,6 +61,12 @@ namespace Kitchen.UI
 
         private void _OnLeftTimeChange(float leftTime)
         {
+            if (_maxPlayingTime <= 0f)
+            {
+                // Unlimited time — always show full clock
+                clockFillImage.fillAmount = 1f;
+                return;
+            }
             clockFillImage.fillAmount = leftTime / _maxPlayingTime;
         }
     }

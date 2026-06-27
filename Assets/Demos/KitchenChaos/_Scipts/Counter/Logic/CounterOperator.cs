@@ -2,13 +2,13 @@
 {
     public static class CounterOperator
     {
-        public static bool TryPlateOperator(Player.Player player, BaseCounter counter)
+        public static bool TryPlateOperator(ICanHoldKitchenObj holder, BaseCounter counter)
         {
             //都有物体 判断是否可以叠加
-            if (player.HasKitchenObj() && counter.HasKitchenObj())
+            if (holder.HasKitchenObj() && counter.HasKitchenObj())
             {
                 var kitchenObj = counter.GetKitchenObj();
-                var playerHoldObj = player.GetKitchenObj();
+                var playerHoldObj = holder.GetKitchenObj();
                 //玩家手里是盘子
                 if (playerHoldObj is Plate plate1) //如果是盘子
                 {

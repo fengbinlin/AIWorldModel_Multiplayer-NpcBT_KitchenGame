@@ -7,12 +7,12 @@ namespace Kitchen
     public class TrashCounter : BaseCounter
     { 
         public static event Action<Vector3> OnAnyObjTrashed;
-        public override void Interact(Player.Player player)
+        public override void Interact(ICanHoldKitchenObj holder)
         {
             //将玩家手上的东西销毁掉
-            if (player.HasKitchenObj())
+            if (holder.HasKitchenObj())
             {
-                KitchenObjOperator.DestroyKitchenObj(player.GetKitchenObj());
+                KitchenObjOperator.DestroyKitchenObj(holder.GetKitchenObj());
                 TrashObjServerRpc(transform.position);
             }
         }

@@ -37,6 +37,17 @@ namespace Kitchen
         private async UniTask _StartPlaying()
         {
             _playingTokenSource = new CancellationTokenSource();
+
+            // Unlimited time: never transition to GameOver, just keep running
+            if (gameDuration <= 0f)
+            {
+                while (_playingTokenSource.IsCancellationRequested == false)
+                {
+                    await UniTask.Delay(TimeSpan.FromSeconds(1f), cancellationToken: _playingTokenSource.Token);
+                }
+                return;
+            }
+
             while (_playingTokenSource.IsCancellationRequested == false)
             {
                 if (_currentTime <= 0)

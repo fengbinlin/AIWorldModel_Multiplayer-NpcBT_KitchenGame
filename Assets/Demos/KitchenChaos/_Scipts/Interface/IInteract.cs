@@ -2,10 +2,10 @@
 {
     public interface IInteract
     {
-        void Interact(Player.Player player);
+        void Interact(ICanHoldKitchenObj holder);
     }
     public interface IInteractAlternate
     {
-        void InteractAlternate(Player.Player player);
+        void InteractAlternate(ICanHoldKitchenObj holder);
     }
 }

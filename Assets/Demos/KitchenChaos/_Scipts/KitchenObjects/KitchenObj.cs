@@ -116,9 +116,9 @@ namespace Kitchen
 
             if (_rigidbody != null)
             {
+                _rigidbody.velocity = Vector3.zero;  // must be set before kinematic
                 _rigidbody.isKinematic = true;
                 _rigidbody.useGravity = false;
-                _rigidbody.velocity = Vector3.zero;
             }
 
             SetHolder(newHolder);

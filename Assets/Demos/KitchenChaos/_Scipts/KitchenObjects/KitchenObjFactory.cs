@@ -137,9 +137,6 @@ namespace Kitchen
         [ClientRpc]
         private void _ClearHolderClientRpc(NetworkObjectReference objRef)
         {
-            if (IsServer)
-                return;
-
             objRef.TryGet(out NetworkObject obj);
             obj.GetComponent<KitchenObj>().ClearHolder();
         }

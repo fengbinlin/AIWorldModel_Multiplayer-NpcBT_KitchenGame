@@ -147,7 +147,6 @@ namespace Kitchen
             {
                 _cuttingProgress += Time.deltaTime;
                 _SetProgressClientRpc(_cuttingProgress / maxTime);
-                _OnCuttingTickClientRpc(transform.position);
                 await UniTask.Yield(PlayerLoopTiming.Update, _cuttingCts.Token);
             }
 
@@ -155,6 +154,7 @@ namespace Kitchen
             {
                 KitchenObjOperator.DestroyKitchenObj(kitchenObj);
                 KitchenObjOperator.SpawnKitchenObjRpc(process.outputEnum, this);
+                _OnCutCompleteClientRpc(transform.position);
                 _ClearCuttingStateClientRpc();
             }
 
@@ -171,12 +171,12 @@ namespace Kitchen
         private void _OnStartCuttingClientRpc()
         {
             _isCutting = true;
+            OnCuttingEvent?.Invoke();
         }
 
         [ClientRpc]
-        private void _OnCuttingTickClientRpc(Vector3 position)
+        private void _OnCutCompleteClientRpc(Vector3 position)
         {
-            OnCuttingEvent?.Invoke();
             OnAnyCut?.Invoke(this, position);
         }
     }

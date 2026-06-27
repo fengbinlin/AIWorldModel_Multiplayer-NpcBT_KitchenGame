@@ -13,5 +13,7 @@ namespace Kitchen
         public float interactDistance = 1f;
         public LayerMask interactLayer;
         public LayerMask collisionLayer;
+        public float dropForce = 5f;
+        public float pickupRange = 1.5f;
     }
 }

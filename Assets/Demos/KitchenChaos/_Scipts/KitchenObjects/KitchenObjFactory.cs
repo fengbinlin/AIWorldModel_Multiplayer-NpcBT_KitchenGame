@@ -17,8 +17,8 @@ namespace Kitchen
         {
             var so = DataTableManager.Sigleton.GetKitchenObjSo(kitchenObjEnum);
 
-
             var obj = Instantiate(so.prefab).GetComponent<KitchenObj>(); //生成 KitObj 并且获取对应脚本
+            obj.EnsurePhysicsComponents(); // 确保 Rigidbody + NetworkTransform 存在（Awake中已调用，此处二次确保）
             var netObj = obj.GetComponent<NetworkObject>(); //获取物体网络组件
             netObj.Spawn(true); //在网络上生成这个物体 生成的物体会在所有客户端生成
 
@@ -71,6 +71,40 @@ namespace Kitchen
             reciever.SetKitchenObj(obj);
         }
 
+
+        [ServerRpc(RequireOwnership = false)]
+        public void DropObjServerRpc(NetworkObjectReference objRef, Vector3 dropPosition, Vector3 dropDirection, float dropForce)
+        {
+            _DropObjClientRpc(objRef, dropPosition, dropDirection, dropForce);
+        }
+
+        [ClientRpc]
+        private void _DropObjClientRpc(NetworkObjectReference objRef, Vector3 dropPosition, Vector3 dropDirection, float dropForce)
+        {
+            objRef.TryGet(out NetworkObject obj);
+            if (obj == null) return;
+            var kitchenObj = obj.GetComponent<KitchenObj>();
+            kitchenObj.SetFree(dropPosition, dropDirection, dropForce);
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        public void PickupObjServerRpc(NetworkObjectReference objRef, NetworkObjectReference holderRef)
+        {
+            _PickupObjClientRpc(objRef, holderRef);
+        }
+
+        [ClientRpc]
+        private void _PickupObjClientRpc(NetworkObjectReference objRef, NetworkObjectReference holderRef)
+        {
+            objRef.TryGet(out NetworkObject obj);
+            holderRef.TryGet(out NetworkObject holderObj);
+            if (obj == null || holderObj == null) return;
+
+            var kitchenObj = obj.GetComponent<KitchenObj>();
+            var holder = holderObj.GetComponent<ICanHoldKitchenObj>();
+            kitchenObj.SetHeld(holder);
+            holder.SetKitchenObj(kitchenObj);
+        }
 
         [ServerRpc(RequireOwnership = false)]
         public void DestroyServerRpc(NetworkObjectReference objRef)

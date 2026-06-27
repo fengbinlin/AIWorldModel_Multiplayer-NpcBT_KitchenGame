@@ -133,5 +133,31 @@ namespace Kitchen.Player
         {
             return NetworkObject;
         }
+
+        /// <summary>
+        /// Finds the nearest free (on-ground) KitchenObj within pickup range.
+        /// Returns null if none found.
+        /// </summary>
+        public KitchenObj TryFindNearbyFreeKitchenObj()
+        {
+            var hits = Physics.OverlapSphere(transform.position, data.pickupRange);
+            KitchenObj nearest = null;
+            float nearestDist = float.MaxValue;
+
+            foreach (var hit in hits)
+            {
+                if (hit.TryGetComponent(out KitchenObj kitchenObj) && kitchenObj.IsFree)
+                {
+                    float dist = Vector3.Distance(transform.position, hit.transform.position);
+                    if (dist < nearestDist)
+                    {
+                        nearestDist = dist;
+                        nearest = kitchenObj;
+                    }
+                }
+            }
+
+            return nearest;
+        }
     }
 }

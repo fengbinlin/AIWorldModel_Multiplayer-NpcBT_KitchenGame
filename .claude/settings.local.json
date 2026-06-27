@@ -12,7 +12,8 @@
       "Bash(git commit -m 'fix: add BoxCollider in EnsurePhysicsComponents for ground physics *)",
       "Bash(git commit -m 'security: add server-side validation to DropObjServerRpc and PickupObjServerRpc *)",
       "Bash(git commit -m 'fix: clear previous holder reference in SetFree to prevent stale state *)",
-      "Bash(git commit -m 'fix: singleton lifecycle errors during scene unload and disconnect *)"
+      "Bash(git commit -m 'fix: singleton lifecycle errors during scene unload and disconnect *)",
+      "Bash(git commit -m 'fix: prevent CuttingCounter from processing cooking-only items \\(MeatPattyCooked\\) *)"
     ]
   }
 }

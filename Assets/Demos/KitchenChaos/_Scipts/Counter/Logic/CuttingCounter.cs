@@ -57,6 +57,9 @@ namespace Kitchen
         {
             if (!HasKitchenObj()) return;
 
+            // Only cuttable items can be processed here — cooking items belong on the stove
+            if (!KitchenObjOperator.CanCut(kitchenObj)) return;
+
             var nextObj = DataTableManager.Sigleton.GetCutKitObj(kitchenObj.objEnum);
             if (nextObj == null) return;
             CuttingServerRpc(transform.position);

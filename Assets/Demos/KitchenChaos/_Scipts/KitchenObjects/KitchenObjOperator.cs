@@ -66,6 +66,19 @@ namespace Kitchen
             return _cookableKitchenObjEnumSet.Contains(kitchenObj.objEnum);
         }
 
+        private static readonly HashSet<KitchenObjEnum> _cuttableKitchenObjEnumSet = new()
+        {
+            KitchenObjEnum.Tomato,
+            KitchenObjEnum.CheeseBlock,
+            KitchenObjEnum.Cabbage,
+            KitchenObjEnum.MeatPattyUncooked,
+        };
+
+        public static bool CanCut(KitchenObj kitchenObj)
+        {
+            return _cuttableKitchenObjEnumSet.Contains(kitchenObj.objEnum);
+        }
+
         public static void Cook(KitchenObj oldObj, ICanHoldKitchenObj holder)
         {
             var nextObj = DataTableManager.Sigleton.GetCookedKitchenObjSo(oldObj.objEnum);

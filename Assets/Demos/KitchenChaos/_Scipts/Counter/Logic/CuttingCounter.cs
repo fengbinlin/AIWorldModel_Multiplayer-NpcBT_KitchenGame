@@ -132,28 +132,36 @@ namespace Kitchen
         {
             if (!IsServer) return;
 
+            var process = DataTableManager.Sigleton.GetProcess(kitchenObj.objEnum, FacilityEnum.CuttingCounter);
+            if (process == null)
+            {
+                Debug.LogWarning("[CuttingCounter] No process found for cutting, aborting.");
+                return;
+            }
+
             _cuttingCts = new CancellationTokenSource();
             _isCutting = true;
             _OnStartCuttingClientRpc();
 
-            var process = DataTableManager.Sigleton.GetProcess(kitchenObj.objEnum, FacilityEnum.CuttingCounter);
-            if (process == null)
-            {
-                _StopCuttingClientRpc();
-                return;
-            }
-
             float maxTime = process.processValue;
+            Debug.Log($"[CuttingCounter] Cutting started, maxTime={maxTime}");
 
-            while (!_cuttingCts.IsCancellationRequested && _cuttingProgress < maxTime)
+            while (_cuttingProgress < maxTime)
             {
+                if (_cuttingCts.IsCancellationRequested)
+                {
+                    Debug.Log("[CuttingCounter] Cutting cancelled mid-way.");
+                    break;
+                }
+
                 _cuttingProgress += Time.deltaTime;
                 _SetProgressClientRpc(_cuttingProgress / maxTime);
-                await UniTask.Yield(PlayerLoopTiming.Update, _cuttingCts.Token);
+                await UniTask.Yield();
             }
 
             if (_cuttingProgress >= maxTime)
             {
+                Debug.Log("[CuttingCounter] Cutting complete, transforming ingredient.");
                 KitchenObjOperator.DestroyKitchenObj(kitchenObj);
                 KitchenObjOperator.SpawnKitchenObjRpc(process.outputEnum, this);
                 _OnCutCompleteClientRpc(transform.position);

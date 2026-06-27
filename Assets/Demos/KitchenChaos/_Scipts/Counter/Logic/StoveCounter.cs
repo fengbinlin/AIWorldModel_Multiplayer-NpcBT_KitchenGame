@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Nico.Components;
@@ -7,13 +7,15 @@ using UnityEngine;
 
 namespace Kitchen
 {
-    public class StoveCounter : BaseCounter, IInteractAlternate
+    public class StoveCounter : BaseCounter
     {
         private CancellationTokenSource _cookingCts;
         public event Action OnStartCooking;
         public event Action OnStopCooking;
         public event Action<KitchenObjEnum?> OnCookingStageChange;
         private ProgressBar _progressBarUI;
+
+        public bool isCooking;
 
         protected override void Awake()
         {
@@ -23,55 +25,49 @@ namespace Kitchen
 
         public override void Interact(Player.Player player)
         {
-            //玩家持有物体，当前柜子没有物体 -> 放置物体
+            //玩家持有物体，当前柜子没有物体 -> 放置物体（会自动开始烹饪）
             if (player.HasKitchenObj() && !HasKitchenObj())
             {
                 KitchenObjOperator.PutKitchenObj(player, this);
                 return;
             }
 
-            //玩家没有持有物体，当前柜子有物体 -> 拿起物体
+            //玩家没有持有物体，当前柜子有物体 -> 拿起物体（会自动停止烹饪）
             if (!player.HasKitchenObj() && HasKitchenObj())
             {
-                if (isCooking)
-                {
-                    _StopCookingServerRpc();
-                }
-
                 KitchenObjOperator.PutKitchenObj(this, player);
                 return;
             }
 
-
             if (!player.HasKitchenObj() || !HasKitchenObj()) return;
-            //都有物体
-            //尝试进行盘子放置的操作
-            //失败则直接返回
-            if (!CounterOperator.TryPlateOperator(player, this)) return;
+            //都有物体，尝试盘子操作
+            CounterOperator.TryPlateOperator(player, this);
+        }
 
-            //操作成功则停止烹饪
+        /// <summary>
+        /// 当食材被放到锅上时，如果可烹饪则自动开始。
+        /// </summary>
+        public override void SetKitchenObj(KitchenObj newKitchenObj)
+        {
+            base.SetKitchenObj(newKitchenObj);
+
+            if (newKitchenObj != null && !isCooking
+                && DataTableManager.Sigleton.CanProcess(newKitchenObj.objEnum, FacilityEnum.StoveCounter))
+            {
+                StartCookingServerRpc();
+            }
+        }
+
+        /// <summary>
+        /// 当食材从锅里被拿走/销毁时，自动停止烹饪。
+        /// </summary>
+        public override void ClearKitchenObj()
+        {
             if (isCooking)
             {
                 _StopCookingServerRpc();
             }
-        }
-
-        public bool isCooking;
-
-        public void InteractAlternate(Player.Player player)
-        {
-            //如果当前柜子有物体，且当前不在烹饪 且 物体可以被烹饪 则开启烹饪任务
-            if (HasKitchenObj() && !isCooking && DataTableManager.Sigleton.CanProcess(kitchenObj.objEnum, FacilityEnum.StoveCounter))
-            {
-                StartCookingServerRpc(); //通知服务器开启烹饪
-                return;
-            }
-
-            //如果当前柜子有物体 且在烹饪 则停止烹饪
-            if (HasKitchenObj() && isCooking)
-            {
-                _StopCookingServerRpc(); //通知服务器停止烹饪
-            }
+            base.ClearKitchenObj();
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -93,9 +89,9 @@ namespace Kitchen
         [ServerRpc(RequireOwnership = false)]
         private void StartCookingServerRpc()
         {
+            if (isCooking) return; // 已经在烹饪中
             _Cooking().Forget();
         }
-
 
         private async UniTask _Cooking()
         {
@@ -134,6 +130,7 @@ namespace Kitchen
         {
             _progressBarUI.SetProgress(progress);
         }
+
         [ClientRpc]
         private void _OnStartCookingClientRpc()
         {

@@ -1,14 +1,18 @@
-﻿using System;
+using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using Nico.Components;
 using Unity.Netcode;
 using UnityEngine;
 
 namespace Kitchen
 {
-    public class CuttingCounter : BaseCounter, IInteractAlternate
+    public class CuttingCounter : BaseCounter
     {
-        public int cuttingCount = 0;
         private ProgressBar _progressBar;
+        private CancellationTokenSource _cuttingCts;
+        private bool _isCutting;
+        private float _cuttingProgress; // 0 to processValue
         public event Action OnCuttingEvent;
         public static event EventHandler<Vector3> OnAnyCut;
 
@@ -18,12 +22,37 @@ namespace Kitchen
             _progressBar = transform.Find("ProgressBarUI").GetComponent<ProgressBar>();
         }
 
+        private void Update()
+        {
+            //只在本地玩家选中此柜台且按下 F 时驱动切割
+            var localPlayer = Player.Player.LocalInstance;
+            if (localPlayer == null) return;
+
+            bool isSelected = localPlayer.SelectCounterController.SelectedCounter == this;
+            bool fHeld = PlayerInput.Instance.Player.InteractAlternate.IsPressed();
+
+            if (isSelected && fHeld && HasKitchenObj()
+                && DataTableManager.Sigleton.CanProcess(kitchenObj.objEnum, FacilityEnum.CuttingCounter))
+            {
+                if (!_isCutting)
+                {
+                    _isCutting = true;
+                    StartCuttingServerRpc();
+                }
+            }
+            else if (_isCutting)
+            {
+                _isCutting = false;
+                StopCuttingServerRpc();
+            }
+        }
+
         public override void Interact(Player.Player player)
         {
             //玩家持有物体，当前柜子没有物体 -> 放置物体
             if (player.HasKitchenObj() && !HasKitchenObj())
             {
-                _ClearCountServerRpc();
+                _ClearCuttingStateServerRpc();
                 KitchenObjOperator.PutKitchenObj(player, this);
                 return;
             }
@@ -31,7 +60,7 @@ namespace Kitchen
             //玩家没有持有物体，当前柜子有物体 -> 拿起物体
             if (!player.HasKitchenObj() && HasKitchenObj())
             {
-                _ClearCountServerRpc();
+                _ClearCuttingStateServerRpc();
                 KitchenObjOperator.PutKitchenObj(this, player);
                 return;
             }
@@ -39,60 +68,103 @@ namespace Kitchen
             if (CounterOperator.TryPlateOperator(player, this)) return;
         }
 
-        [ServerRpc(RequireOwnership = false)]
-        private void _ClearCountServerRpc()
+        public override void ClearKitchenObj()
         {
-            _SetProgressClientRpc();
+            if (_isCutting)
+            {
+                StopCuttingServerRpc();
+                _isCutting = false;
+            }
+            base.ClearKitchenObj();
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        private void StartCuttingServerRpc()
+        {
+            if (_isCutting) return;
+            _CuttingRoutine().Forget();
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        private void StopCuttingServerRpc()
+        {
+            _cuttingCts?.Cancel();
+            _StopCuttingClientRpc();
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        private void _ClearCuttingStateServerRpc()
+        {
+            _cuttingCts?.Cancel();
+            _ClearCuttingStateClientRpc();
         }
 
         [ClientRpc]
-        public void _SetProgressClientRpc()
+        private void _ClearCuttingStateClientRpc()
         {
-            cuttingCount = 0;
+            _cuttingProgress = 0;
             _progressBar.SetProgress(0);
         }
 
-        //交互逻辑 这里是切菜的逻辑
-        public void InteractAlternate(Player.Player player)
+        [ClientRpc]
+        private void _StopCuttingClientRpc()
         {
-            if (!HasKitchenObj()) return;
-
-            var process = DataTableManager.Sigleton.GetProcess(kitchenObj.objEnum, FacilityEnum.CuttingCounter);
-            if (process == null) return;
-
-            CuttingServerRpc(transform.position);
+            _isCutting = false;
         }
 
-        [ServerRpc(RequireOwnership = false)]
-        public void CuttingServerRpc(Vector3 position)
+        private async UniTask _CuttingRoutine()
         {
-            CuttingClientRpc(position);
+            if (!IsServer) return;
+
+            _cuttingCts = new CancellationTokenSource();
+            _isCutting = true;
+            _OnStartCuttingClientRpc();
+
+            var process = DataTableManager.Sigleton.GetProcess(kitchenObj.objEnum, FacilityEnum.CuttingCounter);
+            if (process == null)
+            {
+                _StopCuttingClientRpc();
+                return;
+            }
+
+            float maxTime = process.processValue;
+
+            while (!_cuttingCts.IsCancellationRequested && _cuttingProgress < maxTime)
+            {
+                _cuttingProgress += Time.deltaTime;
+                _SetProgressClientRpc(_cuttingProgress / maxTime);
+                _OnCuttingTickClientRpc(transform.position);
+                await UniTask.Yield(PlayerLoopTiming.Update, _cuttingCts.Token);
+            }
+
+            if (_cuttingProgress >= maxTime)
+            {
+                // 切割完成，替换食材
+                KitchenObjOperator.DestroyKitchenObj(kitchenObj);
+                KitchenObjOperator.SpawnKitchenObjRpc(process.outputEnum, this);
+                _ClearCuttingStateClientRpc();
+            }
+
+            _isCutting = false;
         }
 
         [ClientRpc]
-        public void CuttingClientRpc(Vector3 position)
+        private void _SetProgressClientRpc(float progress)
         {
-            var process = DataTableManager.Sigleton.GetProcess(kitchenObj.objEnum, FacilityEnum.CuttingCounter);
-            if (process == null) return;
-            var maxCuttingCount = (int)process.processValue;
+            _progressBar.SetProgress(progress);
+        }
 
-            //触发切菜事件
-            ++cuttingCount;
+        [ClientRpc]
+        private void _OnStartCuttingClientRpc()
+        {
+            _isCutting = true;
+        }
+
+        [ClientRpc]
+        private void _OnCuttingTickClientRpc(Vector3 position)
+        {
             OnCuttingEvent?.Invoke();
             OnAnyCut?.Invoke(this, position);
-
-            _progressBar.SetProgress((float)cuttingCount / maxCuttingCount);
-
-            if (cuttingCount >= maxCuttingCount)
-            {
-                if (IsServer)
-                {
-                    KitchenObjOperator.DestroyKitchenObj(kitchenObj);
-                    KitchenObjOperator.SpawnKitchenObjRpc(process.outputEnum, this);
-                }
-
-                cuttingCount = 0;
-            }
         }
     }
 }

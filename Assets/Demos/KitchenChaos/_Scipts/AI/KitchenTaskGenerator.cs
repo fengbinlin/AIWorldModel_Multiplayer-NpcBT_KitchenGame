@@ -173,6 +173,7 @@ namespace Kitchen.AI
             if (storage == null) { skippedNoStorage++; return; }
 
             // Count: items anywhere + on plates + active tasks not yet carrying.
+            // Avoid double-counting when agent is both carrying AND has active task.
             int totalAvail = bb.items.Count(i =>
                 i.itemType == ingredient && i.kitchenObj != null)
                 + CountOnPlates(bb, ingredient);

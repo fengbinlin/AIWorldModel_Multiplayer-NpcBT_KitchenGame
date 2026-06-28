@@ -27,6 +27,7 @@ namespace Kitchen.AI
         public int agentId = -1;
 
         [Header("Movement")]
+        public float moveSpeed = 3.5f;
         public float interactionRange = 1.8f;
         public float stuckTimeout = 8.0f;
 
@@ -60,8 +61,6 @@ namespace Kitchen.AI
         private KitchenObj _carryTargetItem;
         private Vector3 _carryDestPos;
 
-        // Movement (NavMeshAgent handles actual pathfinding)
-
         // Item holding (ICanHoldKitchenObj)
         private KitchenObj _heldItem;
         private Transform _holdPoint;
@@ -94,17 +93,23 @@ namespace Kitchen.AI
             if (GetComponent<NetworkObject>() == null)
                 gameObject.AddComponent<NetworkObject>();
 
-            // NavMeshAgent for pathfinding
+            // Disable physics colliders — NavMeshAgent handles movement/avoidance
+            foreach (var col in GetComponents<Collider>())
+                col.enabled = false;
+            foreach (var col in GetComponentsInChildren<Collider>())
+                col.enabled = false;
+
             _navAgent = GetComponent<NavMeshAgent>();
             if (_navAgent == null)
                 _navAgent = gameObject.AddComponent<NavMeshAgent>();
-            _navAgent.speed = 3.5f;
-            _navAgent.angularSpeed = 360f;
-            _navAgent.acceleration = 16f;
-            _navAgent.stoppingDistance = 0.5f;
-            _navAgent.autoBraking = true;
-            _navAgent.radius = 0.4f;
+            _navAgent.speed = moveSpeed;
+            _navAgent.angularSpeed = 720f;
+            _navAgent.acceleration = 60f;
+            _navAgent.stoppingDistance = 0f;
+            _navAgent.autoBraking = false;
+            _navAgent.radius = 0.01f;
             _navAgent.height = 1.8f;
+            _navAgent.obstacleAvoidanceType = ObstacleAvoidanceType.NoObstacleAvoidance;
         }
 
         private void Start()
@@ -150,23 +155,29 @@ namespace Kitchen.AI
                     break;
 
                 case "moving":
-                    var navDest = _navAgent.destination;
-                    debugState = $"moving → ({navDest.x:F0},{navDest.z:F0}) d={_navAgent.remainingDistance:F1}";
-                    _moveTimer += Time.deltaTime;
+                    {
+                        float dist = _navAgent.pathPending ? float.MaxValue :
+                            Vector3.Distance(transform.position, _navAgent.destination);
+                        debugState = $"moving → ({_navAgent.destination.x:F0},{_navAgent.destination.z:F0}) d={dist:F1}";
+                        _moveTimer += Time.deltaTime;
 
-                    if (!_navAgent.pathPending && _navAgent.remainingDistance <= interactionRange)
-                    {
-                        AIDebugLogger.LogState(chefName, "moving", "arrived",
-                            $"at ({navDest.x:F1},{navDest.z:F1}) dist={_navAgent.remainingDistance:F2} time={_moveTimer:F1}s");
-                        _moveTimer = 0;
-                        OnArrivedAtTarget();
-                    }
-                    else if (_moveTimer > stuckTimeout)
-                    {
-                        Debug.LogWarning($"[{chefName}] Stuck moving for {stuckTimeout}s, abandoning task");
-                        AIDebugLogger.LogWarning(chefName,
-                            $"Stuck moving for {stuckTimeout}s (remaining={_navAgent.remainingDistance:F1}, target=({navDest.x:F1},{navDest.z:F1}))");
-                        AbandonTask();
+                        // Arrive when within half of interactionRange from destination
+                        if (!_navAgent.pathPending && dist < interactionRange * 0.4f)
+                        {
+                            _navAgent.isStopped = true;
+                            _navAgent.velocity = Vector3.zero;
+                            AIDebugLogger.LogState(chefName, "moving", "arrived",
+                                $"at ({_navAgent.destination.x:F1},{_navAgent.destination.z:F1}) dist={dist:F2} time={_moveTimer:F1}s");
+                            _moveTimer = 0;
+                            OnArrivedAtTarget();
+                        }
+                        else if (_moveTimer > stuckTimeout)
+                        {
+                            Debug.LogWarning($"[{chefName}] Stuck moving for {stuckTimeout}s, abandoning task");
+                            AIDebugLogger.LogWarning(chefName,
+                                $"Stuck moving for {stuckTimeout}s (dist={dist:F1})");
+                            AbandonTask();
+                        }
                     }
                     break;
 
@@ -351,17 +362,15 @@ namespace Kitchen.AI
 
         public void MoveTo(Vector3 target)
         {
-            // Project target onto NavMesh
-            if (NavMesh.SamplePosition(target, out NavMeshHit hit, 3f, NavMesh.AllAreas))
+            if (NavMesh.SamplePosition(target, out NavMeshHit hit, 1.5f, NavMesh.AllAreas))
             {
                 _navAgent.SetDestination(hit.position);
-                _navAgent.isStopped = false;
             }
             else
             {
                 _navAgent.SetDestination(target);
-                _navAgent.isStopped = false;
             }
+            _navAgent.isStopped = false;
             _substate = "moving";
             _moveTimer = 0;
             debugState = $"move → ({target.x:F1}, {target.z:F1})";
@@ -814,6 +823,17 @@ namespace Kitchen.AI
             if (_targetCounter == null)
             {
                 CompleteTask();
+                return;
+            }
+
+            // Require AI to actually be within range of the counter before interacting
+            float distToTarget = Vector3.Distance(transform.position, _targetCounter.transform.position);
+            if (distToTarget > interactionRange)
+            {
+                // Not close enough — move closer first
+                _substate = "moving";
+                _stateTimer = 0;
+                MoveTo(GetApproachPosition(_targetCounter));
                 return;
             }
 
@@ -1585,34 +1605,16 @@ namespace Kitchen.AI
         #region Utility
 
         /// <summary>
-        /// Get a position just outside the facility for the AI to stand.
-        /// Adds an offset based on agent ID to prevent multiple agents from
-        /// crowding the exact same spot.
+        /// Return the counter center as the movement target.
+        /// NavMeshAgent cannot path into the counter (non-walkable),
+        /// so it will stop at the NavMesh edge. Arrival is triggered
+        /// when within interactionRange * 0.4f of this point.
         /// </summary>
         private Vector3 GetApproachPosition(BaseCounter counter)
         {
-            Vector3 counterPos = counter.transform.position;
-            Vector3 fromDir = (transform.position - counterPos).normalized;
-            if (fromDir.magnitude < 0.1f) fromDir = Vector3.back;
-
-            // Pick the approach side based on relative position
-            float dx = Mathf.Abs(fromDir.x);
-            float dz = Mathf.Abs(fromDir.z);
-
-            Vector3 approach;
-            if (dx > dz)
-                approach = counterPos + new Vector3(Mathf.Sign(fromDir.x) * interactionRange, 0, 0);
-            else
-                approach = counterPos + new Vector3(0, 0, Mathf.Sign(fromDir.z) * interactionRange);
-
-            // Add lateral offset per agent to avoid crowding
-            float lateralOffset = (agentId % 3 - 1) * 0.7f; // -0.7, 0, or +0.7
-            if (dx > dz)
-                approach += new Vector3(0, 0, lateralOffset);
-            else
-                approach += new Vector3(lateralOffset, 0, 0);
-
-            return approach;
+            Vector3 pos = counter.transform.position;
+            pos.y = 0;
+            return pos;
         }
 
         #endregion
@@ -1625,7 +1627,13 @@ namespace Kitchen.AI
 
             // Draw chef position
             Gizmos.color = chefColor;
-            Gizmos.DrawWireSphere(transform.position, 0.5f);
+            Gizmos.DrawWireSphere(transform.position, 0.3f);
+
+            // Draw interaction radius
+            Gizmos.color = new Color(chefColor.r, chefColor.g, chefColor.b, 0.3f);
+            Gizmos.DrawWireSphere(transform.position, interactionRange);
+            Gizmos.color = new Color(chefColor.r, chefColor.g, chefColor.b, 0.1f);
+            Gizmos.DrawWireSphere(transform.position, interactionRange * 0.4f);
 
             // Draw target
             if (_substate == "moving" && _navAgent != null)

@@ -7,7 +7,7 @@ namespace Kitchen
 {
     public abstract class BaseCounter : NetworkBehaviour, IInteract, ICanHoldKitchenObj
     {
-        public static event EventHandler<Vector3> OnAnyObjPlaceOnCounter; 
+        public static event EventHandler<Vector3> OnAnyObjPlaceOnCounter;
         protected Transform topSpawnPoint { get; set; }
         protected KitchenObj kitchenObj;
 

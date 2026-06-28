@@ -210,6 +210,17 @@ namespace Kitchen.AI
 
                                 if (_heldItem != null)
                                 {
+                                    // Try to deliver directly to a plate that needs this ingredient
+                                    var plateTarget = FindPlateNeedingIngredient(_heldItem.objEnum);
+                                    if (plateTarget != null)
+                                    {
+                                        AIDebugLogger.Log(chefName, $"Delivering {_heldItem.objEnum} directly to plate at {plateTarget.name}");
+                                        _execPhase = ExecPhase.GotoDest;
+                                        _targetCounter = plateTarget;
+                                        MoveTo(GetApproachPosition(plateTarget));
+                                        break;
+                                    }
+                                    // Fallback: drop on nearest free counter
                                     var dropTarget = FindNearestFreeCounter(transform.position);
                                     if (dropTarget != null)
                                     {
@@ -538,7 +549,6 @@ namespace Kitchen.AI
             float bestDist = float.MaxValue;
             foreach (var c in counters)
             {
-                // Only ClearCounters for general purpose
                 if (!(c is ClearCounter)) continue;
                 if (c.HasKitchenObj()) continue;
                 if (reserved != null && reserved.Contains(c)) continue;
@@ -549,6 +559,44 @@ namespace Kitchen.AI
             {
                 AIDebugLogger.LogWarning(chefName, "FindNearestFreeCounter: NO free counter found!");
             }
+            return best;
+        }
+
+        /// <summary>
+        /// Find a counter holding a plate that still needs the given ingredient.
+        /// Returns null if no matching plate exists — caller falls back to a free counter.
+        /// </summary>
+        private BaseCounter FindPlateNeedingIngredient(KitchenObjEnum ingredient)
+        {
+            var bb = _aiManager?.Blackboard;
+            if (bb == null) return null;
+
+            BaseCounter best = null;
+            float bestDist = float.MaxValue;
+
+            foreach (var kv in bb.orderPlate)
+            {
+                int orderId = kv.Key;
+                var plate = kv.Value;
+                if (plate == null || plate.gameObject == null) continue;
+                if (plate.GetIngredients().Contains(ingredient)) continue;
+
+                // Find the order associated with this plate and check it needs this ingredient
+                int orderIdx = bb.activeOrderIds.IndexOf(orderId);
+                if (orderIdx < 0 || orderIdx >= bb.activeOrders.Count) continue;
+                var order = bb.activeOrders[orderIdx];
+                if (!bb.recipeStepChains.TryGetValue(order.recipeName, out var steps)) continue;
+                if (!steps.Any(s => s.taskType == TaskType.ADD_TO_PLATE && s.inputType == ingredient))
+                    continue;
+
+                var holder = plate.GetHolder();
+                BaseCounter plateCounter = holder as BaseCounter;
+                if (plateCounter == null) continue;
+
+                float d = Vector3.Distance(transform.position, plateCounter.transform.position);
+                if (d < bestDist) { bestDist = d; best = plateCounter; }
+            }
+
             return best;
         }
 
@@ -1337,6 +1385,11 @@ namespace Kitchen.AI
                     }
                 }
 
+                // Prefer direct-to-plate delivery for processed ingredients
+                if (dropCounter == null && _heldItem != null)
+                {
+                    dropCounter = FindPlateNeedingIngredient(_heldItem.objEnum);
+                }
                 // Fallback to nearest free counter, or any counter if all occupied
                 if (dropCounter == null)
                 {
@@ -1533,17 +1586,19 @@ namespace Kitchen.AI
                 // Take the item
                 _targetCounter.Interact(this);
 
-                // Deliver cooked output to a ClearCounter so scheduler can find it
+                // Deliver cooked output — prefer direct-to-plate if possible
                 if (_heldItem != null)
                 {
-                    var dropTarget = FindNearestFreeCounter(transform.position);
+                    var plateTarget = FindPlateNeedingIngredient(_heldItem.objEnum);
+                    var dropTarget = plateTarget ?? FindNearestFreeCounter(transform.position);
                     if (dropTarget != null)
                     {
-                        AIDebugLogger.Log(chefName, $"Delivering cooked {_heldItem.objEnum} to {dropTarget.name}");
+                        AIDebugLogger.Log(chefName, $"Delivering cooked {_heldItem.objEnum} to {dropTarget.name}" +
+                            (plateTarget != null ? " (direct-to-plate)" : ""));
                         _execPhase = ExecPhase.GotoDest;
                         _targetCounter = dropTarget;
                         MoveTo(GetApproachPosition(dropTarget));
-                        return; // GotoDest will drop + CompleteTask
+                        return;
                     }
                 }
 

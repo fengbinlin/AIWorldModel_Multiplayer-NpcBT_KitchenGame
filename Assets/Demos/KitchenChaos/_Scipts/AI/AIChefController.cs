@@ -528,7 +528,13 @@ namespace Kitchen.AI
                     return sc;
                 }
             }
-            // Non-processable ingredients (like Bread) → ClearCounter
+            // Non-processable ingredients (like Bread) — try direct-to-plate first
+            var plateTarget = FindPlateNeedingIngredient(ingredient);
+            if (plateTarget != null)
+            {
+                AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → plate at {plateTarget.name}");
+                return plateTarget;
+            }
             var clear = FindObjectsOfType<ClearCounter>()
                 .FirstOrDefault(c => !c.HasKitchenObj()
                     && (reservedCounters == null || !reservedCounters.Contains(c)));
@@ -537,7 +543,6 @@ namespace Kitchen.AI
                 AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → ClearCounter {clear.name}");
                 return clear;
             }
-            // Fallback: any non-storage, non-delivery counter
             AIDebugLogger.LogWarning(chefName, $"FindDropTarget({ingredient}) → fallback nearest free");
             return FindNearestFreeCounter(transform.position, reservedCounters);
         }

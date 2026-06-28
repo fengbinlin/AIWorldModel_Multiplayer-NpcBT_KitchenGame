@@ -60,8 +60,9 @@ namespace Kitchen.AI
                     if (step.taskType == TaskType.FETCH && step.outputType.HasValue)
                     {
                         bool fetchNeeded = true;
-                        int rawAvailable = bb.FindItemsOfType(step.outputType.Value, excludeReserved: true) // NO forOrderId
-                            .Count(i => !i.IsCarried && (i.kitchenObj.IsFree || i.kitchenObj.GetHolder() is BaseCounter));
+                        int rawAvailable = bb.FindItemsOfType(step.outputType.Value, excludeReserved: true)
+                            .Count(i => !i.IsCarried && (i.kitchenObj.IsFree || i.kitchenObj.GetHolder() is BaseCounter))
+                            + CountOnPlates(bb, step.outputType.Value);
                         int rawNeeded = CountOrdersNeeding(bb, step.outputType.Value);
                         if (rawNeeded > 0 && rawAvailable >= rawNeeded) { fetchNeeded = false; }
                         else
@@ -70,8 +71,9 @@ namespace Kitchen.AI
                             {
                                 if (s.taskType == TaskType.PROCESS && s.inputType == step.outputType && s.outputType.HasValue)
                                 {
-                                    int processedAvail = bb.FindItemsOfType(s.outputType.Value, excludeReserved: true) // NO forOrderId
-                                        .Count(i => !i.IsCarried && (i.kitchenObj.IsFree || i.kitchenObj.GetHolder() is BaseCounter));
+                                    int processedAvail = bb.FindItemsOfType(s.outputType.Value, excludeReserved: true)
+                                        .Count(i => !i.IsCarried && (i.kitchenObj.IsFree || i.kitchenObj.GetHolder() is BaseCounter))
+                                        + CountOnPlates(bb, s.outputType.Value);
                                     int processedNeeded = CountOrdersNeeding(bb, s.outputType.Value);
                                     if (processedNeeded > 0 && processedAvail >= processedNeeded)
                                         { fetchNeeded = false; break; }
@@ -87,7 +89,8 @@ namespace Kitchen.AI
                     if (step.taskType == TaskType.PROCESS && step.outputType.HasValue)
                     {
                         int available = bb.FindItemsOfType(step.outputType.Value, excludeReserved: true)
-                            .Count(i => !i.IsCarried && (i.kitchenObj.IsFree || i.kitchenObj.GetHolder() is BaseCounter));
+                            .Count(i => !i.IsCarried && (i.kitchenObj.IsFree || i.kitchenObj.GetHolder() is BaseCounter))
+                            + CountOnPlates(bb, step.outputType.Value);
                         int needed = CountOrdersNeeding(bb, step.outputType.Value);
                         if (needed > 0 && available >= needed) { skippedCompleted++; continue; }
                     }
@@ -169,17 +172,18 @@ namespace Kitchen.AI
             var storage = bb.FindStorageFor(ingredient);
             if (storage == null) { skippedNoStorage++; return; }
 
-            // Count items already in world AND active FETCH/PROCESS tasks in flight.
-            // This prevents overproduction when agents are still en route.
+            // Count: items anywhere + on plates + active tasks not yet carrying.
             int totalAvail = bb.items.Count(i =>
-                i.itemType == ingredient && !i.IsCarried && i.kitchenObj != null);
-            int activeFetchCount = bb.agents.Count(a =>
+                i.itemType == ingredient && i.kitchenObj != null)
+                + CountOnPlates(bb, ingredient);
+            int activeWithoutItem = bb.agents.Count(a =>
                 a.currentTask != null &&
                 a.currentTask.outputType == ingredient &&
                 (a.currentTask.type == TaskType.FETCH || a.currentTask.type == TaskType.PROCESS) &&
-                a.currentTask.status != "completed" && a.currentTask.status != "abandoned");
+                a.currentTask.status != "completed" && a.currentTask.status != "abandoned" &&
+                a.carryingItemId < 0);
             int totalNeeded = CountOrdersNeeding(bb, ingredient);
-            if (totalNeeded > 0 && totalAvail + activeFetchCount >= totalNeeded) return;
+            if (totalNeeded > 0 && totalAvail + activeWithoutItem >= totalNeeded) return;
 
             // Check this order doesn't already have a FETCH in progress for this ingredient.
             // We check orderId so different orders CAN fetch the same ingredient simultaneously
@@ -236,16 +240,17 @@ namespace Kitchen.AI
             if (inputItems.Count == 0) return;
 
             // Don't produce more than ALL orders need combined.
-            // Include active FETCH/PROCESS to avoid overproduction during transit.
             int totalAvail = bb.items.Count(i =>
-                i.itemType == step.outputType.Value && !i.IsCarried && i.kitchenObj != null);
-            int activeProdCount = bb.agents.Count(a =>
+                i.itemType == step.outputType.Value && i.kitchenObj != null)
+                + CountOnPlates(bb, step.outputType.Value);
+            int activeWithoutItem = bb.agents.Count(a =>
                 a.currentTask != null &&
                 a.currentTask.outputType == step.outputType.Value &&
                 (a.currentTask.type == TaskType.FETCH || a.currentTask.type == TaskType.PROCESS) &&
-                a.currentTask.status != "completed" && a.currentTask.status != "abandoned");
+                a.currentTask.status != "completed" && a.currentTask.status != "abandoned" &&
+                a.carryingItemId < 0);
             int totalNeeded = CountOrdersNeeding(bb, step.outputType.Value);
-            if (totalNeeded > 0 && totalAvail + activeProdCount >= totalNeeded) return;
+            if (totalNeeded > 0 && totalAvail + activeWithoutItem >= totalNeeded) return;
 
             // For PROCESS, the item needs to be at the facility or being carried there
             var itemAtFac = bb.FindItemAtFacility(step.inputType.Value, facility);
@@ -572,6 +577,26 @@ namespace Kitchen.AI
                 wastePlatesFound++;
                 if (wastePlatesFound >= 1) break; // One per cycle
             }
+        }
+
+        /// <summary>Count how many of an ingredient sit on plates (KitchenObj is destroyed on add).</summary>
+        private static int CountOnPlates(KitchenBlackboard bb, KitchenObjEnum type)
+        {
+            int count = 0;
+            foreach (var kv in bb.orderPlate)
+            {
+                var plate = kv.Value;
+                if (plate != null && plate.gameObject != null && plate.GetIngredients().Contains(type))
+                    count++;
+            }
+            var allPlates = Object.FindObjectsOfType<Plate>();
+            foreach (var p in allPlates)
+            {
+                if (p != null && p.gameObject != null && p.GetIngredients().Contains(type)
+                    && !bb.orderPlate.Values.Any(op => op == p))
+                    count++;
+            }
+            return count;
         }
 
         /// <summary>Count how many active orders need a given output type (any step).</summary>

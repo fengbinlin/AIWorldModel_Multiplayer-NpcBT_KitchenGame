@@ -1308,16 +1308,8 @@ namespace Kitchen.AI
             if (_targetCounter is StoveCounter sc)
                 sc.OnCookingStageChange -= OnStoveStageChanged;
 
-            // Capture task info before nulling
             int taskOrderId = _currentTask?.orderId ?? 0;
             TaskType? taskType = _currentTask?.type;
-
-            if (_currentTask != null)
-            {
-                // Status is already set by CompleteTask/AbandonTask before calling CleanupTask
-                _aiManager?.OnAgentTaskCompleted(this, _currentTask);
-                _currentTask = null;
-            }
 
             // Drop held item so scheduler can find it for other tasks
             if (_heldItem != null)
@@ -1351,7 +1343,6 @@ namespace Kitchen.AI
                     dropCounter = FindNearestFreeCounter(transform.position);
                     if (dropCounter == null)
                     {
-                        // All counters occupied — use the nearest ClearCounter anyway
                         float bestDist = float.MaxValue;
                         foreach (var c in FindObjectsOfType<ClearCounter>())
                         {
@@ -1363,8 +1354,24 @@ namespace Kitchen.AI
 
                 if (dropCounter != null)
                 {
-                    AIDebugLogger.Log(chefName, $"CleanupTask: dropping {_heldItem.objEnum} at {dropCounter.name}");
-                    dropCounter.Interact(this);
+                    float dist = Vector3.Distance(transform.position, dropCounter.transform.position);
+                    if (dist < interactionRange)
+                    {
+                        // Close enough — drop now, then mark complete
+                        AIDebugLogger.Log(chefName, $"CleanupTask: dropping {_heldItem.objEnum} at {dropCounter.name}");
+                        dropCounter.Interact(this);
+                    }
+                    else
+                    {
+                        // Too far — move there first. Keep task marked as not-done
+                        // so the scheduler doesn't assign a new task prematurely.
+                        if (_currentTask != null) _currentTask.status = "executing";
+                        AIDebugLogger.Log(chefName, $"CleanupTask: moving to {dropCounter.name} to drop {_heldItem.objEnum} (dist={dist:F1})");
+                        _targetCounter = dropCounter;
+                        _execPhase = ExecPhase.GotoDest;
+                        MoveTo(GetApproachPosition(dropCounter));
+                        return;
+                    }
                 }
                 else
                 {
@@ -1374,6 +1381,13 @@ namespace Kitchen.AI
                         Vector3.down, 0f, default);
                     ClearKitchenObj();
                 }
+            }
+
+            // Only signal completion AFTER item is successfully placed (or no item to place)
+            if (_currentTask != null)
+            {
+                _aiManager?.OnAgentTaskCompleted(this, _currentTask);
+                _currentTask = null;
             }
 
             _substate = "idle";

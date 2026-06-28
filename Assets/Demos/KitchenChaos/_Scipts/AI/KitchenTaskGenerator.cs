@@ -169,11 +169,17 @@ namespace Kitchen.AI
             var storage = bb.FindStorageFor(ingredient);
             if (storage == null) { skippedNoStorage++; return; }
 
-            // Don't produce more than ALL orders need combined
+            // Count items already in world AND active FETCH/PROCESS tasks in flight.
+            // This prevents overproduction when agents are still en route.
             int totalAvail = bb.items.Count(i =>
                 i.itemType == ingredient && !i.IsCarried && i.kitchenObj != null);
+            int activeFetchCount = bb.agents.Count(a =>
+                a.currentTask != null &&
+                a.currentTask.outputType == ingredient &&
+                (a.currentTask.type == TaskType.FETCH || a.currentTask.type == TaskType.PROCESS) &&
+                a.currentTask.status != "completed" && a.currentTask.status != "abandoned");
             int totalNeeded = CountOrdersNeeding(bb, ingredient);
-            if (totalNeeded > 0 && totalAvail >= totalNeeded) return;
+            if (totalNeeded > 0 && totalAvail + activeFetchCount >= totalNeeded) return;
 
             // Check this order doesn't already have a FETCH in progress for this ingredient.
             // We check orderId so different orders CAN fetch the same ingredient simultaneously
@@ -229,11 +235,17 @@ namespace Kitchen.AI
             var inputItems = bb.FindItemsOfType(step.inputType.Value);
             if (inputItems.Count == 0) return;
 
-            // Don't produce more than ALL orders need combined
+            // Don't produce more than ALL orders need combined.
+            // Include active FETCH/PROCESS to avoid overproduction during transit.
             int totalAvail = bb.items.Count(i =>
                 i.itemType == step.outputType.Value && !i.IsCarried && i.kitchenObj != null);
+            int activeProdCount = bb.agents.Count(a =>
+                a.currentTask != null &&
+                a.currentTask.outputType == step.outputType.Value &&
+                (a.currentTask.type == TaskType.FETCH || a.currentTask.type == TaskType.PROCESS) &&
+                a.currentTask.status != "completed" && a.currentTask.status != "abandoned");
             int totalNeeded = CountOrdersNeeding(bb, step.outputType.Value);
-            if (totalNeeded > 0 && totalAvail >= totalNeeded) return;
+            if (totalNeeded > 0 && totalAvail + activeProdCount >= totalNeeded) return;
 
             // For PROCESS, the item needs to be at the facility or being carried there
             var itemAtFac = bb.FindItemAtFacility(step.inputType.Value, facility);
@@ -686,6 +698,21 @@ namespace Kitchen.AI
                         detail.stalePickPenalty = KitchenBlackboard.WEIGHT_STALE_PICK;
                     }
                 }
+            }
+
+            // === Assembly / serve bonus ===
+            if (task.type == TaskType.ADD_TO_PLATE)
+                detail.unlockValue += 3.0f;
+            if (task.type == TaskType.SERVE)
+                detail.unlockValue += 10.0f;
+            // PROCESS with output already ready on stove — grab before it burns
+            if (task.type == TaskType.PROCESS && task.targetFacility != null)
+            {
+                var fac = bb.facilities.Find(f => f.counter == task.targetFacility);
+                if (fac != null && fac.type == FacilityType.FryingPan
+                    && task.targetFacility.HasKitchenObj()
+                    && task.targetFacility.GetKitchenObj().objEnum == task.outputType)
+                    detail.unlockValue += 5.0f;
             }
 
             // === Total ===

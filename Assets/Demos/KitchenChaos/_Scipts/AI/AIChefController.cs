@@ -134,7 +134,7 @@ namespace Kitchen.AI
             _navAgent.speed = _moveSpeed;
             _navAgent.angularSpeed = 720f;
             _navAgent.acceleration = 50f;
-            _navAgent.stoppingDistance = 0.2f;
+            _navAgent.stoppingDistance = 0f;
             _navAgent.autoBraking = true;
             _navAgent.radius = 0.5f;
             _navAgent.height = 1.8f;

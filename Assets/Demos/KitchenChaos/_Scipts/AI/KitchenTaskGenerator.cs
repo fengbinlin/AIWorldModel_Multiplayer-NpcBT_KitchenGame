@@ -297,9 +297,29 @@ namespace Kitchen.AI
             var existingPlate = bb.FindPlateForOrder(orderId);
             if (existingPlate != null) return;
 
-            // Find PlatesCounter
-            var platesCounter = bb.facilities.FirstOrDefault(f => f.type == FacilityType.PlatesCounter);
-            if (platesCounter == null) return;
+            // Find PlatesCounter with the most plates available,
+            // accounting for agents already en route to fetch plates.
+            FacilityState bestPlatesCounter = null;
+            int bestAvailable = -1;
+            foreach (var f in bb.facilities)
+            {
+                if (f.type != FacilityType.PlatesCounter) continue;
+                var pc = f.counter as PlatesCounter;
+                if (pc == null) continue;
+                int reserved = bb.agents.Count(a =>
+                    a.currentTask != null &&
+                    a.currentTask.type == TaskType.FETCH_PLATE &&
+                    a.currentTask.targetFacility == f.counter &&
+                    a.currentTask.status != "completed" &&
+                    a.currentTask.status != "abandoned");
+                int available = pc.plateCount - reserved;
+                if (available > bestAvailable)
+                {
+                    bestAvailable = available;
+                    bestPlatesCounter = f;
+                }
+            }
+            if (bestPlatesCounter == null || bestAvailable <= 0) return;
 
             // Find any free ClearCounter as drop target
             var dropTarget = bb.facilities
@@ -311,7 +331,7 @@ namespace Kitchen.AI
             var task = KitchenTask.Create(TaskType.FETCH_PLATE, $"{order.recipeName}: {step.label}");
             task.stepId = step.id;
             task.orderId = orderId;
-            task.targetFacility = platesCounter.counter; // source: PlatesCounter
+            task.targetFacility = bestPlatesCounter.counter; // source: PlatesCounter with most plates
             task.destFacility = dropTarget.counter;       // destination: any free ClearCounter
             task.outputType = KitchenObjEnum.Plate;
             task.duration = 1.0f;

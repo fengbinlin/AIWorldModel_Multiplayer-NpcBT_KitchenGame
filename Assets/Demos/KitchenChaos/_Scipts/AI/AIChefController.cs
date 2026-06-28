@@ -27,8 +27,14 @@ namespace Kitchen.AI
         public int agentId = -1;
 
         [Header("Movement")]
-        public float moveSpeed = 3.5f;
+        [SerializeField] private float _moveSpeed = 3.5f;
+        public float moveSpeed
+        {
+            get => _moveSpeed;
+            set { _moveSpeed = value; if (_navAgent != null) _navAgent.speed = value; }
+        }
         public float interactionRange = 1.8f;
+        [Range(0.1f, 1f)] public float arrivalThreshold = 0.4f;
         public float stuckTimeout = 8.0f;
 
         private NavMeshAgent _navAgent;
@@ -43,11 +49,23 @@ namespace Kitchen.AI
 
         private KitchenTask _currentTask;
         private BaseCounter _targetCounter;
-        private string _substate = "idle"; // idle | moving | interacting | working | waiting
+        private string _substate = "idle"; // idle | moving | interacting | working | waiting | wandering
         private float _stateTimer;
         private float _moveTimer;
         private float _waitTimer;
         private bool _isHoldingItem;
+
+        // Wander
+        [Header("Wander")]
+        [SerializeField] private bool _enableWander = true;
+        [SerializeField] private float _wanderRadius = 5f;
+        [SerializeField] private float _wanderInterval = 3f;
+        private float _wanderTimer;
+        private bool _isWandering;
+
+        // Anti-stuck
+        private float _lastProgressDist = float.MaxValue;
+        private float _stuckProgressTimer;
 
         // Execution phases (for multi-step tasks)
         private enum ExecPhase
@@ -77,6 +95,17 @@ namespace Kitchen.AI
         public bool IsIdle => _currentTask == null || _currentTask.status == "completed";
         public KitchenObj HeldItem => _heldItem;
 
+        /// <summary>Apply NavMeshAgent params after spawn (called by KitchenAIManager).</summary>
+        public void SetAgentParams(float radius, ObstacleAvoidanceType avoidance, int priority)
+        {
+            if (_navAgent != null)
+            {
+                _navAgent.radius = radius;
+                _navAgent.obstacleAvoidanceType = avoidance;
+                _navAgent.avoidancePriority = priority;
+            }
+        }
+
         #endregion
 
         #region Unity Lifecycle
@@ -86,7 +115,7 @@ namespace Kitchen.AI
             // Create hold point for items
             var holdGo = new GameObject("AI_HoldPoint");
             holdGo.transform.SetParent(transform);
-            holdGo.transform.localPosition = new Vector3(0, 1.5f, 0.6f);
+            holdGo.transform.localPosition = new Vector3(0, 1.5f, 0.9f);
             _holdPoint = holdGo.transform;
 
             // Ensure NetworkObject is present
@@ -102,14 +131,15 @@ namespace Kitchen.AI
             _navAgent = GetComponent<NavMeshAgent>();
             if (_navAgent == null)
                 _navAgent = gameObject.AddComponent<NavMeshAgent>();
-            _navAgent.speed = moveSpeed;
+            _navAgent.speed = _moveSpeed;
             _navAgent.angularSpeed = 720f;
-            _navAgent.acceleration = 60f;
-            _navAgent.stoppingDistance = 0f;
-            _navAgent.autoBraking = false;
-            _navAgent.radius = 0.01f;
+            _navAgent.acceleration = 50f;
+            _navAgent.stoppingDistance = 0.2f;
+            _navAgent.autoBraking = true;
+            _navAgent.radius = 0.5f;
             _navAgent.height = 1.8f;
-            _navAgent.obstacleAvoidanceType = ObstacleAvoidanceType.NoObstacleAvoidance;
+            _navAgent.obstacleAvoidanceType = ObstacleAvoidanceType.LowQualityObstacleAvoidance;
+            _navAgent.avoidancePriority = 50;
         }
 
         private void Start()
@@ -151,38 +181,85 @@ namespace Kitchen.AI
             {
                 case "idle":
                     debugState = "idle";
-                    // Waiting for task assignment from KitchenAIManager
+                    if (_enableWander && _currentTask == null)
+                    {
+                        _wanderTimer += Time.deltaTime;
+                        if (_wanderTimer >= _wanderInterval)
+                        {
+                            _wanderTimer = 0f;
+                            StartWander();
+                        }
+                    }
                     break;
 
                 case "moving":
                     {
                         float dist = _navAgent.pathPending ? float.MaxValue :
                             Vector3.Distance(transform.position, _navAgent.destination);
-                        debugState = $"moving → ({_navAgent.destination.x:F0},{_navAgent.destination.z:F0}) d={dist:F1}";
+                        debugState = _isWandering ? $"wandering d={dist:F1}" : $"moving → ({_navAgent.destination.x:F0},{_navAgent.destination.z:F0}) d={dist:F1}";
                         _moveTimer += Time.deltaTime;
 
-                        // Arrive when within half of interactionRange from destination
-                        if (!_navAgent.pathPending && dist < interactionRange * 0.4f)
+                        // Track progress: if distance hasn't decreased significantly in 2s, repath
+                        if (dist < _lastProgressDist - 0.1f)
+                        {
+                            _lastProgressDist = dist;
+                            _stuckProgressTimer = 0f;
+                        }
+                        else
+                        {
+                            _stuckProgressTimer += Time.deltaTime;
+                        }
+                        if (_stuckProgressTimer > 2f && !_isWandering)
+                        {
+                            // Stuck in a crowd — force repath with a small random offset
+                            Vector3 jitter = Random.insideUnitSphere * 0.5f;
+                            jitter.y = 0;
+                            if (_navAgent.SetDestination(_navAgent.destination + jitter))
+                            {
+                                _stuckProgressTimer = 0f;
+                                _lastProgressDist = float.MaxValue;
+                            }
+                        }
+
+                        if (!_navAgent.pathPending && dist < interactionRange * arrivalThreshold)
                         {
                             _navAgent.isStopped = true;
-                            _navAgent.velocity = Vector3.zero;
-                            AIDebugLogger.LogState(chefName, "moving", "arrived",
-                                $"at ({_navAgent.destination.x:F1},{_navAgent.destination.z:F1}) dist={dist:F2} time={_moveTimer:F1}s");
                             _moveTimer = 0;
-                            OnArrivedAtTarget();
+                            _lastProgressDist = float.MaxValue;
+                            _stuckProgressTimer = 0f;
+                            if (_isWandering)
+                            {
+                                _isWandering = false;
+                                _substate = "idle";
+                                _wanderTimer = 0f;
+                            }
+                            else
+                            {
+                                AIDebugLogger.LogState(chefName, "moving", "arrived",
+                                    $"at ({_navAgent.destination.x:F1},{_navAgent.destination.z:F1}) dist={dist:F2} time={_moveTimer:F1}s");
+                                OnArrivedAtTarget();
+                            }
                         }
                         else if (_moveTimer > stuckTimeout)
                         {
-                            Debug.LogWarning($"[{chefName}] Stuck moving for {stuckTimeout}s, abandoning task");
-                            AIDebugLogger.LogWarning(chefName,
-                                $"Stuck moving for {stuckTimeout}s (dist={dist:F1})");
-                            AbandonTask();
+                            if (_isWandering)
+                            {
+                                _isWandering = false;
+                                _substate = "idle";
+                            }
+                            else
+                            {
+                                Debug.LogWarning($"[{chefName}] Stuck moving for {stuckTimeout}s, abandoning task");
+                                AIDebugLogger.LogWarning(chefName, $"Stuck moving for {stuckTimeout}s (dist={dist:F1})");
+                                AbandonTask();
+                            }
                         }
                     }
                     break;
 
                 case "interacting":
                     debugState = "interacting";
+                    FaceTarget();
                     if (_stateTimer > 0.15f) // brief delay to simulate interaction
                     {
                         ExecuteInteraction();
@@ -191,6 +268,7 @@ namespace Kitchen.AI
 
                 case "working":
                     debugState = $"working {_stateTimer:F1}s";
+                    FaceTarget();
                     if (_stateTimer >= (_currentTask?.duration ?? 1.0f))
                     {
                         AIDebugLogger.LogState(chefName, "working", "done",
@@ -384,6 +462,8 @@ namespace Kitchen.AI
             _navAgent.isStopped = false;
             _substate = "moving";
             _moveTimer = 0;
+            _lastProgressDist = float.MaxValue;
+            _stuckProgressTimer = 0f;
             debugState = $"move → ({target.x:F1}, {target.z:F1})";
         }
 
@@ -400,6 +480,23 @@ namespace Kitchen.AI
             }
         }
 
+        private void StartWander()
+        {
+            Vector3 randomDir = Random.insideUnitSphere * _wanderRadius;
+            randomDir.y = 0;
+            Vector3 target = transform.position + randomDir;
+            if (NavMesh.SamplePosition(target, out NavMeshHit hit, _wanderRadius, NavMesh.AllAreas))
+            {
+                _navAgent.SetDestination(hit.position);
+                _navAgent.isStopped = false;
+                _isWandering = true;
+                _substate = "moving";
+                _moveTimer = 0;
+                _lastProgressDist = float.MaxValue;
+                _stuckProgressTimer = 0f;
+            }
+        }
+
         #endregion
 
         #region Task Execution
@@ -409,6 +506,7 @@ namespace Kitchen.AI
         /// </summary>
         public void AssignTask(KitchenTask task)
         {
+            _isWandering = false; // Cancel any wandering
             _currentTask = task;
             _execPhase = ExecPhase.None;
             _carryTargetItem = null;
@@ -1678,11 +1776,22 @@ namespace Kitchen.AI
 
         #region Utility
 
+        /// <summary>Smoothly rotate to face the target counter.</summary>
+        private void FaceTarget()
+        {
+            if (_targetCounter == null) return;
+            Vector3 dir = _targetCounter.transform.position - transform.position;
+            dir.y = 0;
+            if (dir.magnitude < 0.01f) return;
+            Quaternion targetRot = Quaternion.LookRotation(dir.normalized);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, 15f * Time.deltaTime);
+        }
+
         /// <summary>
         /// Return the counter center as the movement target.
         /// NavMeshAgent cannot path into the counter (non-walkable),
         /// so it will stop at the NavMesh edge. Arrival is triggered
-        /// when within interactionRange * 0.4f of this point.
+        /// when within interactionRange * arrivalThreshold of this point.
         /// </summary>
         private Vector3 GetApproachPosition(BaseCounter counter)
         {
@@ -1707,7 +1816,7 @@ namespace Kitchen.AI
             Gizmos.color = new Color(chefColor.r, chefColor.g, chefColor.b, 0.3f);
             Gizmos.DrawWireSphere(transform.position, interactionRange);
             Gizmos.color = new Color(chefColor.r, chefColor.g, chefColor.b, 0.1f);
-            Gizmos.DrawWireSphere(transform.position, interactionRange * 0.4f);
+            Gizmos.DrawWireSphere(transform.position, interactionRange * arrivalThreshold);
 
             // Draw target
             if (_substate == "moving" && _navAgent != null)

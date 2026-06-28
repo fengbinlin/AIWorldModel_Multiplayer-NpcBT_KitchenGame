@@ -100,6 +100,10 @@ namespace Kitchen
             {
                 var playerObj = Instantiate(playerPrefab);
                 playerObj.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
+
+                // Hide the Player visual in dev mode (AI-only local testing)
+                foreach (var r in playerObj.GetComponentsInChildren<Renderer>())
+                    r.enabled = false;
             }
 
             Debug.Log("[LocalPlayBootstrap] 启动完成！游戏处于 WaitingToStart 状态");

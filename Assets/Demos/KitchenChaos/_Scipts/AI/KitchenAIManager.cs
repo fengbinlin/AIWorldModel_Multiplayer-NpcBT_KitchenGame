@@ -1,5 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
+using Kitchen.Player;
+using Kitchen.Visual;
+using Nico.Network;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -24,7 +27,23 @@ namespace Kitchen.AI
         [SerializeField] private float _scheduleInterval = 0.5f;
         [SerializeField] private bool _autoStart = true;
 
-        [Header("AI Chef References")]
+        [Header("AI Chef Spawning")]
+        [SerializeField] private GameObject _aiChefPrefab;
+        [SerializeField] private List<Transform> _spawnPoints = new();
+        [SerializeField] private float _aiMoveSpeed = 8f;
+        [SerializeField] private float _aiInteractionRange = 2f;
+        [Range(0.1f, 1f)][SerializeField] private float _aiArrivalThreshold = 0.4f;
+        [SerializeField] private float _aiStuckTimeout = 8f;
+        [SerializeField] private float _aiAgentRadius = 0.9f;
+        [SerializeField] private UnityEngine.AI.ObstacleAvoidanceType _aiAvoidanceQuality = UnityEngine.AI.ObstacleAvoidanceType.HighQualityObstacleAvoidance;
+        [SerializeField] private int _aiAvoidancePriority = 50;
+        [SerializeField] private List<Color> _aiColors = new()
+        {
+            Color.red, Color.blue, Color.green, Color.yellow,
+            Color.cyan, Color.magenta, new Color(1f, 0.5f, 0f), new Color(0.5f, 0f, 1f),
+        };
+
+        [Header("AI Chef References (scene-placed)")]
         [SerializeField] private List<AIChefController> _aiChefs = new();
 
         [Header("Debug")]
@@ -99,10 +118,64 @@ namespace Kitchen.AI
             _blackboard.LoadRecipes();
             // Fresh start
 
+            // Spawn AI chefs from prefab at each spawn point
+            if (_aiChefPrefab != null && _spawnPoints.Count > 0)
+            {
+                int colorIdx = 0;
+                foreach (var spawnPoint in _spawnPoints)
+                {
+                    if (spawnPoint == null) continue;
+                    var chefObj = Instantiate(_aiChefPrefab, spawnPoint.position, spawnPoint.rotation);
+                    chefObj.tag = "Untagged";
+                    chefObj.layer = LayerMask.NameToLayer("Default");
+
+                    // Disable Player and network transform components (AI uses NavMeshAgent)
+                    var playerComp = chefObj.GetComponent<Player.Player>();
+                    if (playerComp != null) playerComp.enabled = false;
+                    var cnt = chefObj.GetComponent<ClientNetworkTransform>();
+                    if (cnt != null) cnt.enabled = false;
+
+                    // Strip visual/animation components from PlayerVisual child
+                    var visual = chefObj.transform.Find("PlayerVisual");
+                    if (visual != null)
+                    {
+                        Destroy(visual.GetComponent<Animator>());
+                        Destroy(visual.GetComponent<PlayerVisual>());
+                        Destroy(visual.GetComponent<PlayerAnimator>());
+                        Destroy(visual.GetComponent<ClientNetworkAnimator>());
+                    }
+
+                    var chef = chefObj.GetComponent<AIChefController>();
+                    if (chef == null)
+                        chef = chefObj.AddComponent<AIChefController>();
+                    chef.moveSpeed = _aiMoveSpeed;
+                    chef.interactionRange = _aiInteractionRange;
+                    chef.arrivalThreshold = _aiArrivalThreshold;
+                    chef.stuckTimeout = _aiStuckTimeout;
+                    int priority = _aiAvoidancePriority + colorIdx;
+                    chef.SetAgentParams(_aiAgentRadius, _aiAvoidanceQuality, priority);
+
+                    // Assign distinct color
+                    Color c = _aiColors.Count > 0
+                        ? _aiColors[colorIdx % _aiColors.Count]
+                        : Color.HSVToRGB((float)colorIdx / _spawnPoints.Count, 0.8f, 0.9f);
+                    chef.chefColor = c;
+                    foreach (var r in chefObj.GetComponentsInChildren<Renderer>())
+                    {
+                        foreach (var m in r.materials)
+                            m.color = c;
+                    }
+                    colorIdx++;
+
+                    _aiChefs.Add(chef);
+                    RegisterAgent(chef);
+                }
+            }
+
             // Register scene-placed AI chefs
             foreach (var chef in _aiChefs)
             {
-                if (chef != null)
+                if (chef != null && !_agentStates.Any(a => a.controller == chef))
                     RegisterAgent(chef);
             }
 

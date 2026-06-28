@@ -114,6 +114,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 806168074867185679}
   - {fileID: 5363486255512309638}
   - {fileID: 2224432714669011744}
   - {fileID: 6819359619486548727}
@@ -131,8 +132,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 3657294347
-  InScenePlacedSourceGlobalObjectIdHash: 0
+  GlobalObjectIdHash: 1883985606
+  InScenePlacedSourceGlobalObjectIdHash: 3084294324
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
   ActiveSceneSynchronization: 0
@@ -155,10 +156,42 @@ MonoBehaviour:
   chefName: AI_Chef
   chefColor: {r: 1, g: 1, b: 1, a: 1}
   agentId: -1
-  interactionRange: 0.5
+  moveSpeed: 8
+  interactionRange: 2
   stuckTimeout: 8
   showDebugGizmos: 1
   debugState: idle
+--- !u!1 &5507967960356065981
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 806168074867185679}
+  m_Layer: 0
+  m_Name: KitchenObjHoldPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &806168074867185679
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5507967960356065981}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.2, z: 0.8}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3714376028968215747}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &5962147326189546007
 GameObject:
   m_ObjectHideFlags: 0

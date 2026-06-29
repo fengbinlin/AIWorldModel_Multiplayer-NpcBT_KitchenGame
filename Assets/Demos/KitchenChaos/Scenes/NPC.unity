@@ -14589,9 +14589,22 @@ MonoBehaviour:
   - {fileID: 671155257}
   - {fileID: 2042069038}
   - {fileID: 367351757}
-  _aiMoveSpeed: 8
+  _aiMoveSpeed: 12
   _aiInteractionRange: 2
+  _aiArrivalThreshold: 0.4
   _aiStuckTimeout: 8
+  _aiAgentRadius: 0.5
+  _aiAvoidanceQuality: 2
+  _aiAvoidancePriority: 50
+  _aiColors:
+  - {r: 1, g: 0, b: 0, a: 1}
+  - {r: 0, g: 0, b: 1, a: 1}
+  - {r: 0, g: 1, b: 0, a: 1}
+  - {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  - {r: 0, g: 1, b: 1, a: 1}
+  - {r: 1, g: 0, b: 1, a: 1}
+  - {r: 1, g: 0.5, b: 0, a: 1}
+  - {r: 0.5, g: 0, b: 1, a: 1}
   _aiChefs: []
   _verboseLogging: 1
 --- !u!4 &1643637505

@@ -23,7 +23,12 @@
       "Bash(git commit -m 'fix: prevent placing unprocessable items on StoveCounter and CuttingCounter *)",
       "Bash(git checkout *)",
       "Bash(git cherry-pick *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\B0_Space\\\\UnityProject\\\\AIWorldModel_Multiplayer-NpcBT_KitchenGame\\\\Assets\" -Recurse -Directory -Filter \"*AI*\" -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object FullName)",
+      "Bash(Get-ChildItem -Path \"D:\\\\B0_Space\\\\UnityProject\\\\AIWorldModel_Multiplayer-NpcBT_KitchenGame\\\\Assets\" -Recurse -Directory -Filter \"*NPC*\" -ErrorAction SilentlyContinue)",
+      "Bash(Get-ChildItem -Path \"D:\\\\B0_Space\\\\UnityProject\\\\AIWorldModel_Multiplayer-NpcBT_KitchenGame\\\\Assets\" -Recurse -Directory -Filter \"*BT*\" -ErrorAction SilentlyContinue)",
+      "Bash(Get-ChildItem *)"
     ]
   }
 }

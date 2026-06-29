@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.AI;
 using Unity.Netcode;
+using Pathfinding;
 
 namespace Kitchen.AI
 {
@@ -31,13 +31,18 @@ namespace Kitchen.AI
         public float moveSpeed
         {
             get => _moveSpeed;
-            set { _moveSpeed = value; if (_navAgent != null) _navAgent.speed = value; }
+            set { _moveSpeed = value; if (_ai != null) _ai.maxSpeed = value; }
         }
         public float interactionRange = 1.8f;
         [Range(0.1f, 1f)] public float arrivalThreshold = 0.4f;
         public float stuckTimeout = 8.0f;
 
-        private NavMeshAgent _navAgent;
+        /// <summary>Distance offset for approach-point candidates (front/back/left/right of target).</summary>
+        [Header("Approach")]
+        [SerializeField] private float _approachOffset = 0.5f;
+
+        private IAstarAI _ai;          // A* Pathfinding Project movement component
+        private AIPath _aiPath;       // cached AIPath component for settings access
 
         [Header("Debug")]
         public bool showDebugGizmos = true;
@@ -49,7 +54,8 @@ namespace Kitchen.AI
 
         private KitchenTask _currentTask;
         private BaseCounter _targetCounter;
-        private string _substate = "idle"; // idle | moving | interacting | working | waiting | wandering
+        private string _substate = "idle"; // idle | moving | interacting | working | waiting | paused
+        private string _pauseCallback;    // what to do after pause: "arrived" | "idle"
         private float _stateTimer;
         private float _moveTimer;
         private float _waitTimer;
@@ -86,6 +92,10 @@ namespace Kitchen.AI
         // References
         private KitchenAIManager _aiManager;
 
+        // Debug: last computed approach point (for gizmo comparison)
+        private Vector3 _lastApproachPoint;
+        private bool _hasApproachPoint;
+
         #endregion
 
         #region Public Properties
@@ -95,15 +105,32 @@ namespace Kitchen.AI
         public bool IsIdle => _currentTask == null || _currentTask.status == "completed";
         public KitchenObj HeldItem => _heldItem;
 
-        /// <summary>Apply NavMeshAgent params after spawn (called by KitchenAIManager).</summary>
-        public void SetAgentParams(float radius, ObstacleAvoidanceType avoidance, int priority)
+        /// <summary>Apply A* Pathfinding + RVO params after spawn (called by KitchenAIManager).</summary>
+        public void SetAIParams(float radius, float maxSpeed, float rvoPriority, float approachOffset)
         {
-            if (_navAgent != null)
+            if (_aiPath != null)
             {
-                _navAgent.radius = radius;
-                _navAgent.obstacleAvoidanceType = avoidance;
-                _navAgent.avoidancePriority = priority;
+                _aiPath.radius = radius;
             }
+            if (_ai != null)
+            {
+                _ai.maxSpeed = maxSpeed;
+            }
+            _approachOffset = approachOffset;
+
+            // RVOController is handled by AIBase — it auto-syncs radius/height from AIPath.
+            // Manually set the priority for local avoidance.
+            var rvo = GetComponent<Pathfinding.RVO.RVOController>();
+            if (rvo != null)
+            {
+                rvo.priority = rvoPriority;
+            }
+        }
+
+        /// <summary>Set approach-offset independently (for scene-placed chefs).</summary>
+        public void SetApproachOffset(float offset)
+        {
+            _approachOffset = offset;
         }
 
         #endregion
@@ -112,34 +139,59 @@ namespace Kitchen.AI
 
         private void Awake()
         {
-            // Create hold point for items
-            var holdGo = new GameObject("AI_HoldPoint");
-            holdGo.transform.SetParent(transform);
-            holdGo.transform.localPosition = new Vector3(0, 1.5f, 0.9f);
-            _holdPoint = holdGo.transform;
+            // Use existing hold point from prefab, or create one
+            _holdPoint = transform.Find("KitchenObjHoldPoint");
+            if (_holdPoint == null)
+                _holdPoint = transform.Find("topSpawnPoint"); // Player's hold point name
+            if (_holdPoint == null)
+            {
+                var holdGo = new GameObject("AI_HoldPoint");
+                holdGo.transform.SetParent(transform);
+                holdGo.transform.localPosition = new Vector3(0, 1.5f, 0.9f);
+                _holdPoint = holdGo.transform;
+            }
 
             // Ensure NetworkObject is present
             if (GetComponent<NetworkObject>() == null)
                 gameObject.AddComponent<NetworkObject>();
 
-            // Disable physics colliders — NavMeshAgent handles movement/avoidance
+            // Disable physics colliders — A* pathfinding + RVO handles movement/avoidance
             foreach (var col in GetComponents<Collider>())
                 col.enabled = false;
             foreach (var col in GetComponentsInChildren<Collider>())
                 col.enabled = false;
 
-            _navAgent = GetComponent<NavMeshAgent>();
-            if (_navAgent == null)
-                _navAgent = gameObject.AddComponent<NavMeshAgent>();
-            _navAgent.speed = _moveSpeed;
-            _navAgent.angularSpeed = 720f;
-            _navAgent.acceleration = 50f;
-            _navAgent.stoppingDistance = 0f;
-            _navAgent.autoBraking = true;
-            _navAgent.radius = 0.5f;
-            _navAgent.height = 1.8f;
-            _navAgent.obstacleAvoidanceType = ObstacleAvoidanceType.LowQualityObstacleAvoidance;
-            _navAgent.avoidancePriority = 50;
+            // --- A* Pathfinding Project setup ---
+            _aiPath = GetComponent<AIPath>();
+            if (_aiPath == null)
+                _aiPath = gameObject.AddComponent<AIPath>();
+            _ai = _aiPath; // IAstarAI interface
+
+            // AIPath defaults (overridden later by SetAIParams)
+            _aiPath.radius = 0.5f;
+            _aiPath.height = 1.8f;
+            _ai.maxSpeed = _moveSpeed;
+            _aiPath.rotationSpeed = 180f;
+            _aiPath.endReachedDistance = 0.3f;    // must reach close to exact point before arrival
+            _aiPath.slowdownDistance = 3f;       // long deceleration to prevent overshoot at high speed
+            _aiPath.pickNextWaypointDist = 8f;   // look far ahead = prefer wide open routes
+            _aiPath.whenCloseToDestination = CloseToDestinationMode.ContinueToExactDestination;
+            _aiPath.constrainInsideGraph = true;   // prevent RVO from pushing agent off navmesh into walls
+
+            // Auto repath: dynamic mode adapts to changing kitchen environment
+            _aiPath.autoRepath.mode = AutoRepathPolicy.Mode.Dynamic;
+
+            // RVO Controller for local avoidance (AIBase auto-integrates it)
+            var rvo = GetComponent<Pathfinding.RVO.RVOController>();
+            if (rvo == null)
+                rvo = gameObject.AddComponent<Pathfinding.RVO.RVOController>();
+            rvo.radius = 0.5f;
+            rvo.height = 1.8f;
+            rvo.agentTimeHorizon = 2f;        // look ahead for agent-agent collision
+            rvo.obstacleTimeHorizon = 2f;     // look 2s ahead for static obstacles
+            rvo.maxNeighbours = 20;           // consider more nearby agents
+            rvo.lockWhenNotMoving = false;    // keep avoiding even when stationary
+            rvo.priority = 0.5f; // default, overridden by SetAIParams
         }
 
         private void Start()
@@ -177,6 +229,11 @@ namespace Kitchen.AI
         {
             _stateTimer += Time.deltaTime;
 
+            // RVO lock: agents working, interacting, waiting, or paused hold their ground as static obstacles
+            var rvo = GetComponent<Pathfinding.RVO.RVOController>();
+            if (rvo != null)
+                rvo.locked = (_substate == "waiting" || _substate == "working" || _substate == "interacting" || _substate == "paused");
+
             switch (_substate)
             {
                 case "idle":
@@ -194,9 +251,8 @@ namespace Kitchen.AI
 
                 case "moving":
                     {
-                        float dist = _navAgent.pathPending ? float.MaxValue :
-                            Vector3.Distance(transform.position, _navAgent.destination);
-                        debugState = _isWandering ? $"wandering d={dist:F1}" : $"moving → ({_navAgent.destination.x:F0},{_navAgent.destination.z:F0}) d={dist:F1}";
+                        float dist = _ai.pathPending ? float.MaxValue : _ai.remainingDistance;
+                        debugState = _isWandering ? $"wandering d={dist:F1}" : $"moving → ({_ai.destination.x:F0},{_ai.destination.z:F0}) d={dist:F1}";
                         _moveTimer += Time.deltaTime;
 
                         // Track progress: if distance hasn't decreased significantly in 2s, repath
@@ -214,16 +270,15 @@ namespace Kitchen.AI
                             // Stuck in a crowd — force repath with a small random offset
                             Vector3 jitter = Random.insideUnitSphere * 0.5f;
                             jitter.y = 0;
-                            if (_navAgent.SetDestination(_navAgent.destination + jitter))
-                            {
-                                _stuckProgressTimer = 0f;
-                                _lastProgressDist = float.MaxValue;
-                            }
+                            _ai.destination = _ai.destination + jitter;
+                            _ai.SearchPath();
+                            _stuckProgressTimer = 0f;
+                            _lastProgressDist = float.MaxValue;
                         }
 
-                        if (!_navAgent.pathPending && dist < interactionRange * arrivalThreshold)
+                        if (!_ai.pathPending && _ai.reachedDestination)
                         {
-                            _navAgent.isStopped = true;
+                            _ai.isStopped = true;
                             _moveTimer = 0;
                             _lastProgressDist = float.MaxValue;
                             _stuckProgressTimer = 0f;
@@ -236,8 +291,10 @@ namespace Kitchen.AI
                             else
                             {
                                 AIDebugLogger.LogState(chefName, "moving", "arrived",
-                                    $"at ({_navAgent.destination.x:F1},{_navAgent.destination.z:F1}) dist={dist:F2} time={_moveTimer:F1}s");
-                                OnArrivedAtTarget();
+                                    $"at ({_ai.destination.x:F1},{_ai.destination.z:F1}) dist={dist:F2} time={_moveTimer:F1}s");
+                                _substate = "paused";
+                                _stateTimer = 0;
+                                _pauseCallback = "arrived";
                             }
                         }
                         else if (_moveTimer > stuckTimeout)
@@ -295,7 +352,7 @@ namespace Kitchen.AI
                                         AIDebugLogger.Log(chefName, $"Delivering {_heldItem.objEnum} directly to plate at {plateTarget.name}");
                                         _execPhase = ExecPhase.GotoDest;
                                         _targetCounter = plateTarget;
-                                        MoveTo(GetApproachPosition(plateTarget));
+                                        if (!MoveTo(plateTarget.transform.position)) { AbandonTask(); return; };
                                         break;
                                     }
                                     // Fallback: drop on nearest free counter
@@ -305,7 +362,7 @@ namespace Kitchen.AI
                                         AIDebugLogger.Log(chefName, $"Delivering {_heldItem.objEnum} to {dropTarget.name}");
                                         _execPhase = ExecPhase.GotoDest;
                                         _targetCounter = dropTarget;
-                                        MoveTo(GetApproachPosition(dropTarget));
+                                        if (!MoveTo(dropTarget.transform.position)) { AbandonTask(); return; };
                                         break;
                                     }
                                 }
@@ -329,6 +386,7 @@ namespace Kitchen.AI
                 case "waiting":
                     debugState = $"waiting {_waitTimer:F1}s";
                     _waitTimer += Time.deltaTime;
+                    FaceTarget();
 
                     // Check if we can proceed (periodic re-check)
                     if (_waitTimer > 0.3f && CanProceedFromWaiting())
@@ -349,11 +407,31 @@ namespace Kitchen.AI
                         AbandonTask();
                     }
                     break;
+
+                case "paused":
+                    debugState = $"paused {_stateTimer:F2}s";
+                    FaceTarget();
+                    if (_stateTimer > 0.05f)
+                    {
+                        if (_pauseCallback == "arrived")
+                        {
+                            OnArrivedAtTarget();
+                        }
+                        else // "idle" after task completion
+                        {
+                            _substate = "idle";
+                            debugState = "idle";
+                        }
+                    }
+                    break;
             }
         }
 
         private void OnArrivedAtTarget()
         {
+            // Snap-face the original target immediately (before state transition)
+            SnapFaceTarget();
+
             switch (_execPhase)
             {
                 case ExecPhase.GotoItem:
@@ -372,7 +450,7 @@ namespace Kitchen.AI
                                 ? GetApproachPosition(holdingCounter)
                                 : _carryTargetItem.transform.position;
                             AIDebugLogger.Log(chefName, $"GotoItem: found alternative {_carryTargetItem.objEnum}, re-targeting");
-                            MoveTo(newTarget);
+                            if (!MoveTo(newTarget)) { AbandonTask(); return; };
                             break; // Will re-enter GotoItem on next arrival
                         }
                         AIDebugLogger.LogWarning(chefName, $"GotoItem: no {_currentTask.itemType} found anywhere, abandoning");
@@ -411,7 +489,7 @@ namespace Kitchen.AI
                             AIDebugLogger.LogState(chefName, "GotoItem", "GotoDest",
                                 $"carrying {_heldItem?.objEnum}, heading to {_targetCounter.name}");
                         }
-                        MoveTo(GetApproachPosition(_targetCounter));
+                        if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; };
                     }
                     else if (_heldItem == null)
                     {
@@ -449,35 +527,92 @@ namespace Kitchen.AI
 
         #region Movement
 
-        public void MoveTo(Vector3 target)
+        /// <summary>
+        /// Unified movement method. Generates 4 cardinal candidate points (front/back/left/right
+        /// at _approachOffset) around the original target, picks the one closest to the target
+        /// that lies on the NavMesh, and starts moving there.
+        /// Returns false if no candidate is on the NavMesh — caller decides how to handle failure.
+        /// </summary>
+        public bool MoveTo(Vector3 originalTarget)
         {
-            if (NavMesh.SamplePosition(target, out NavMeshHit hit, 1.5f, NavMesh.AllAreas))
+            Vector3 bestPoint = originalTarget;
+            float bestDist = float.MaxValue;
+            bool found = false;
+
+            // 4 cardinal direction candidates at _approachOffset
+            Vector3[] offsets = new Vector3[]
             {
-                _navAgent.SetDestination(hit.position);
+                new Vector3(_approachOffset, 0, 0),
+                new Vector3(-_approachOffset, 0, 0),
+                new Vector3(0, 0, _approachOffset),
+                new Vector3(0, 0, -_approachOffset),
+            };
+
+            if (AstarPath.active != null)
+            {
+                foreach (var offset in offsets)
+                {
+                    var candidate = originalTarget + offset;
+                    var nearest = AstarPath.active.GetNearest(candidate);
+                    // Only accept if the candidate itself is on the NavMesh (within tight tolerance)
+                    if (nearest.node != null && Vector3.Distance(nearest.position, candidate) < 0.01f)
+                    {
+                        float dist = Vector3.Distance(candidate, originalTarget);
+                        if (dist < bestDist)
+                        {
+                            bestDist = dist;
+                            bestPoint = candidate;
+                            found = true;
+                        }
+                    }
+                }
             }
             else
             {
-                _navAgent.SetDestination(target);
+                // No AstarPath in scene — use original target as-is
+                found = true;
             }
-            _navAgent.isStopped = false;
+
+            if (!found)
+            {
+                // Fallback: no candidate on NavMesh → use GetNearest on the original target
+                if (AstarPath.active != null)
+                {
+                    var fallback = AstarPath.active.GetNearest(originalTarget);
+                    if (fallback.node != null)
+                    {
+                        bestPoint = fallback.position;
+                        found = true;
+                        Debug.Log($"[{chefName}] MoveTo: approach failed, fallback GetNearest → ({bestPoint.x:F1},{bestPoint.z:F1})");
+                    }
+                }
+            }
+
+            if (!found)
+            {
+                Debug.LogWarning($"[{chefName}] MoveTo: no valid navmesh point near ({originalTarget.x:F1},{originalTarget.z:F1}) offset={_approachOffset}");
+                return false;
+            }
+
+            _ai.destination = bestPoint;
+            _ai.SearchPath();
+            _ai.isStopped = false;
             _substate = "moving";
             _moveTimer = 0;
             _lastProgressDist = float.MaxValue;
             _stuckProgressTimer = 0f;
-            debugState = $"move → ({target.x:F1}, {target.z:F1})";
+            _lastApproachPoint = bestPoint;
+            _hasApproachPoint = true;
+            debugState = $"move → ({bestPoint.x:F1}, {bestPoint.z:F1})";
+            return true;
         }
 
         private void UpdateMovement()
         {
             if (_substate != "moving") return;
 
-            // Clamp Y to ground level
-            Vector3 pos = transform.position;
-            if (Mathf.Abs(pos.y) > 0.1f)
-            {
-                pos.y = 0;
-                _navAgent.Warp(pos);
-            }
+            // AIPath handles vertical positioning automatically via graph constraints.
+            // No Y-clamping needed.
         }
 
         private void StartWander()
@@ -485,16 +620,15 @@ namespace Kitchen.AI
             Vector3 randomDir = Random.insideUnitSphere * _wanderRadius;
             randomDir.y = 0;
             Vector3 target = transform.position + randomDir;
-            if (NavMesh.SamplePosition(target, out NavMeshHit hit, _wanderRadius, NavMesh.AllAreas))
+
+            if (!MoveTo(target))
             {
-                _navAgent.SetDestination(hit.position);
-                _navAgent.isStopped = false;
-                _isWandering = true;
-                _substate = "moving";
-                _moveTimer = 0;
-                _lastProgressDist = float.MaxValue;
-                _stuckProgressTimer = 0f;
+                // No valid approach point — skip this wander
+                _isWandering = false;
+                _substate = "idle";
+                return;
             }
+            _isWandering = true;
         }
 
         #endregion
@@ -566,7 +700,7 @@ namespace Kitchen.AI
                 if (_targetCounter != null && _targetCounter != counter)
                 {
                     _execPhase = ExecPhase.GotoDest;
-                    MoveTo(GetApproachPosition(_targetCounter));
+                    if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; }
                 }
                 else
                 {
@@ -574,7 +708,7 @@ namespace Kitchen.AI
                     var dropTarget = FindNearestFreeCounter(counter.transform.position);
                     _targetCounter = dropTarget ?? counter;
                     _execPhase = ExecPhase.GotoDest;
-                    MoveTo(GetApproachPosition(_targetCounter));
+                    if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; }
                 }
                 return;
             }
@@ -582,7 +716,7 @@ namespace Kitchen.AI
             // Phase 1: Go to ContainerCounter
             _targetCounter = counter;
             _execPhase = ExecPhase.None;
-            MoveTo(GetApproachPosition(counter));
+            if (!MoveTo(counter.transform.position)) { AbandonTask(); return; }
         }
 
         /// <summary>
@@ -743,14 +877,14 @@ namespace Kitchen.AI
                 // Holding the right input — go drop it and start processing
                 AIDebugLogger.Log(chefName, $"ExecuteProcess: holding {_heldItem.objEnum}, → GotoFacility {counter.name}");
                 _execPhase = ExecPhase.GotoFacility;
-                MoveTo(approachPos);
+                if (!MoveTo(counter.transform.position)) { AbandonTask(); return; }
             }
             else if (counter.HasKitchenObj())
             {
                 string counterItem = counter.GetKitchenObj().objEnum.ToString();
                 AIDebugLogger.Log(chefName, $"ExecuteProcess: counter {counter.name} has {counterItem}, → direct interact");
                 _execPhase = ExecPhase.None;
-                MoveTo(approachPos);
+                if (!MoveTo(counter.transform.position)) { AbandonTask(); return; }
             }
             else
             {
@@ -766,7 +900,7 @@ namespace Kitchen.AI
                     _carryTargetItem = foundItem;
                     _carryDestPos = approachPos;
                     _execPhase = ExecPhase.GotoItem;
-                    MoveTo(pickupPos);
+                    if (!MoveTo(pickupPos)) { AbandonTask(); return; };
                 }
                 else
                 {
@@ -789,7 +923,7 @@ namespace Kitchen.AI
                 // Already holding a plate — go deliver it
                 _targetCounter = dropCounter ?? FindNearestFreeCounter(transform.position);
                 _execPhase = ExecPhase.GotoDest;
-                MoveTo(GetApproachPosition(_targetCounter));
+                if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; }
                 return;
             }
 
@@ -801,7 +935,7 @@ namespace Kitchen.AI
                 return;
             }
             _execPhase = ExecPhase.None;
-            MoveTo(GetApproachPosition(_targetCounter));
+            if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; }
         }
 
         private void ExecuteAddToPlate(KitchenTask task)
@@ -835,7 +969,9 @@ namespace Kitchen.AI
                 _targetCounter = correctPlateCounter;
                 _execPhase = ExecPhase.GotoDest;
                 if (_targetCounter != null)
-                    MoveTo(GetApproachPosition(_targetCounter));
+                {
+                    if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; }
+                }
                 else
                     AbandonTask();
                 return;
@@ -860,7 +996,7 @@ namespace Kitchen.AI
                 _carryTargetItem = ingredient;
                 _targetCounter = correctPlateCounter;
                 _execPhase = ExecPhase.GotoItem;
-                MoveTo(pickupPos);
+                if (!MoveTo(pickupPos)) { AbandonTask(); return; };
                 return;
             }
 
@@ -886,7 +1022,7 @@ namespace Kitchen.AI
                 _carryTargetItem = task.targetItem;
                 _carryDestPos = GetApproachPosition(counter);
                 _execPhase = ExecPhase.GotoItem;
-                MoveTo(task.targetItem.transform.position);
+                if (!MoveTo(task.targetItem.transform.position)) { AbandonTask(); return; };
             }
             else
             {
@@ -917,7 +1053,7 @@ namespace Kitchen.AI
                     _carryTargetItem = bestPlate;
                     _carryDestPos = GetApproachPosition(counter);
                     _execPhase = ExecPhase.GotoItem;
-                    MoveTo(bestPlate.transform.position);
+                    if (!MoveTo(bestPlate.transform.position)) { AbandonTask(); return; };
                 }
                 else
                 {
@@ -947,7 +1083,7 @@ namespace Kitchen.AI
                 AIDebugLogger.Log(chefName, $"ExecuteTrash: holding {_heldItem.objEnum}, heading to TrashCounter");
                 _targetCounter = trashCounter;
                 _execPhase = ExecPhase.GotoDest;
-                MoveTo(GetApproachPosition(trashCounter));
+                if (!MoveTo(trashCounter.transform.position)) { AbandonTask(); return; }
                 return;
             }
 
@@ -962,7 +1098,7 @@ namespace Kitchen.AI
             _carryTargetItem = wasteItem;
             _targetCounter = trashCounter;
             _execPhase = ExecPhase.GotoItem;
-            MoveTo(pickupPos);
+            if (!MoveTo(pickupPos)) { AbandonTask(); return; };
         }
 
         #endregion
@@ -984,7 +1120,7 @@ namespace Kitchen.AI
                 // Not close enough — move closer first
                 _substate = "moving";
                 _stateTimer = 0;
-                MoveTo(GetApproachPosition(_targetCounter));
+                if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; };
                 return;
             }
 
@@ -1011,7 +1147,7 @@ namespace Kitchen.AI
                             AIDebugLogger.Log(chefName, $"FETCH got {_heldItem.objEnum}, delivering to {dropTarget.name}");
                             _targetCounter = dropTarget;
                             _execPhase = ExecPhase.GotoDest;
-                            MoveTo(GetApproachPosition(dropTarget));
+                            if (!MoveTo(dropTarget.transform.position)) { AbandonTask(); return; };
                         }
                         else
                         {
@@ -1023,7 +1159,7 @@ namespace Kitchen.AI
                                 AIDebugLogger.Log(chefName, $"FETCH got {_heldItem.objEnum}, fallback drop to {fallback.name}");
                                 _targetCounter = fallback;
                                 _execPhase = ExecPhase.GotoDest;
-                                MoveTo(GetApproachPosition(fallback));
+                                if (!MoveTo(fallback.transform.position)) { AbandonTask(); return; };
                             }
                             else
                             {
@@ -1067,7 +1203,7 @@ namespace Kitchen.AI
                         Debug.Log($"[{chefName}] Got plate, delivering to {dropTarget.name}");
                         _targetCounter = dropTarget;
                         _execPhase = ExecPhase.GotoDest;
-                        MoveTo(GetApproachPosition(dropTarget));
+                        if (!MoveTo(dropTarget.transform.position)) { AbandonTask(); return; };
                     }
                     else
                     {
@@ -1115,7 +1251,7 @@ namespace Kitchen.AI
                             {
                                 _targetCounter = trash;
                                 _execPhase = ExecPhase.GotoDest;
-                                MoveTo(GetApproachPosition(trash));
+                                if (!MoveTo(trash.transform.position)) { AbandonTask(); return; };
                                 return; // will arrive, interact with trash, then CompleteTask
                             }
                         }
@@ -1274,7 +1410,7 @@ namespace Kitchen.AI
                     AIDebugLogger.Log(chefName, $"Re-fetching input {heldBeforeClear.objEnum} after clearing counter");
                     _carryTargetItem = heldBeforeClear;
                     _execPhase = ExecPhase.GotoItem;
-                    MoveTo(heldBeforeClear.transform.position);
+                    if (!MoveTo(heldBeforeClear.transform.position)) { AbandonTask(); return; };
                     return;
                 }
 
@@ -1292,7 +1428,7 @@ namespace Kitchen.AI
                         _carryTargetItem = foundItem;
                         _carryDestPos = GetApproachPosition(counter);
                         _execPhase = ExecPhase.GotoItem;
-                        MoveTo(pickupPos);
+                        if (!MoveTo(pickupPos)) { AbandonTask(); return; };
                         return;
                     }
                 }
@@ -1407,21 +1543,9 @@ namespace Kitchen.AI
         {
             if (_heldItem != null && _targetCounter != null)
             {
-                try
-                {
-                    _targetCounter.Interact(this);
-                    AIDebugLogger.Log(chefName, $"DropItemAtFacility: {_heldItem?.objEnum} → {_targetCounter.name}");
-                    Debug.Log($"[{chefName}] Dropped item at {_targetCounter.name}");
-                }
-                catch (System.Exception e)
-                {
-                    Debug.LogWarning($"[{chefName}] DropItemAtFacility failed: {e.Message}");
-                    AIDebugLogger.LogError(chefName, $"DropItemAtFacility failed: {e.Message}");
-                }
-            }
-            else
-            {
-                AIDebugLogger.LogWarning(chefName, $"DropItemAtFacility: held={_heldItem != null} counter={_targetCounter != null}");
+                _targetCounter.Interact(this);
+                AIDebugLogger.Log(chefName, $"DropItemAtFacility: {_heldItem?.objEnum} → {_targetCounter.name}");
+                Debug.Log($"[{chefName}] Dropped item at {_targetCounter.name}");
             }
 
             // Now start the actual work
@@ -1431,18 +1555,10 @@ namespace Kitchen.AI
 
         private void DropItemAtDestination()
         {
-            bool valid = _heldItem != null && _targetCounter != null;
-            if (valid)
+            if (_heldItem != null && _targetCounter != null)
             {
-                try
-                {
-                    _targetCounter.Interact(this);
-                    Debug.Log($"[{chefName}] Dropped item at destination {_targetCounter.name}");
-                }
-                catch (System.Exception e)
-                {
-                    Debug.LogWarning($"[{chefName}] DropItemAtDestination failed: {e.Message}");
-                }
+                _targetCounter.Interact(this);
+                Debug.Log($"[{chefName}] Dropped item at destination {_targetCounter.name}");
             }
 
             _execPhase = ExecPhase.None;
@@ -1525,7 +1641,20 @@ namespace Kitchen.AI
                         AIDebugLogger.Log(chefName, $"CleanupTask: moving to {dropCounter.name} to drop {_heldItem.objEnum} (dist={dist:F1})");
                         _targetCounter = dropCounter;
                         _execPhase = ExecPhase.GotoDest;
-                        MoveTo(GetApproachPosition(dropCounter));
+                        if (!MoveTo(dropCounter.transform.position))
+                        {
+                            // Can't approach — drop on ground instead
+                            AIDebugLogger.Log(chefName, $"CleanupTask: can't approach {dropCounter.name}, dropping on ground");
+                            KitchenObjFactory.Instance.DropObjServerRpc(
+                                _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                                Vector3.down, 0f, default);
+                            ClearKitchenObj();
+                            if (_currentTask != null) { _aiManager?.OnAgentTaskCompleted(this, _currentTask); _currentTask = null; }
+                            _substate = "idle";
+                            _execPhase = ExecPhase.None;
+                            _targetCounter = null;
+                            return;
+                        }
                         return;
                     }
                 }
@@ -1546,16 +1675,16 @@ namespace Kitchen.AI
                 _currentTask = null;
             }
 
-            _substate = "idle";
+            _substate = "paused";
+            _stateTimer = 0;
+            _pauseCallback = "idle";
             _execPhase = ExecPhase.None;
             _targetCounter = null;
             _carryTargetItem = null;
             _moveTimer = 0;
             _waitTimer = 0;
-            _stateTimer = 0;
-            _navAgent.isStopped = true;
-            _navAgent.ResetPath();
-            debugState = "idle";
+            _ai.isStopped = true;
+            debugState = "paused";
         }
 
         private void CompleteTask()
@@ -1608,8 +1737,7 @@ namespace Kitchen.AI
             _moveTimer = 0f;
             _waitTimer = 0f;
             _stateTimer = 0f;
-            _navAgent.isStopped = true;
-            _navAgent.ResetPath();
+            _ai.isStopped = true;
             debugState = "idle";
         }
 
@@ -1700,7 +1828,7 @@ namespace Kitchen.AI
                             (plateTarget != null ? " (direct-to-plate)" : ""));
                         _execPhase = ExecPhase.GotoDest;
                         _targetCounter = dropTarget;
-                        MoveTo(GetApproachPosition(dropTarget));
+                        if (!MoveTo(dropTarget.transform.position)) { CompleteTask(); return; }
                         return;
                     }
                 }
@@ -1776,6 +1904,16 @@ namespace Kitchen.AI
 
         #region Utility
 
+        /// <summary>Immediately snap to face the target counter (called on arrival).</summary>
+        private void SnapFaceTarget()
+        {
+            if (_targetCounter == null) return;
+            Vector3 dir = _targetCounter.transform.position - transform.position;
+            dir.y = 0;
+            if (dir.magnitude < 0.01f) return;
+            transform.rotation = Quaternion.LookRotation(dir.normalized);
+        }
+
         /// <summary>Smoothly rotate to face the target counter.</summary>
         private void FaceTarget()
         {
@@ -1789,9 +1927,8 @@ namespace Kitchen.AI
 
         /// <summary>
         /// Return the counter center as the movement target.
-        /// NavMeshAgent cannot path into the counter (non-walkable),
-        /// so it will stop at the NavMesh edge. Arrival is triggered
-        /// when within interactionRange * arrivalThreshold of this point.
+        /// AIPath will path as close as possible to the counter on the navmesh.
+        /// Arrival is triggered when within interactionRange * arrivalThreshold of this point.
         /// </summary>
         private Vector3 GetApproachPosition(BaseCounter counter)
         {
@@ -1819,11 +1956,50 @@ namespace Kitchen.AI
             Gizmos.DrawWireSphere(transform.position, interactionRange * arrivalThreshold);
 
             // Draw target
-            if (_substate == "moving" && _navAgent != null)
+            if (_substate == "moving" && _ai != null)
             {
                 Gizmos.color = Color.yellow;
-                Gizmos.DrawLine(transform.position, _navAgent.destination);
-                Gizmos.DrawWireSphere(_navAgent.destination, 0.3f);
+                Gizmos.DrawLine(transform.position, _ai.destination);
+                Gizmos.DrawWireSphere(_ai.destination, 0.3f);
+            }
+
+            // Draw selected approach point (larger cyan circle for comparison)
+            if (_hasApproachPoint)
+            {
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawWireSphere(_lastApproachPoint, 0.4f);
+            }
+
+            // Draw approach candidates (4 cardinal points around target counter)
+            if (_targetCounter != null && _approachOffset > 0)
+            {
+                Vector3 center = _targetCounter.transform.position;
+                center.y = 0;
+                Vector3[] offsets = new Vector3[]
+                {
+                    new Vector3(_approachOffset, 0, 0),
+                    new Vector3(-_approachOffset, 0, 0),
+                    new Vector3(0, 0, _approachOffset),
+                    new Vector3(0, 0, -_approachOffset),
+                };
+
+                foreach (var offset in offsets)
+                {
+                    var candidate = center + offset;
+                    bool onNavMesh = false;
+                    if (AstarPath.active != null)
+                    {
+                        var nearest = AstarPath.active.GetNearest(candidate);
+                        onNavMesh = nearest.node != null && Vector3.Distance(nearest.position, candidate) < 0.01f;
+                    }
+                    Gizmos.color = onNavMesh ? Color.green : Color.red;
+                    Gizmos.DrawWireSphere(candidate, 0.15f);
+                    // Cross to mark rejected candidates
+                    if (!onNavMesh)
+                    {
+                        Gizmos.DrawLine(candidate + Vector3.one * 0.1f, candidate - Vector3.one * 0.1f);
+                    }
+                }
             }
 
             // Draw held item indicator

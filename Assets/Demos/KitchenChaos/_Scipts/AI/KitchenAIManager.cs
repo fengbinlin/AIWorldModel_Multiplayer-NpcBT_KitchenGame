@@ -35,8 +35,8 @@ namespace Kitchen.AI
         [Range(0.1f, 1f)][SerializeField] private float _aiArrivalThreshold = 0.4f;
         [SerializeField] private float _aiStuckTimeout = 8f;
         [SerializeField] private float _aiAgentRadius = 0.9f;
-        [SerializeField] private UnityEngine.AI.ObstacleAvoidanceType _aiAvoidanceQuality = UnityEngine.AI.ObstacleAvoidanceType.HighQualityObstacleAvoidance;
-        [SerializeField] private int _aiAvoidancePriority = 50;
+        [Range(0f, 1f)][SerializeField] private float _aiRvoBasePriority = 0.5f;
+        [SerializeField] private float _aiApproachOffset = 0.5f;
         [SerializeField] private List<Color> _aiColors = new()
         {
             Color.red, Color.blue, Color.green, Color.yellow,
@@ -129,7 +129,7 @@ namespace Kitchen.AI
                     chefObj.tag = "Untagged";
                     chefObj.layer = LayerMask.NameToLayer("Default");
 
-                    // Disable Player and network transform components (AI uses NavMeshAgent)
+                    // Disable Player and network transform components (AI uses A* Pathfinding Project)
                     var playerComp = chefObj.GetComponent<Player.Player>();
                     if (playerComp != null) playerComp.enabled = false;
                     var cnt = chefObj.GetComponent<ClientNetworkTransform>();
@@ -152,8 +152,10 @@ namespace Kitchen.AI
                     chef.interactionRange = _aiInteractionRange;
                     chef.arrivalThreshold = _aiArrivalThreshold;
                     chef.stuckTimeout = _aiStuckTimeout;
-                    int priority = _aiAvoidancePriority + colorIdx;
-                    chef.SetAgentParams(_aiAgentRadius, _aiAvoidanceQuality, priority);
+
+                    // RVO priority: higher = more dominant in crowds. Offset per agent for differentiation.
+                    float rvoPriority = Mathf.Clamp01(_aiRvoBasePriority + colorIdx * 0.05f);
+                    chef.SetAIParams(_aiAgentRadius, _aiMoveSpeed, rvoPriority, _aiApproachOffset);
 
                     // Assign distinct color
                     Color c = _aiColors.Count > 0
@@ -188,6 +190,17 @@ namespace Kitchen.AI
                     _aiChefs.Add(chef);
                     RegisterAgent(chef);
                 }
+            }
+
+            // Apply common params to ALL chefs (including scene-placed ones that skipped prefab spawning)
+            foreach (var chef in _aiChefs)
+            {
+                if (chef == null) continue;
+                chef.interactionRange = _aiInteractionRange;
+                chef.arrivalThreshold = _aiArrivalThreshold;
+                chef.stuckTimeout = _aiStuckTimeout;
+                // approachOffset: set directly (not via SetAIParams, which is called for spawned chefs)
+                chef.SetApproachOffset(_aiApproachOffset);
             }
 
             _isInitialized = true;

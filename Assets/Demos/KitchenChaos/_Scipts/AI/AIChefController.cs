@@ -54,10 +54,11 @@ namespace Kitchen.AI
 
         private KitchenTask _currentTask;
         private BaseCounter _targetCounter;
-        private string _substate = "idle"; // idle | moving | interacting | working | waiting | paused
-        private string _pauseCallback;    // what to do after pause: "arrived" | "idle"
+        private string _substate = "idle"; // idle | moving | interacting | working | waiting | paused | postInteract
+        private string _pauseCallback;    // what to do after pause: "arrived" | "idle" | "moveAfterWait"
         private float _stateTimer;
         private bool _facingComplete;     // true when smooth rotation to face target is done
+        private Vector3 _pendingMovePos;  // stored destination for post-interact MoveTo
         private float _moveTimer;
         private float _waitTimer;
         private bool _isHoldingItem;
@@ -233,7 +234,7 @@ namespace Kitchen.AI
             // RVO lock: agents working, interacting, waiting, or paused hold their ground as static obstacles
             var rvo = GetComponent<Pathfinding.RVO.RVOController>();
             if (rvo != null)
-                rvo.locked = (_substate == "waiting" || _substate == "working" || _substate == "interacting" || _substate == "paused");
+                rvo.locked = (_substate == "waiting" || _substate == "working" || _substate == "interacting" || _substate == "paused" || _substate == "postInteract");
 
             switch (_substate)
             {
@@ -457,14 +458,24 @@ namespace Kitchen.AI
                         }
                     }
                     break;
+
+                case "postInteract":
+                    // Brief pause after interaction (pickup/drop) before moving to next target.
+                    // No FaceTarget here — rotation toward next dest happens naturally in MoveTo.
+                    debugState = $"post-interact wait {_stateTimer:F2}s";
+                    if (_stateTimer > 0.15f)
+                    {
+                        if (!MoveTo(_pendingMovePos)) { AbandonTask(); return; };
+                    }
+                    break;
             }
         }
 
         private void OnArrivedAtTarget()
         {
-            // Re-enable AI rotation (frozen during paused). RVO is unfrozen by
-            // the state machine when substate changes to "interacting"/"working".
-            if (_aiPath != null) _aiPath.enableRotation = true;
+            // AI rotation stays frozen during interaction — only re-enabled
+            // later in MoveTo() when the agent actually needs to move again.
+            // This ensures: face target → interact → then turn to next target.
 
             switch (_execPhase)
             {
@@ -510,7 +521,7 @@ namespace Kitchen.AI
 
                     if (_targetCounter != null && _heldItem != null)
                     {
-                        // Successfully got the item, now continue to destination
+                        // Successfully got the item — brief pause, then move to dest
                         if (_currentTask?.type == TaskType.PROCESS)
                         {
                             _execPhase = ExecPhase.GotoFacility;
@@ -523,7 +534,11 @@ namespace Kitchen.AI
                             AIDebugLogger.LogState(chefName, "GotoItem", "GotoDest",
                                 $"carrying {_heldItem?.objEnum}, heading to {_targetCounter.name}");
                         }
-                        if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; };
+                        // Pause briefly after pickup — rotation toward next dest
+                        // happens naturally when MoveTo re-enables AIPath rotation.
+                        _pendingMovePos = _targetCounter.transform.position;
+                        _substate = "postInteract";
+                        _stateTimer = 0;
                     }
                     else if (_heldItem == null)
                     {
@@ -1402,76 +1417,78 @@ namespace Kitchen.AI
                 return;
             }
 
-            // === CASE 4: Counter has BURNED/other item → clear it to free the facility ===
-            // Handles both: AI empty-handed, and AI holding input (must clear counter first)
+            // === CASE 4: Counter has an unrelated item (not input, not output) ===
             if (hasItem && counterItem != null &&
                 counterItem.objEnum != _currentTask.itemType &&
                 counterItem.objEnum != _currentTask.outputType)
             {
-                // If holding the input, temporarily put it down
-                KitchenObj heldBeforeClear = _heldItem;
-                if (_heldItem != null && _heldItem.objEnum == _currentTask.itemType)
-                {
-                    AIDebugLogger.Log(chefName, $"HandleProcess: temporarily dropping held {_heldItem.objEnum} to clear counter");
-                    var tempDrop = FindNearestFreeCounter(transform.position);
-                    if (tempDrop != null) tempDrop.Interact(this);
-                }
+                bool isBurned = counterItem.objEnum == KitchenObjEnum.MeatPattyBurned;
 
-                AIDebugLogger.LogWarning(chefName, $"HandleProcess: clearing unwanted {counterItem.objEnum} from {counter.name}");
-                counter.Interact(this); // Take the burned/wrong item off
-
-                // Drop the cleared item on a nearby free counter (or ground as last resort)
-                if (_heldItem != null)
+                if (isBurned)
                 {
-                    var freeDrop = FindNearestFreeCounter(transform.position);
-                    if (freeDrop != null)
+                    // Burned items block stoves and are waste — clearing is justified.
+                    AIDebugLogger.LogWarning(chefName, $"HandleProcess: clearing burned {counterItem.objEnum} from {counter.name}");
+
+                    // Drop held item first if carrying it
+                    if (_heldItem != null)
                     {
-                        AIDebugLogger.Log(chefName, $"Moving cleared {_heldItem.objEnum} to {freeDrop.name}");
-                        freeDrop.Interact(this);
+                        var tempDrop = FindNearestFreeCounter(transform.position);
+                        if (tempDrop != null) tempDrop.Interact(this);
+                        else
+                        {
+                            KitchenObjFactory.Instance.DropObjServerRpc(
+                                _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                                Vector3.down, 0f, default);
+                            ClearKitchenObj();
+                        }
                     }
-                    else
-                    {
-                        AIDebugLogger.LogWarning(chefName, $"Dropping cleared {_heldItem.objEnum} on ground");
-                        KitchenObjFactory.Instance.DropObjServerRpc(
-                            _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
-                            Vector3.down, 0f, default);
-                        ClearKitchenObj();
-                    }
-                }
 
-                // Now re-fetch the input we put aside (if any) and continue
-                if (heldBeforeClear != null)
-                {
-                    AIDebugLogger.Log(chefName, $"Re-fetching input {heldBeforeClear.objEnum} after clearing counter");
-                    _carryTargetItem = heldBeforeClear;
-                    _execPhase = ExecPhase.GotoItem;
-                    if (!MoveTo(heldBeforeClear.transform.position)) { AbandonTask(); return; };
+                    // Take the burned item off
+                    counter.Interact(this);
+
+                    // Drop burned item on nearest free counter or ground
+                    if (_heldItem != null)
+                    {
+                        var freeDrop = FindNearestFreeCounter(transform.position);
+                        if (freeDrop != null) freeDrop.Interact(this);
+                        else
+                        {
+                            KitchenObjFactory.Instance.DropObjServerRpc(
+                                _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                                Vector3.down, 0f, default);
+                            ClearKitchenObj();
+                        }
+                    }
+
+                    // Counter is now free — re-fetch input if we had one set aside
+                    // (the heldBeforeClear tracking is no longer needed since we just
+                    // drop everything and let the scheduler reassign)
+                    AIDebugLogger.Log(chefName, $"Burned item cleared from {counter.name}, abandoning to let scheduler reassign");
+                    AbandonTask();
                     return;
                 }
-
-                // We were empty-handed — must self-fetch the input and bring it here
-                if (_currentTask.itemType != 0)
+                else
                 {
-                    AIDebugLogger.Log(chefName, $"Counter cleared — self-fetching {_currentTask.itemType} to retry PROCESS");
-                    var foundItem = FindItemAnywhere(_currentTask.itemType);
-                    if (foundItem != null)
-                    {
-                        var holdingCounter = FindCounterHolding(foundItem);
-                        Vector3 pickupPos = holdingCounter != null
-                            ? GetApproachPosition(holdingCounter)
-                            : foundItem.transform.position;
-                        _carryTargetItem = foundItem;
-                        _carryDestPos = GetApproachPosition(counter);
-                        _execPhase = ExecPhase.GotoItem;
-                        if (!MoveTo(pickupPos)) { AbandonTask(); return; };
-                        return;
-                    }
-                }
+                    // Facility is occupied by someone else's valid ingredient.
+                    // Do NOT clear it — that's unnatural instant teleporting.
+                    // Drop our held item nearby and abandon gracefully.
+                    AIDebugLogger.LogWarning(chefName, $"HandleProcess: {counter.name} occupied by {counterItem.objEnum}, not clearing — abandoning");
 
-                // No input available — abandon
-                AIDebugLogger.LogWarning(chefName, $"Counter {counter.name} cleared but no {_currentTask.itemType} to retry — abandoning");
-                AbandonTask();
-                return;
+                    if (_heldItem != null)
+                    {
+                        var dropSpot = FindNearestFreeCounter(transform.position);
+                        if (dropSpot != null) dropSpot.Interact(this);
+                        else
+                        {
+                            KitchenObjFactory.Instance.DropObjServerRpc(
+                                _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                                Vector3.down, 0f, default);
+                            ClearKitchenObj();
+                        }
+                    }
+                    AbandonTask();
+                    return;
+                }
             }
 
             // === CASE 5: Counter empty and we don't hold input → abandon ===
@@ -1939,11 +1956,28 @@ namespace Kitchen.AI
 
         #region Utility
 
+        /// <summary>
+        /// Get the position the agent should face right now.
+        /// During GotoItem phase: face the item/counter being picked up.
+        /// Otherwise: face _targetCounter (the destination).
+        /// </summary>
+        private Vector3 GetFaceTargetPos()
+        {
+            if (_execPhase == ExecPhase.GotoItem && _carryTargetItem != null)
+            {
+                var holder = FindCounterHolding(_carryTargetItem);
+                if (holder != null) return holder.transform.position;
+                return _carryTargetItem.transform.position;
+            }
+            if (_targetCounter != null) return _targetCounter.transform.position;
+            return transform.position + transform.forward; // fallback
+        }
+
         /// <summary>Immediately snap to face the target counter (called on arrival).</summary>
         private void SnapFaceTarget()
         {
-            if (_targetCounter == null) return;
-            Vector3 dir = _targetCounter.transform.position - transform.position;
+            Vector3 targetPos = GetFaceTargetPos();
+            Vector3 dir = targetPos - transform.position;
             dir.y = 0;
             if (dir.magnitude < 0.01f) return;
             transform.rotation = Quaternion.LookRotation(dir.normalized);
@@ -1952,8 +1986,8 @@ namespace Kitchen.AI
         /// <summary>Smoothly rotate to face the target counter.</summary>
         private void FaceTarget()
         {
-            if (_targetCounter == null) return;
-            Vector3 dir = _targetCounter.transform.position - transform.position;
+            Vector3 targetPos = GetFaceTargetPos();
+            Vector3 dir = targetPos - transform.position;
             dir.y = 0;
             if (dir.magnitude < 0.01f) return;
             Quaternion targetRot = Quaternion.LookRotation(dir.normalized);
@@ -1963,8 +1997,8 @@ namespace Kitchen.AI
         /// <summary>Angle between current forward and direction to target (degrees).</summary>
         private float GetAngleToTarget()
         {
-            if (_targetCounter == null) return 0f;
-            Vector3 dir = _targetCounter.transform.position - transform.position;
+            Vector3 targetPos = GetFaceTargetPos();
+            Vector3 dir = targetPos - transform.position;
             dir.y = 0;
             if (dir.magnitude < 0.01f) return 0f;
             return Vector3.Angle(transform.forward, dir.normalized);

@@ -75,6 +75,10 @@ namespace Kitchen.AI
         private float _lastProgressDist = float.MaxValue;
         private float _stuckProgressTimer;
 
+        // Yield behavior — sidestep to let oncoming agent pass
+        private bool _isYielding;
+        private Vector3 _yieldOriginalDest;
+
         // Execution phases (for multi-step tasks)
         private enum ExecPhase
         {
@@ -179,6 +183,7 @@ namespace Kitchen.AI
             _aiPath.pickNextWaypointDist = 8f;   // look far ahead = prefer wide open routes
             _aiPath.whenCloseToDestination = CloseToDestinationMode.ContinueToExactDestination;
             _aiPath.constrainInsideGraph = true;   // prevent RVO from pushing agent off navmesh into walls
+            _aiPath.repathRate = 0.2f;           // repath up to 5×/s for dynamic crowd adaptation
 
             // Auto repath: dynamic mode adapts to changing kitchen environment
             _aiPath.autoRepath.mode = AutoRepathPolicy.Mode.Dynamic;
@@ -189,9 +194,9 @@ namespace Kitchen.AI
                 rvo = gameObject.AddComponent<Pathfinding.RVO.RVOController>();
             rvo.radius = 0.5f;
             rvo.height = 1.8f;
-            rvo.agentTimeHorizon = 2f;        // look ahead for agent-agent collision
-            rvo.obstacleTimeHorizon = 2f;     // look 2s ahead for static obstacles
-            rvo.maxNeighbours = 20;           // consider more nearby agents
+            rvo.agentTimeHorizon = 5f;        // look far ahead to prevent head-on deadlocks (was 2f)
+            rvo.obstacleTimeHorizon = 3f;     // look 3s ahead for static obstacles
+            rvo.maxNeighbours = 10;           // fewer, more relevant neighbours (was 20)
             rvo.lockWhenNotMoving = false;    // keep avoiding even when stationary
             rvo.priority = 0.5f; // default, overridden by SetAIParams
         }
@@ -269,13 +274,21 @@ namespace Kitchen.AI
                         }
                         if (_stuckProgressTimer > 2f && !_isWandering)
                         {
-                            // Stuck in a crowd — force repath with a small random offset
-                            Vector3 jitter = Random.insideUnitSphere * 0.5f;
-                            jitter.y = 0;
-                            _ai.destination = _ai.destination + jitter;
-                            _ai.SearchPath();
-                            _stuckProgressTimer = 0f;
-                            _lastProgressDist = float.MaxValue;
+                            if (_stuckProgressTimer > 4f && !_isYielding)
+                            {
+                                // Long deadlock — try sidestep yield to let oncoming agent pass
+                                TrySidestepYield();
+                            }
+                            else if (!_isYielding)
+                            {
+                                // Phase 1: force repath with a random offset
+                                Vector3 jitter = Random.insideUnitSphere * 0.5f;
+                                jitter.y = 0;
+                                _ai.destination = _ai.destination + jitter;
+                                _ai.SearchPath();
+                                _stuckProgressTimer = 2f; // keep some progress pressure (was 0)
+                                _lastProgressDist = float.MaxValue;
+                            }
                         }
 
                         if (!_ai.pathPending && _ai.reachedDestination)
@@ -284,6 +297,18 @@ namespace Kitchen.AI
                             _moveTimer = 0;
                             _lastProgressDist = float.MaxValue;
                             _stuckProgressTimer = 0f;
+
+                            if (_isYielding)
+                            {
+                                // Reached sidestep position — pause to let other agent pass
+                                _isYielding = false;
+                                AIDebugLogger.Log(chefName, $"Yield: reached sidestep, pausing before resuming to original dest");
+                                _substate = "paused";
+                                _stateTimer = 0;
+                                _pauseCallback = "resumeAfterYield";
+                                break;
+                            }
+
                             if (_isWandering)
                             {
                                 _isWandering = false;
@@ -445,6 +470,24 @@ namespace Kitchen.AI
                             if (canProceed || timedOut)
                             {
                                 OnArrivedAtTarget();
+                            }
+                        }
+                        else if (_pauseCallback == "resumeAfterYield")
+                        {
+                            // After sidestep yield: wait for oncoming agent to pass
+                            debugState = $"yield wait {_stateTimer:F1}s";
+                            if (_stateTimer > 0.8f)
+                            {
+                                // Resume toward original destination
+                                AIDebugLogger.Log(chefName, "Yield: resuming toward original destination");
+                                _ai.destination = _yieldOriginalDest;
+                                _ai.SearchPath();
+                                _ai.isStopped = false;
+                                if (_aiPath != null) _aiPath.enableRotation = true;
+                                _substate = "moving";
+                                _moveTimer = 0;
+                                _lastProgressDist = float.MaxValue;
+                                _stuckProgressTimer = 0f;
                             }
                         }
                         else // "idle" after task completion (CleanupTask path)
@@ -647,6 +690,7 @@ namespace Kitchen.AI
             _ai.SearchPath();
             _ai.isStopped = false;
             if (_aiPath != null) _aiPath.enableRotation = true; // safety: re-enable after paused freeze
+            _isYielding = false; // new destination, cancel any yield
             _substate = "moving";
             _moveTimer = 0;
             _lastProgressDist = float.MaxValue;
@@ -681,6 +725,55 @@ namespace Kitchen.AI
             _isWandering = true;
         }
 
+        /// <summary>
+        /// When stuck in a head-on deadlock, try to sidestep perpendicular to the
+        /// movement direction to let the oncoming agent pass.
+        /// </summary>
+        private void TrySidestepYield()
+        {
+            if (_ai == null || AstarPath.active == null) return;
+
+            Vector3 myPos = transform.position;
+            Vector3 moveDir = (_ai.destination - myPos).normalized;
+            if (moveDir.magnitude < 0.1f) moveDir = transform.forward;
+
+            // Try left and right perpendicular directions (1.5 units offset)
+            Vector3[] sideDirs = new[]
+            {
+                new Vector3(-moveDir.z, 0, moveDir.x),  // left
+                new Vector3(moveDir.z, 0, -moveDir.x),  // right
+            };
+
+            foreach (var sideDir in sideDirs)
+            {
+                for (float dist = 1.2f; dist <= 2.0f; dist += 0.4f)
+                {
+                    Vector3 candidate = myPos + sideDir * dist;
+                    var nearest = AstarPath.active.GetNearest(candidate);
+                    if (nearest.node != null && Vector3.Distance(nearest.position, candidate) < 0.3f)
+                    {
+                        _yieldOriginalDest = _ai.destination;
+                        _isYielding = true;
+                        _ai.destination = nearest.position;
+                        _ai.SearchPath();
+                        _stuckProgressTimer = 0f;
+                        _lastProgressDist = float.MaxValue;
+                        AIDebugLogger.Log(chefName, $"Yield: sidestep to ({nearest.position.x:F1},{nearest.position.z:F1})");
+                        return;
+                    }
+                }
+            }
+
+            // No valid sidestep — try larger jitter as last resort
+            Vector3 jitter = Random.insideUnitSphere * 2f;
+            jitter.y = 0;
+            _ai.destination = _ai.destination + jitter;
+            _ai.SearchPath();
+            _stuckProgressTimer = 0f;
+            _lastProgressDist = float.MaxValue;
+            AIDebugLogger.Log(chefName, "Yield: no sidestep available, large jitter");
+        }
+
         #endregion
 
         #region Task Execution
@@ -691,6 +784,7 @@ namespace Kitchen.AI
         public void AssignTask(KitchenTask task)
         {
             _isWandering = false; // Cancel any wandering
+            _isYielding = false;  // Cancel any yield
             _currentTask = task;
             _execPhase = ExecPhase.None;
             _carryTargetItem = null;

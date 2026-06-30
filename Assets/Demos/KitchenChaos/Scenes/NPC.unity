@@ -14284,7 +14284,7 @@ MonoBehaviour:
   _aiStuckTimeout: 8
   _aiAgentRadius: 0.7
   _aiRvoBasePriority: 0.5
-  _aiApproachOffset: 1.5
+  _aiApproachOffset: 1
   _aiColors:
   - {r: 1, g: 0, b: 0, a: 1}
   - {r: 0, g: 0, b: 1, a: 1}

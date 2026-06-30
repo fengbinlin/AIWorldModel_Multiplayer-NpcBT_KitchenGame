@@ -57,6 +57,7 @@ namespace Kitchen.AI
         private string _substate = "idle"; // idle | moving | interacting | working | waiting | paused
         private string _pauseCallback;    // what to do after pause: "arrived" | "idle"
         private float _stateTimer;
+        private bool _facingComplete;     // true when smooth rotation to face target is done
         private float _moveTimer;
         private float _waitTimer;
         private bool _isHoldingItem;
@@ -290,6 +291,13 @@ namespace Kitchen.AI
                             }
                             else
                             {
+                                // Sequence: arrive → freeze AI → smooth rotate → wait → operate
+                                // Freeze ALL AI movement/rotation so only FaceTarget() controls rotation.
+                                _ai.isStopped = true;
+                                if (_aiPath != null) _aiPath.enableRotation = false;
+                                var rvoLock = GetComponent<Pathfinding.RVO.RVOController>();
+                                if (rvoLock != null) rvoLock.locked = true;
+                                _facingComplete = false;
                                 AIDebugLogger.LogState(chefName, "moving", "arrived",
                                     $"at ({_ai.destination.x:F1},{_ai.destination.z:F1}) dist={dist:F2} time={_moveTimer:F1}s");
                                 _substate = "paused";
@@ -409,18 +417,43 @@ namespace Kitchen.AI
                     break;
 
                 case "paused":
-                    debugState = $"paused {_stateTimer:F2}s";
-                    FaceTarget();
-                    if (_stateTimer > 0.05f)
                     {
+                        FaceTarget(); // smooth rotation toward target
+
+                        // Check if we're facing the target closely enough
+                        float angleToTarget = GetAngleToTarget();
+                        const float faceThreshold = 5f;  // degrees — consider "facing" when within 5°
+                        const float minPostFaceWait = 0.12f; // extra wait after rotation completes
+                        const float maxPauseTimeout = 3f;    // safety net
+
+                        if (!_facingComplete && angleToTarget < faceThreshold)
+                        {
+                            _facingComplete = true;
+                            _stateTimer = 0f; // Reset timer: start post-face wait phase
+                        }
+
+                        if (!_facingComplete)
+                            debugState = $"rotating → target ({angleToTarget:F0}°)";
+                        else
+                            debugState = $"facing done, wait {_stateTimer:F2}s";
+
                         if (_pauseCallback == "arrived")
                         {
-                            OnArrivedAtTarget();
+                            bool canProceed = _facingComplete && _stateTimer > minPostFaceWait;
+                            bool timedOut = _stateTimer > maxPauseTimeout;
+                            if (canProceed || timedOut)
+                            {
+                                OnArrivedAtTarget();
+                            }
                         }
-                        else // "idle" after task completion
+                        else // "idle" after task completion (CleanupTask path)
                         {
-                            _substate = "idle";
-                            debugState = "idle";
+                            if (_facingComplete && _stateTimer > 0.05f)
+                            {
+                                if (_aiPath != null) _aiPath.enableRotation = true;
+                                _substate = "idle";
+                                debugState = "idle";
+                            }
                         }
                     }
                     break;
@@ -429,8 +462,9 @@ namespace Kitchen.AI
 
         private void OnArrivedAtTarget()
         {
-            // Snap-face the original target immediately (before state transition)
-            SnapFaceTarget();
+            // Re-enable AI rotation (frozen during paused). RVO is unfrozen by
+            // the state machine when substate changes to "interacting"/"working".
+            if (_aiPath != null) _aiPath.enableRotation = true;
 
             switch (_execPhase)
             {
@@ -597,6 +631,7 @@ namespace Kitchen.AI
             _ai.destination = bestPoint;
             _ai.SearchPath();
             _ai.isStopped = false;
+            if (_aiPath != null) _aiPath.enableRotation = true; // safety: re-enable after paused freeze
             _substate = "moving";
             _moveTimer = 0;
             _lastProgressDist = float.MaxValue;
@@ -1923,6 +1958,16 @@ namespace Kitchen.AI
             if (dir.magnitude < 0.01f) return;
             Quaternion targetRot = Quaternion.LookRotation(dir.normalized);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, 15f * Time.deltaTime);
+        }
+
+        /// <summary>Angle between current forward and direction to target (degrees).</summary>
+        private float GetAngleToTarget()
+        {
+            if (_targetCounter == null) return 0f;
+            Vector3 dir = _targetCounter.transform.position - transform.position;
+            dir.y = 0;
+            if (dir.magnitude < 0.01f) return 0f;
+            return Vector3.Angle(transform.forward, dir.normalized);
         }
 
         /// <summary>

@@ -3,6 +3,7 @@ using System.Linq;
 using Kitchen.Player;
 using Kitchen.Visual;
 using Nico.Network;
+using Pathfinding;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -113,10 +114,13 @@ namespace Kitchen.AI
 
         public void Initialize()
         {
-            if (_isInitialized) return; // Already initialized — skip
+            if (_isInitialized) return;
             _blackboard.ScanFacilities();
             _blackboard.LoadRecipes();
-            // Fresh start
+
+            // Ensure 4 navmesh graphs (one per AI). Each AI pathfinds on its own
+            // graph which has cuts from the other 3 AIs but not its own.
+            EnsureGraphs(4);
 
             // Spawn AI chefs from prefab at each spawn point
             if (_aiChefPrefab != null && _spawnPoints.Count > 0)
@@ -153,9 +157,8 @@ namespace Kitchen.AI
                     chef.arrivalThreshold = _aiArrivalThreshold;
                     chef.stuckTimeout = _aiStuckTimeout;
 
-                    // RVO priority: higher = more dominant in crowds. Offset per agent for differentiation.
                     float rvoPriority = Mathf.Clamp01(_aiRvoBasePriority + colorIdx * 0.05f);
-                    chef.SetAIParams(_aiAgentRadius, _aiMoveSpeed, rvoPriority, _aiApproachOffset);
+                    chef.SetAIParams(colorIdx, _aiAgentRadius, _aiMoveSpeed, rvoPriority, _aiApproachOffset);
 
                     // Assign distinct color
                     Color c = _aiColors.Count > 0
@@ -192,24 +195,64 @@ namespace Kitchen.AI
                 }
             }
 
-            // Apply common params to ALL chefs (including scene-placed ones that skipped prefab spawning)
+            // Apply common params to ALL chefs (including scene-placed)
+            int graphIdx = 0;
             foreach (var chef in _aiChefs)
             {
                 if (chef == null) continue;
                 chef.interactionRange = _aiInteractionRange;
                 chef.arrivalThreshold = _aiArrivalThreshold;
                 chef.stuckTimeout = _aiStuckTimeout;
-                // approachOffset: set directly (not via SetAIParams, which is called for spawned chefs)
                 chef.SetApproachOffset(_aiApproachOffset);
+                if (chef.NavGraphIndex < 0)
+                    chef.SetAIParams(graphIdx++, _aiAgentRadius, _aiMoveSpeed,
+                        Mathf.Clamp01(_aiRvoBasePriority + graphIdx * 0.05f), _aiApproachOffset);
             }
 
             _isInitialized = true;
             Debug.Log($"[KitchenAIManager] Initialized with {_agentStates.Count} AI chefs, " +
                       $"{_blackboard.facilities.Count} facilities, " +
-                      $"{_blackboard.allRecipes.Count} recipes");
+                      $"{_blackboard.allRecipes.Count} recipes, " +
+                      $"{AstarPath.active.data.graphs.Length} navmesh graphs");
             AIDebugLogger.Log("Init", $"KitchenAIManager initialized: {_agentStates.Count} chefs, " +
-                $"{_blackboard.facilities.Count} facilities, {_blackboard.allRecipes.Count} recipes");
-            AIDebugLogger.Log("Init", $"Log file: {AIDebugLogger.GetLogPath()}");
+                $"{_blackboard.facilities.Count} facilities, " +
+                $"{AstarPath.active.data.graphs.Length} graphs");
+        }
+
+        /// <summary>
+        /// Ensure we have enough navmesh graphs (one per AI).
+        /// Duplicates graph 0's settings into additional graphs.
+        /// Each AI's NavmeshCut.graphMask excludes its own graph, and its
+        /// Seeker.graphMask restricts pathfinding to only its own graph.
+        /// </summary>
+        private static void EnsureGraphs(int count)
+        {
+            var data = AstarPath.active.data;
+            if (data.graphs.Length >= count) return;
+
+            var template = data.graphs[0];
+            var type = template.GetType();
+            int existing = data.graphs.Length;
+
+            Debug.Log($"[KitchenAIManager] Expanding navmesh graphs from {existing} to {count} (type={type.Name})");
+
+            var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance;
+            var fields = type.GetFields(flags);
+
+            for (int i = existing; i < count; i++)
+            {
+                var newGraph = data.AddGraph(type);
+                foreach (var field in fields)
+                {
+                    if (field.IsLiteral || field.IsInitOnly) continue;
+                    try { field.SetValue(newGraph, field.GetValue(template)); }
+                    catch { }
+                }
+            }
+
+            AstarPath.active.Scan();
+            AstarPath.active.navmeshUpdates.ForceUpdate();
+            Debug.Log($"[KitchenAIManager] Graph expansion complete: {data.graphs.Length} graphs scanned");
         }
 
         #endregion
@@ -253,8 +296,8 @@ namespace Kitchen.AI
             AIDebugLogger.LogSchedulerCycle(_schedulerCycle, _agentStates.Count,
                 _blackboard.taskPool.Count, _blackboard.activeOrders.Count);
 
-            // Force all moving agents to repath — navmesh may have changed
-            // due to other agents enabling/disabling NavmeshCut.
+            // Force all moving agents to repath — dynamic kitchen environment
+            // may have changed (items spawned, counters updated, agents moved).
             foreach (var agent in _agentStates)
             {
                 if (agent.substate == "moving" && agent.controller != null)

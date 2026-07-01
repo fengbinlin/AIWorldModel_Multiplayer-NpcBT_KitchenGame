@@ -95,10 +95,9 @@ namespace Kitchen.AI
         private KitchenObj _heldItem;
         private Transform _holdPoint;
 
-        // Navmesh cut — moving hole on the graph, no Collider needed
+        // NavmeshCut — always enabled. graphMask excludes this AI's own graph.
         private NavmeshCut _navmeshCut;
-        private bool _wasStationary;
-        private float _recoveryTimer;
+        private int _navGraphIndex = -1;
 
         // References
         private KitchenAIManager _aiManager;
@@ -115,41 +114,37 @@ namespace Kitchen.AI
         public string Substate => _substate;
         public bool IsIdle => _currentTask == null || _currentTask.status == "completed";
         public KitchenObj HeldItem => _heldItem;
+        public int NavGraphIndex => _navGraphIndex;
 
-        /// <summary>Apply A* Pathfinding + RVO params after spawn (called by KitchenAIManager).</summary>
-        public void SetAIParams(float radius, float maxSpeed, float rvoPriority, float approachOffset)
+        /// <summary>Apply graph index, A* Pathfinding + RVO params after spawn.</summary>
+        public void SetAIParams(int graphIndex, float radius, float maxSpeed, float rvoPriority, float approachOffset)
         {
-            if (_aiPath != null)
-            {
-                _aiPath.radius = radius;
-            }
-            if (_ai != null)
-            {
-                _ai.maxSpeed = maxSpeed;
-            }
+            _navGraphIndex = graphIndex;
+
+            if (_aiPath != null) _aiPath.radius = radius;
+            if (_ai != null) _ai.maxSpeed = maxSpeed;
             _approachOffset = approachOffset;
 
-            // RVOController is handled by AIBase — it auto-syncs radius/height from AIPath.
-            // Manually set the priority for local avoidance.
             var rvo = GetComponent<Pathfinding.RVO.RVOController>();
-            if (rvo != null)
-            {
-                rvo.priority = rvoPriority;
-            }
+            if (rvo != null) rvo.priority = rvoPriority;
 
-            // Sync navmesh cut radius
             if (_navmeshCut != null)
             {
                 _navmeshCut.circleRadius = radius * 0.6f;
+                // Exclude own graph: cut all graphs except mine
+                GraphMask otherMasks = default;
+                for (int i = 0; i < 4; i++)
+                    if (i != graphIndex) otherMasks |= GraphMask.FromGraphIndex((uint)i);
+                _navmeshCut.graphMask = otherMasks;
+                // Disable+re-enable to force NavmeshCut to re-read graphMask
+                _navmeshCut.enabled = false;
+                _navmeshCut.enabled = true;
+                AstarPath.active?.navmeshUpdates.ForceUpdate();
             }
-        }
 
-        /// <summary>Toggle navmesh cut and schedule graph update.</summary>
-        private void SetNavmeshCut(bool enable)
-        {
-            if (_navmeshCut == null || AstarPath.active == null) return;
-            _navmeshCut.enabled = enable;
-            AstarPath.active.navmeshUpdates.ForceUpdate();
+            var seeker = GetComponent<Seeker>();
+            if (seeker != null)
+                seeker.graphMask = GraphMask.FromGraphIndex((uint)graphIndex);
         }
 
         /// <summary>Force immediate path recalculation (called by scheduler).</summary>
@@ -189,15 +184,13 @@ namespace Kitchen.AI
             if (GetComponent<NetworkObject>() == null)
                 gameObject.AddComponent<NetworkObject>();
 
-            // Disable physics colliders — A* pathfinding + RVO handles movement/avoidance
+            // Disable physics colliders — NavmeshCut + RVO handles movement/avoidance
             foreach (var col in GetComponents<Collider>())
                 col.enabled = false;
             foreach (var col in GetComponentsInChildren<Collider>())
                 col.enabled = false;
 
-            // --- Navmesh Cut (A* Pathfinding Project) ---
-            // Uses built-in Sphere shape — no Collider needed.
-            // Other agents' paths recalculate to route around this hole.
+            // --- NavmeshCut: disabled until graphMask is set in SetAIParams ---
             _navmeshCut = gameObject.AddComponent<NavmeshCut>();
             _navmeshCut.type = NavmeshCut.MeshType.Sphere;
             _navmeshCut.circleRadius = 0.5f;
@@ -205,27 +198,22 @@ namespace Kitchen.AI
             _navmeshCut.center = Vector3.zero;
             _navmeshCut.updateDistance = 0.15f;
             _navmeshCut.isDual = false;
-            _navmeshCut.enabled = false; // only active when stationary
+            _navmeshCut.enabled = false;
 
             // --- A* Pathfinding Project setup ---
             _aiPath = GetComponent<AIPath>();
-            if (_aiPath == null)
-                _aiPath = gameObject.AddComponent<AIPath>();
-            _ai = _aiPath; // IAstarAI interface
+            if (_aiPath == null) _aiPath = gameObject.AddComponent<AIPath>();
+            _ai = _aiPath;
 
-            // AIPath defaults (overridden later by SetAIParams)
             _aiPath.radius = 0.5f;
             _aiPath.height = 1.8f;
             _ai.maxSpeed = _moveSpeed;
             _aiPath.rotationSpeed = 180f;
-            _aiPath.endReachedDistance = 0.3f;    // must reach close to exact point before arrival
-            _aiPath.slowdownDistance = 3f;       // long deceleration to prevent overshoot at high speed
-            _aiPath.pickNextWaypointDist = 8f;   // look far ahead = prefer wide open routes
+            _aiPath.endReachedDistance = 0.3f;
+            _aiPath.slowdownDistance = 3f;
+            _aiPath.pickNextWaypointDist = 8f;
             _aiPath.whenCloseToDestination = CloseToDestinationMode.ContinueToExactDestination;
-            _aiPath.constrainInsideGraph = true;   // prevent RVO from pushing agent off navmesh into walls
-            _aiPath.repathRate = 0.1f;           // repath up to 10×/s for dynamic crowd adaptation
-
-            // Auto repath: dynamic mode adapts to changing kitchen environment
+            _aiPath.constrainInsideGraph = true;
             _aiPath.autoRepath.mode = AutoRepathPolicy.Mode.Dynamic;
 
             // RVO Controller for local avoidance (AIBase auto-integrates it)
@@ -234,9 +222,9 @@ namespace Kitchen.AI
                 rvo = gameObject.AddComponent<Pathfinding.RVO.RVOController>();
             rvo.radius = 0.5f;
             rvo.height = 1.8f;
-            rvo.agentTimeHorizon = 2f;        // look far ahead to prevent head-on deadlocks (was 2f)
-            rvo.obstacleTimeHorizon = 2f;     // look 3s ahead for static obstacles
-            rvo.maxNeighbours = 10;           // fewer, more relevant neighbours (was 20)
+            rvo.agentTimeHorizon = 3f;        // look far ahead to resolve head-on conflicts early
+            rvo.obstacleTimeHorizon = 3f;     // look far ahead for static obstacles
+            rvo.maxNeighbours = 15;           // more neighbours for dense crowd awareness
             rvo.lockWhenNotMoving = false;    // keep avoiding even when stationary
             rvo.priority = 0.5f; // default, overridden by SetAIParams
         }
@@ -276,50 +264,12 @@ namespace Kitchen.AI
         {
             _stateTimer += Time.deltaTime;
 
-            // Obstacle + recovery:
-            //   stationary → cut hole immediately (ForceUpdate + Flush)
-            //   leaving stationary → remove hole immediately, then wait
-            //     0.5s for navmesh to heal + other agents to repath
+            // 4-graph setup: each AI's NavmeshCut cuts the other 3 graphs only.
+            // RVO locked when stationary, unlocked when moving.
             bool isStationary = (_substate == "waiting" || _substate == "working" || _substate == "interacting" || _substate == "paused" || _substate == "postInteract");
 
-            // Recovery phase: just left stationary, waiting for navmesh to heal
-            if (_recoveryTimer > 0f)
-            {
-                _recoveryTimer -= Time.deltaTime;
-                if (_ai != null) _ai.isStopped = true;
-                if (_aiPath != null) _aiPath.enabled = false;
-
-                if (_recoveryTimer <= 0f)
-                {
-                    if (_ai != null) _ai.isStopped = false;
-                    if (_aiPath != null) _aiPath.enabled = true;
-                }
-
-                _wasStationary = isStationary;
-                return;
-            }
-
-            // Detect transition stationary → moving: remove hole + start recovery
-            if (_wasStationary && !isStationary)
-            {
-                _recoveryTimer = 0.5f;
-                _wasStationary = false;
-                SetNavmeshCut(false);
-                return;
-            }
-
-            // Detect transition moving → stationary: cut hole immediately
-            if (!_wasStationary && isStationary)
-            {
-                SetNavmeshCut(true);
-            }
-
-            _wasStationary = isStationary;
-
-            // RVO lock
             var rvo = GetComponent<Pathfinding.RVO.RVOController>();
-            if (rvo != null)
-                rvo.locked = isStationary;
+            if (rvo != null) rvo.locked = isStationary;
 
             // Freeze pathfinding while stationary
             if (_ai != null)
@@ -348,7 +298,7 @@ namespace Kitchen.AI
                         debugState = _isWandering ? $"wandering d={dist:F1}" : $"moving → ({_ai.destination.x:F0},{_ai.destination.z:F0}) d={dist:F1}";
                         _moveTimer += Time.deltaTime;
 
-                        // Track progress: if distance hasn't decreased significantly in 2s, repath
+                        // Track progress: if distance hasn't decreased significantly, repath
                         if (dist < _lastProgressDist - 0.1f)
                         {
                             _lastProgressDist = dist;
@@ -358,9 +308,9 @@ namespace Kitchen.AI
                         {
                             _stuckProgressTimer += Time.deltaTime;
                         }
-                        if (_stuckProgressTimer > 2f && !_isWandering)
+                        if (_stuckProgressTimer > 0.8f && !_isWandering)
                         {
-                            if (_stuckProgressTimer > 4f && !_isYielding)
+                            if (_stuckProgressTimer > 2f && !_isYielding)
                             {
                                 // Long deadlock — try sidestep yield to let oncoming agent pass
                                 TrySidestepYield();
@@ -372,7 +322,7 @@ namespace Kitchen.AI
                                 jitter.y = 0;
                                 _ai.destination = _ai.destination + jitter;
                                 _ai.SearchPath();
-                                _stuckProgressTimer = 2f; // keep some progress pressure (was 0)
+                                _stuckProgressTimer = 0.8f;
                                 _lastProgressDist = float.MaxValue;
                             }
                         }
@@ -775,8 +725,8 @@ namespace Kitchen.AI
             _ai.destination = bestPoint;
             _ai.SearchPath();
             _ai.isStopped = false;
-            if (_aiPath != null) _aiPath.enableRotation = true; // safety: re-enable after paused freeze
-            _isYielding = false; // new destination, cancel any yield
+            if (_aiPath != null) _aiPath.enableRotation = true;
+            _isYielding = false;
             _substate = "moving";
             _moveTimer = 0;
             _lastProgressDist = float.MaxValue;

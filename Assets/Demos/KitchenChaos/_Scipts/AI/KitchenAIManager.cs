@@ -253,6 +253,14 @@ namespace Kitchen.AI
             AIDebugLogger.LogSchedulerCycle(_schedulerCycle, _agentStates.Count,
                 _blackboard.taskPool.Count, _blackboard.activeOrders.Count);
 
+            // Force all moving agents to repath — navmesh may have changed
+            // due to other agents enabling/disabling NavmeshCut.
+            foreach (var agent in _agentStates)
+            {
+                if (agent.substate == "moving" && agent.controller != null)
+                    agent.controller.ForceRepath();
+            }
+
             // Release completed AND abandoned task reservations
             foreach (var agent in _agentStates)
             {

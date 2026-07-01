@@ -95,6 +95,11 @@ namespace Kitchen.AI
         private KitchenObj _heldItem;
         private Transform _holdPoint;
 
+        // Navmesh cut — moving hole on the graph, no Collider needed
+        private NavmeshCut _navmeshCut;
+        private bool _wasStationary;
+        private float _recoveryTimer;
+
         // References
         private KitchenAIManager _aiManager;
 
@@ -130,6 +135,29 @@ namespace Kitchen.AI
             if (rvo != null)
             {
                 rvo.priority = rvoPriority;
+            }
+
+            // Sync navmesh cut radius
+            if (_navmeshCut != null)
+            {
+                _navmeshCut.circleRadius = radius * 0.6f;
+            }
+        }
+
+        /// <summary>Toggle navmesh cut and schedule graph update.</summary>
+        private void SetNavmeshCut(bool enable)
+        {
+            if (_navmeshCut == null || AstarPath.active == null) return;
+            _navmeshCut.enabled = enable;
+            AstarPath.active.navmeshUpdates.ForceUpdate();
+        }
+
+        /// <summary>Force immediate path recalculation (called by scheduler).</summary>
+        public void ForceRepath()
+        {
+            if (_ai != null && !_ai.isStopped && _aiPath != null && _aiPath.enabled)
+            {
+                _ai.SearchPath();
             }
         }
 
@@ -167,6 +195,18 @@ namespace Kitchen.AI
             foreach (var col in GetComponentsInChildren<Collider>())
                 col.enabled = false;
 
+            // --- Navmesh Cut (A* Pathfinding Project) ---
+            // Uses built-in Sphere shape — no Collider needed.
+            // Other agents' paths recalculate to route around this hole.
+            _navmeshCut = gameObject.AddComponent<NavmeshCut>();
+            _navmeshCut.type = NavmeshCut.MeshType.Sphere;
+            _navmeshCut.circleRadius = 0.5f;
+            _navmeshCut.height = 2f;
+            _navmeshCut.center = Vector3.zero;
+            _navmeshCut.updateDistance = 0.15f;
+            _navmeshCut.isDual = false;
+            _navmeshCut.enabled = false; // only active when stationary
+
             // --- A* Pathfinding Project setup ---
             _aiPath = GetComponent<AIPath>();
             if (_aiPath == null)
@@ -183,7 +223,7 @@ namespace Kitchen.AI
             _aiPath.pickNextWaypointDist = 8f;   // look far ahead = prefer wide open routes
             _aiPath.whenCloseToDestination = CloseToDestinationMode.ContinueToExactDestination;
             _aiPath.constrainInsideGraph = true;   // prevent RVO from pushing agent off navmesh into walls
-            _aiPath.repathRate = 0.2f;           // repath up to 5×/s for dynamic crowd adaptation
+            _aiPath.repathRate = 0.1f;           // repath up to 10×/s for dynamic crowd adaptation
 
             // Auto repath: dynamic mode adapts to changing kitchen environment
             _aiPath.autoRepath.mode = AutoRepathPolicy.Mode.Dynamic;
@@ -194,8 +234,8 @@ namespace Kitchen.AI
                 rvo = gameObject.AddComponent<Pathfinding.RVO.RVOController>();
             rvo.radius = 0.5f;
             rvo.height = 1.8f;
-            rvo.agentTimeHorizon = 5f;        // look far ahead to prevent head-on deadlocks (was 2f)
-            rvo.obstacleTimeHorizon = 3f;     // look 3s ahead for static obstacles
+            rvo.agentTimeHorizon = 2f;        // look far ahead to prevent head-on deadlocks (was 2f)
+            rvo.obstacleTimeHorizon = 2f;     // look 3s ahead for static obstacles
             rvo.maxNeighbours = 10;           // fewer, more relevant neighbours (was 20)
             rvo.lockWhenNotMoving = false;    // keep avoiding even when stationary
             rvo.priority = 0.5f; // default, overridden by SetAIParams
@@ -236,10 +276,56 @@ namespace Kitchen.AI
         {
             _stateTimer += Time.deltaTime;
 
-            // RVO lock: agents working, interacting, waiting, or paused hold their ground as static obstacles
+            // Obstacle + recovery:
+            //   stationary → cut hole immediately (ForceUpdate + Flush)
+            //   leaving stationary → remove hole immediately, then wait
+            //     0.5s for navmesh to heal + other agents to repath
+            bool isStationary = (_substate == "waiting" || _substate == "working" || _substate == "interacting" || _substate == "paused" || _substate == "postInteract");
+
+            // Recovery phase: just left stationary, waiting for navmesh to heal
+            if (_recoveryTimer > 0f)
+            {
+                _recoveryTimer -= Time.deltaTime;
+                if (_ai != null) _ai.isStopped = true;
+                if (_aiPath != null) _aiPath.enabled = false;
+
+                if (_recoveryTimer <= 0f)
+                {
+                    if (_ai != null) _ai.isStopped = false;
+                    if (_aiPath != null) _aiPath.enabled = true;
+                }
+
+                _wasStationary = isStationary;
+                return;
+            }
+
+            // Detect transition stationary → moving: remove hole + start recovery
+            if (_wasStationary && !isStationary)
+            {
+                _recoveryTimer = 0.5f;
+                _wasStationary = false;
+                SetNavmeshCut(false);
+                return;
+            }
+
+            // Detect transition moving → stationary: cut hole immediately
+            if (!_wasStationary && isStationary)
+            {
+                SetNavmeshCut(true);
+            }
+
+            _wasStationary = isStationary;
+
+            // RVO lock
             var rvo = GetComponent<Pathfinding.RVO.RVOController>();
             if (rvo != null)
-                rvo.locked = (_substate == "waiting" || _substate == "working" || _substate == "interacting" || _substate == "paused" || _substate == "postInteract");
+                rvo.locked = isStationary;
+
+            // Freeze pathfinding while stationary
+            if (_ai != null)
+                _ai.isStopped = isStationary;
+            if (_aiPath != null)
+                _aiPath.enabled = !isStationary;
 
             switch (_substate)
             {

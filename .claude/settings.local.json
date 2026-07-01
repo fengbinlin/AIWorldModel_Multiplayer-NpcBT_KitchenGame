@@ -28,7 +28,8 @@
       "Bash(Select-Object FullName)",
       "Bash(Get-ChildItem -Path \"D:\\\\B0_Space\\\\UnityProject\\\\AIWorldModel_Multiplayer-NpcBT_KitchenGame\\\\Assets\" -Recurse -Directory -Filter \"*NPC*\" -ErrorAction SilentlyContinue)",
       "Bash(Get-ChildItem -Path \"D:\\\\B0_Space\\\\UnityProject\\\\AIWorldModel_Multiplayer-NpcBT_KitchenGame\\\\Assets\" -Recurse -Directory -Filter \"*BT*\" -ErrorAction SilentlyContinue)",
-      "Bash(Get-ChildItem *)"
+      "Bash(Get-ChildItem *)",
+      "Bash(xargs grep -l \"class.*Obstacle\\\\|class.*Cut\\\\|Recalculate\\\\|GraphUpdateScene\\\\|NavmeshCut\\\\|NavmeshAdd\")"
     ]
   }
 }

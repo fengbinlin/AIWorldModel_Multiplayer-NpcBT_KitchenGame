@@ -118,7 +118,14 @@ namespace Kitchen.AI
             _blackboard.ScanFacilities();
             _blackboard.LoadRecipes();
 
-            // Ensure 4 navmesh graphs (one per AI). Each AI pathfinds on its own
+            // Note: We do NOT convert RecastGraph → GridGraph.
+            // GridGraph does NOT support NavmeshCut in this A* version
+            // (enableNavmeshCutting only exists on NavmeshBase subclasses).
+            // RecastGraph with enableNavmeshCutting=true handles NavmeshCut
+            // correctly, and for 4 small agent-radius cuts the performance
+            // difference is negligible.
+
+            // Ensure 4 graphs (one per AI). Each AI pathfinds on its own
             // graph which has cuts from the other 3 AIs but not its own.
             EnsureGraphs(4);
 
@@ -209,6 +216,13 @@ namespace Kitchen.AI
                         Mathf.Clamp01(_aiRvoBasePriority + graphIdx * 0.05f), _aiApproachOffset);
             }
 
+            // Final full scan: now that every AI's NavmeshCut is enabled with the
+            // correct per-graph graphMask, regenerate all graphs so each graph
+            // has only the cuts meant for it (its own AI excluded).
+            AstarPath.active.Scan();
+            AstarPath.active.navmeshUpdates.ForceUpdate();
+            AstarPath.active.FlushGraphUpdates();
+
             _isInitialized = true;
             Debug.Log($"[KitchenAIManager] Initialized with {_agentStates.Count} AI chefs, " +
                       $"{_blackboard.facilities.Count} facilities, " +
@@ -220,33 +234,225 @@ namespace Kitchen.AI
         }
 
         /// <summary>
-        /// Ensure we have enough navmesh graphs (one per AI).
-        /// Duplicates graph 0's settings into additional graphs.
+        /// One-time conversion: RecastGraph → GridGraph.
+        /// GridGraph handles NavmeshCut updates by just marking nodes unwalkable
+        /// (instant), vs RecastGraph which re-triangulates tiles (slow, async).
+        /// Reads all scan parameters from the existing RecastGraph so the user's
+        /// scene setup (bounds, layer mask, slopes, etc.) is preserved.
+        /// </summary>
+        private static void ConvertToGridGraph()
+        {
+            if (AstarPath.active == null)
+            {
+                Debug.LogWarning("[KitchenAIManager] ConvertToGridGraph: AstarPath.active is null, skipping.");
+                return;
+            }
+            var data = AstarPath.active.data;
+            if (data == null || data.graphs == null || data.graphs.Length == 0)
+            {
+                Debug.LogWarning("[KitchenAIManager] ConvertToGridGraph: no graphs to convert (data or graphs array is null/empty).");
+                return;
+            }
+
+            // Guard against null graph entries (can happen if scene serialization was
+            // interrupted, e.g. power loss during edit).
+            if (data.graphs[0] == null)
+            {
+                Debug.LogWarning("[KitchenAIManager] ConvertToGridGraph: graph[0] is null (corrupted data). " +
+                    "Skipping conversion — EnsureGraphs will rebuild from scratch.");
+                return;
+            }
+
+            var recast = data.graphs[0] as RecastGraph;
+            if (recast == null) return; // Already GridGraph or other type
+
+            Debug.Log("[KitchenAIManager] Converting RecastGraph → GridGraph (dynamic obstacles prefer grid)...");
+
+            // --- Read RecastGraph scan settings ---
+            var center       = recast.forcedBoundsCenter;
+            var size         = recast.forcedBoundsSize;
+            var layerMask    = recast.collectionSettings.layerMask;
+            var maxSlope     = recast.maxSlope;
+            var climb        = recast.walkableClimb;
+            var height       = recast.walkableHeight;
+            var charRadius   = recast.characterRadius;
+            var initPenalty  = recast.initialPenalty;
+
+            // Derive node size from Recast's cellSize, clamped to reasonable range
+            float nodeSize   = Mathf.Clamp(recast.cellSize, 0.2f, 0.6f);
+            int gridWidth    = Mathf.CeilToInt(size.x / nodeSize);
+            int gridDepth    = Mathf.CeilToInt(size.z / nodeSize);
+
+            // Remove all existing RecastGraphs (iterate backwards, skip nulls)
+            for (int i = data.graphs.Length - 1; i >= 0; i--)
+            {
+                if (data.graphs[i] != null)
+                    data.RemoveGraph(data.graphs[i]);
+            }
+
+            // --- Create 4 independent GridGraphs ---
+            for (int i = 0; i < 4; i++)
+            {
+                var g = data.AddGraph(typeof(GridGraph)) as GridGraph;
+                g.center              = center;
+                g.SetDimensions(gridWidth, gridDepth, nodeSize);
+                g.maxSlope            = maxSlope;
+                g.maxStepHeight       = climb;
+                g.cutCorners          = true;
+                g.neighbours          = NumNeighbours.Eight;
+                g.initialPenalty      = initPenalty;
+                g.collision.type      = Pathfinding.Graphs.Grid.ColliderType.Capsule;
+                g.collision.diameter  = charRadius / nodeSize * 2f; // convert radius→diameter in node units
+                g.collision.height    = height;
+                g.collision.mask      = layerMask;
+            }
+
+            AstarPath.active.Scan();
+            Debug.Log($"[KitchenAIManager] GridGraph conversion done: {gridWidth}x{gridDepth} nodeSize={nodeSize:F2}");
+        }
+
+        /// <summary>
+        /// Ensure we have enough graphs (one per AI).
+        /// Copies scan settings from graph 0 to new graphs manually (no reflection).
+        /// Handles both RecastGraph and GridGraph. Each graph gets independent data
+        /// when Scan() runs.
         /// Each AI's NavmeshCut.graphMask excludes its own graph, and its
         /// Seeker.graphMask restricts pathfinding to only its own graph.
         /// </summary>
         private static void EnsureGraphs(int count)
         {
+            if (AstarPath.active == null) return;
             var data = AstarPath.active.data;
-            if (data.graphs.Length >= count) return;
+            if (data == null || data.graphs == null) return;
 
-            var template = data.graphs[0];
-            var type = template.GetType();
-            int existing = data.graphs.Length;
+            // Count valid (non-null) graphs — corrupted data may have null entries
+            int validCount = 0;
+            for (int i = 0; i < data.graphs.Length; i++)
+                if (data.graphs[i] != null) validCount++;
 
-            Debug.Log($"[KitchenAIManager] Expanding navmesh graphs from {existing} to {count} (type={type.Name})");
+            if (validCount >= count) return;
 
-            var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance;
-            var fields = type.GetFields(flags);
-
-            for (int i = existing; i < count; i++)
+            // Find the first valid graph to use as template
+            NavGraph template = null;
+            for (int i = 0; i < data.graphs.Length; i++)
             {
-                var newGraph = data.AddGraph(type);
-                foreach (var field in fields)
+                if (data.graphs[i] != null)
                 {
-                    if (field.IsLiteral || field.IsInitOnly) continue;
-                    try { field.SetValue(newGraph, field.GetValue(template)); }
-                    catch { }
+                    template = data.graphs[i];
+                    break;
+                }
+            }
+
+            if (template == null)
+            {
+                // No valid graphs at all — create fresh GridGraphs
+                Debug.LogWarning("[KitchenAIManager] EnsureGraphs: no valid graph templates, creating default GridGraphs.");
+                // Remove all null entries first (iterate backwards)
+                for (int i = data.graphs.Length - 1; i >= 0; i--)
+                {
+                    if (data.graphs[i] != null)
+                        data.RemoveGraph(data.graphs[i]);
+                }
+                // Now data.graphs should be empty — create 4 default GridGraphs
+                for (int i = 0; i < count; i++)
+                {
+                    var g = data.AddGraph(typeof(GridGraph)) as GridGraph;
+                    if (g != null)
+                    {
+                        g.SetDimensions(50, 50, 0.5f);
+                        g.center = Vector3.zero;
+                        g.maxSlope = 45f;
+                        g.collision.type = Pathfinding.Graphs.Grid.ColliderType.Capsule;
+                        g.collision.diameter = 1f;
+                        g.collision.height = 1.8f;
+                        g.collision.mask = LayerMask.GetMask("Default");
+                    }
+                }
+                AstarPath.active.Scan();
+                AstarPath.active.navmeshUpdates.ForceUpdate();
+                Debug.Log($"[KitchenAIManager] EnsureGraphs: created {count} default GridGraphs (no template available).");
+                return;
+            }
+
+            var type = template.GetType();
+            int existing = validCount;
+
+            Debug.Log($"[KitchenAIManager] Expanding graphs from {existing} to {count} (type={type.Name})");
+
+            // --- RecastGraph path ---
+            var recastTemplate = template as RecastGraph;
+            if (recastTemplate != null)
+            {
+                for (int i = existing; i < count; i++)
+                {
+                    var newGraph = data.AddGraph(type) as RecastGraph;
+                    if (newGraph == null) continue;
+
+                    newGraph.forcedBoundsCenter = recastTemplate.forcedBoundsCenter;
+                    newGraph.forcedBoundsSize   = recastTemplate.forcedBoundsSize;
+                    newGraph.rotation           = recastTemplate.rotation;
+                    newGraph.dimensionMode      = recastTemplate.dimensionMode;
+                    newGraph.characterRadius    = recastTemplate.characterRadius;
+                    newGraph.walkableHeight     = recastTemplate.walkableHeight;
+                    newGraph.walkableClimb      = recastTemplate.walkableClimb;
+                    newGraph.maxSlope           = recastTemplate.maxSlope;
+                    newGraph.cellSize           = recastTemplate.cellSize;
+                    newGraph.useTiles           = recastTemplate.useTiles;
+                    newGraph.editorTileSize     = recastTemplate.editorTileSize;
+                    newGraph.maxEdgeLength      = recastTemplate.maxEdgeLength;
+                    newGraph.contourMaxError    = recastTemplate.contourMaxError;
+                    newGraph.minRegionSize      = recastTemplate.minRegionSize;
+                    newGraph.collectionSettings.collectionMode              = recastTemplate.collectionSettings.collectionMode;
+                    newGraph.collectionSettings.layerMask                    = recastTemplate.collectionSettings.layerMask;
+                    newGraph.collectionSettings.tagMask                     = recastTemplate.collectionSettings.tagMask;
+                    newGraph.collectionSettings.rasterizeMeshes             = recastTemplate.collectionSettings.rasterizeMeshes;
+                    newGraph.collectionSettings.rasterizeColliders          = recastTemplate.collectionSettings.rasterizeColliders;
+                    newGraph.collectionSettings.rasterizeTerrain            = recastTemplate.collectionSettings.rasterizeTerrain;
+                    newGraph.collectionSettings.rasterizeTrees              = recastTemplate.collectionSettings.rasterizeTrees;
+                    newGraph.collectionSettings.terrainHeightmapDownsamplingFactor = recastTemplate.collectionSettings.terrainHeightmapDownsamplingFactor;
+                    newGraph.collectionSettings.colliderRasterizeDetail     = recastTemplate.collectionSettings.colliderRasterizeDetail;
+                    newGraph.enableNavmeshCutting = recastTemplate.enableNavmeshCutting;
+                    newGraph.initialPenalty       = recastTemplate.initialPenalty;
+                    newGraph.scanEmptyGraph       = recastTemplate.scanEmptyGraph;
+                    newGraph.perLayerModifications = recastTemplate.perLayerModifications;
+                }
+            }
+            // --- GridGraph path ---
+            else
+            {
+                var gridTemplate = template as GridGraph;
+                if (gridTemplate != null)
+                {
+                    for (int i = existing; i < count; i++)
+                    {
+                        var newGraph = data.AddGraph(type) as GridGraph;
+                        if (newGraph == null) continue;
+
+                        newGraph.center              = gridTemplate.center;
+                        newGraph.SetDimensions(gridTemplate.width, gridTemplate.depth, gridTemplate.nodeSize);
+                        newGraph.rotation            = gridTemplate.rotation;
+                        newGraph.maxSlope            = gridTemplate.maxSlope;
+                        newGraph.maxStepHeight       = gridTemplate.maxStepHeight;
+                        newGraph.cutCorners          = gridTemplate.cutCorners;
+                        newGraph.neighbours          = gridTemplate.neighbours;
+                        newGraph.initialPenalty      = gridTemplate.initialPenalty;
+                        newGraph.collision.type      = gridTemplate.collision.type;
+                        newGraph.collision.diameter  = gridTemplate.collision.diameter;
+                        newGraph.collision.height    = gridTemplate.collision.height;
+                        newGraph.collision.mask      = gridTemplate.collision.mask;
+                        newGraph.collision.collisionOffset = gridTemplate.collision.collisionOffset;
+                        newGraph.collision.fromHeight       = gridTemplate.collision.fromHeight;
+                        newGraph.collision.heightMask       = gridTemplate.collision.heightMask;
+                        newGraph.collision.thickRaycast     = gridTemplate.collision.thickRaycast;
+                        newGraph.collision.unwalkableWhenNoGround = gridTemplate.collision.unwalkableWhenNoGround;
+                        newGraph.erodeIterations     = gridTemplate.erodeIterations;
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[KitchenAIManager] Unknown graph type '{type.Name}' — adding empty graphs.");
+                    for (int i = existing; i < count; i++)
+                        data.AddGraph(type);
                 }
             }
 
@@ -295,6 +501,12 @@ namespace Kitchen.AI
             _schedulerCycle++;
             AIDebugLogger.LogSchedulerCycle(_schedulerCycle, _agentStates.Count,
                 _blackboard.taskPool.Count, _blackboard.activeOrders.Count);
+
+            // Force-sync navmesh cuts BEFORE any agent repaths.
+            // NavmeshCut updates are normally async (may take several frames),
+            // so agents would pathfind on stale navmesh and walk through cuts.
+            AstarPath.active?.navmeshUpdates.ForceUpdate();
+            AstarPath.active?.FlushGraphUpdates();
 
             // Force all moving agents to repath — dynamic kitchen environment
             // may have changed (items spawned, counters updated, agents moved).

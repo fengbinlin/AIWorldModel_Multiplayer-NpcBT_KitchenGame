@@ -66,11 +66,10 @@ namespace Kitchen.AI
         // Wander
         [Header("Wander")]
         [SerializeField] private bool _enableWander = true;
-        [SerializeField] private float _wanderRadius = 3f;
-        [SerializeField] private float _wanderInterval = 0.5f;
-        private float _wanderTimer = 0.5f; // trigger first wander immediately on spawn
+        [SerializeField] private float _wanderRadius = 5f;
+        [SerializeField] private float _wanderInterval = 3f;
+        private float _wanderTimer;
         private bool _isWandering;
-        private Vector3 _spawnPosition;
 
         // Anti-stuck
         private float _lastProgressDist = float.MaxValue;
@@ -79,10 +78,6 @@ namespace Kitchen.AI
         // Yield behavior — sidestep to let oncoming agent pass
         private bool _isYielding;
         private Vector3 _yieldOriginalDest;
-
-        // Transit retreat — when stuck too long, retreat to spawn to break deadlock
-        private bool _isRetreating;
-        private Vector3 _retreatOriginalDest;
 
         // Execution phases (for multi-step tasks)
         private enum ExecPhase
@@ -130,9 +125,12 @@ namespace Kitchen.AI
             if (_ai != null) _ai.maxSpeed = maxSpeed;
             _approachOffset = approachOffset;
 
+            var rvo = GetComponent<Pathfinding.RVO.RVOController>();
+            if (rvo != null) rvo.priority = rvoPriority;
+
             if (_navmeshCut != null)
             {
-                _navmeshCut.circleRadius = radius * 0.5f;
+                _navmeshCut.circleRadius = radius * 0.6f;
                 // Exclude own graph: cut all graphs except mine
                 GraphMask otherMasks = default;
                 for (int i = 0; i < 4; i++)
@@ -142,22 +140,11 @@ namespace Kitchen.AI
                 _navmeshCut.enabled = false;
                 _navmeshCut.enabled = true;
                 AstarPath.active?.navmeshUpdates.ForceUpdate();
-
-                Debug.Log($"[{chefName}] NavmeshCut graphIdx={graphIndex} cutMask={_navmeshCut.graphMask} " +
-                    $"(expect others only, NOT graph {graphIndex})");
             }
 
             var seeker = GetComponent<Seeker>();
             if (seeker != null)
-            {
                 seeker.graphMask = GraphMask.FromGraphIndex((uint)graphIndex);
-                Debug.Log($"[{chefName}] Seeker graphIdx={graphIndex} seekerMask={seeker.graphMask} " +
-                    $"(expect only graph {graphIndex})");
-            }
-            else
-            {
-                Debug.LogWarning($"[{chefName}] SetAIParams: NO Seeker component found! graphMask NOT set.");
-            }
         }
 
         /// <summary>Force immediate path recalculation (called by scheduler).</summary>
@@ -165,7 +152,6 @@ namespace Kitchen.AI
         {
             if (_ai != null && !_ai.isStopped && _aiPath != null && _aiPath.enabled)
             {
-                AstarPath.active?.FlushGraphUpdates();
                 _ai.SearchPath();
             }
         }
@@ -182,9 +168,6 @@ namespace Kitchen.AI
 
         private void Awake()
         {
-            // Store spawn position for wander anchor
-            _spawnPosition = transform.position;
-
             // Use existing hold point from prefab, or create one
             _holdPoint = transform.Find("KitchenObjHoldPoint");
             if (_holdPoint == null)
@@ -208,18 +191,14 @@ namespace Kitchen.AI
                 col.enabled = false;
 
             // --- NavmeshCut: disabled until graphMask is set in SetAIParams ---
-            // CRITICAL: disable IMMEDIATELY after AddComponent so the cut never
-            // registers with default graphMask=-1 (all graphs). Then set
-            // properties while disabled, and only SetAIParams enables it.
             _navmeshCut = gameObject.AddComponent<NavmeshCut>();
-            _navmeshCut.enabled = false;
             _navmeshCut.type = NavmeshCut.MeshType.Sphere;
             _navmeshCut.circleRadius = 0.5f;
             _navmeshCut.height = 2f;
             _navmeshCut.center = Vector3.zero;
             _navmeshCut.updateDistance = 0.15f;
             _navmeshCut.isDual = false;
-            _navmeshCut.circleResolution = 12;
+            _navmeshCut.enabled = false;
 
             // --- A* Pathfinding Project setup ---
             _aiPath = GetComponent<AIPath>();
@@ -235,10 +214,19 @@ namespace Kitchen.AI
             _aiPath.pickNextWaypointDist = 8f;
             _aiPath.whenCloseToDestination = CloseToDestinationMode.ContinueToExactDestination;
             _aiPath.constrainInsideGraph = true;
-            _aiPath.autoRepath.mode = AutoRepathPolicy.Mode.EveryNSeconds;
-            _aiPath.autoRepath.period = 0.1f;
+            _aiPath.autoRepath.mode = AutoRepathPolicy.Mode.Dynamic;
 
-            // RVO removed — rely on NavmeshCut 4-graph system for obstacle avoidance
+            // RVO Controller for local avoidance (AIBase auto-integrates it)
+            var rvo = GetComponent<Pathfinding.RVO.RVOController>();
+            if (rvo == null)
+                rvo = gameObject.AddComponent<Pathfinding.RVO.RVOController>();
+            rvo.radius = 0.5f;
+            rvo.height = 1.8f;
+            rvo.agentTimeHorizon = 3f;        // look far ahead to resolve head-on conflicts early
+            rvo.obstacleTimeHorizon = 3f;     // look far ahead for static obstacles
+            rvo.maxNeighbours = 15;           // more neighbours for dense crowd awareness
+            rvo.lockWhenNotMoving = false;    // keep avoiding even when stationary
+            rvo.priority = 0.5f; // default, overridden by SetAIParams
         }
 
         private void Start()
@@ -277,7 +265,11 @@ namespace Kitchen.AI
             _stateTimer += Time.deltaTime;
 
             // 4-graph setup: each AI's NavmeshCut cuts the other 3 graphs only.
+            // RVO locked when stationary, unlocked when moving.
             bool isStationary = (_substate == "waiting" || _substate == "working" || _substate == "interacting" || _substate == "paused" || _substate == "postInteract");
+
+            var rvo = GetComponent<Pathfinding.RVO.RVOController>();
+            if (rvo != null) rvo.locked = isStationary;
 
             // Freeze pathfinding while stationary
             if (_ai != null)
@@ -316,26 +308,21 @@ namespace Kitchen.AI
                         {
                             _stuckProgressTimer += Time.deltaTime;
                         }
-                        if (_stuckProgressTimer > 0.2f && !_isWandering)
+                        if (_stuckProgressTimer > 0.8f && !_isWandering)
                         {
-                            if (_stuckProgressTimer > 3.5f && !_isYielding && !_isRetreating)
+                            if (_stuckProgressTimer > 2f && !_isYielding)
                             {
-                                // Phase 3: long deadlock — retreat to spawn transit point
-                                TryTransitRetreat();
-                            }
-                            else if (_stuckProgressTimer > 1.8f && !_isYielding && !_isRetreating)
-                            {
-                                // Phase 2: deadlock — try sidestep yield to let oncoming agent pass
+                                // Long deadlock — try sidestep yield to let oncoming agent pass
                                 TrySidestepYield();
                             }
-                            else if (!_isYielding && !_isRetreating)
+                            else if (!_isYielding)
                             {
-                                // Phase 1: force repath with a random jitter offset
-                                Vector3 jitter = Random.insideUnitSphere * 1.5f;
+                                // Phase 1: force repath with a random offset
+                                Vector3 jitter = Random.insideUnitSphere * 0.5f;
                                 jitter.y = 0;
                                 _ai.destination = _ai.destination + jitter;
                                 _ai.SearchPath();
-                                _stuckProgressTimer = 0.2f;
+                                _stuckProgressTimer = 0.8f;
                                 _lastProgressDist = float.MaxValue;
                             }
                         }
@@ -358,22 +345,6 @@ namespace Kitchen.AI
                                 break;
                             }
 
-                            if (_isRetreating)
-                            {
-                                // Reached transit retreat point — immediately resume to original dest
-                                _isRetreating = false;
-                                AIDebugLogger.Log(chefName, $"Retreat: reached transit, immediately resuming to original dest");
-                                _ai.destination = _retreatOriginalDest;
-                                _ai.SearchPath();
-                                _ai.isStopped = false;
-                                if (_aiPath != null) _aiPath.enableRotation = true;
-                                _substate = "moving";
-                                _moveTimer = 0;
-                                _lastProgressDist = float.MaxValue;
-                                _stuckProgressTimer = 0f;
-                                break;
-                            }
-
                             if (_isWandering)
                             {
                                 _isWandering = false;
@@ -386,6 +357,8 @@ namespace Kitchen.AI
                                 // Freeze ALL AI movement/rotation so only FaceTarget() controls rotation.
                                 _ai.isStopped = true;
                                 if (_aiPath != null) _aiPath.enableRotation = false;
+                                var rvoLock = GetComponent<Pathfinding.RVO.RVOController>();
+                                if (rvoLock != null) rvoLock.locked = true;
                                 _facingComplete = false;
                                 AIDebugLogger.LogState(chefName, "moving", "arrived",
                                     $"at ({_ai.destination.x:F1},{_ai.destination.z:F1}) dist={dist:F2} time={_moveTimer:F1}s");
@@ -436,14 +409,6 @@ namespace Kitchen.AI
                             var counterItem = _targetCounter.GetKitchenObj();
                             if (counterItem.objEnum == _currentTask.outputType)
                             {
-                                // Safety: must be in range before interacting
-                                float distToCounter = Vector3.Distance(transform.position, _targetCounter.transform.position);
-                                if (distToCounter > interactionRange + 0.3f)
-                                {
-                                    AIDebugLogger.LogWarning(chefName, $"Working done but too far from {_targetCounter.name} ({distToCounter:F1}), moving closer");
-                                    if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; };
-                                    break;
-                                }
                                 // Output ready — take it and deliver to ClearCounter
                                 AIDebugLogger.Log(chefName, $"Taking processed output {counterItem.objEnum} from {_targetCounter.name}");
                                 _targetCounter.Interact(this);
@@ -561,23 +526,6 @@ namespace Kitchen.AI
                                 _stuckProgressTimer = 0f;
                             }
                         }
-                        else if (_pauseCallback == "resumeAfterRetreat")
-                        {
-                            // After transit retreat: wait briefly then resume to original dest
-                            debugState = $"retreat wait {_stateTimer:F1}s";
-                            if (_stateTimer > 0.6f)
-                            {
-                                AIDebugLogger.Log(chefName, "Retreat: resuming toward original destination");
-                                _ai.destination = _retreatOriginalDest;
-                                _ai.SearchPath();
-                                _ai.isStopped = false;
-                                if (_aiPath != null) _aiPath.enableRotation = true;
-                                _substate = "moving";
-                                _moveTimer = 0;
-                                _lastProgressDist = float.MaxValue;
-                                _stuckProgressTimer = 0f;
-                            }
-                        }
                         else // "idle" after task completion (CleanupTask path)
                         {
                             if (_facingComplete && _stateTimer > 0.05f)
@@ -604,19 +552,6 @@ namespace Kitchen.AI
 
         private void OnArrivedAtTarget()
         {
-            // Safety: must be in range of the target before any interaction.
-            // If the approach point was off or the AI got displaced, re-navigate.
-            if (_targetCounter != null)
-            {
-                float distToTarget = Vector3.Distance(transform.position, _targetCounter.transform.position);
-                if (distToTarget > interactionRange + 0.5f)
-                {
-                    AIDebugLogger.LogWarning(chefName, $"OnArrivedAtTarget: too far from {_targetCounter.name} ({distToTarget:F1} > {interactionRange + 0.5f:F1}), moving closer");
-                    if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; };
-                    return;
-                }
-            }
-
             // AI rotation stays frozen during interaction — only re-enabled
             // later in MoveTo() when the agent actually needs to move again.
             // This ensures: face target → interact → then turn to next target.
@@ -728,22 +663,6 @@ namespace Kitchen.AI
         /// </summary>
         public bool MoveTo(Vector3 originalTarget)
         {
-            // Safety: require AstarPath — cannot navigate without it
-            if (AstarPath.active == null)
-            {
-                Debug.LogWarning($"[{chefName}] MoveTo: No AstarPath in scene, cannot navigate to ({originalTarget.x:F1},{originalTarget.z:F1})");
-                return false;
-            }
-
-            // Early sanity: is the original target even near the NavMesh?
-            // If GetNearest snaps > 3f away, reject outright — target is off-graph.
-            var sanityCheck = AstarPath.active.GetNearest(originalTarget);
-            if (sanityCheck.node == null || Vector3.Distance(sanityCheck.position, originalTarget) > 3f)
-            {
-                Debug.LogWarning($"[{chefName}] MoveTo: target far off NavMesh ({originalTarget.x:F1},{originalTarget.z:F1}), nearest={sanityCheck.position.x:F1},{sanityCheck.position.z:F1} dist={Vector3.Distance(sanityCheck.position, originalTarget):F1}. Aborting move.");
-                return false;
-            }
-
             Vector3 bestPoint = originalTarget;
             float bestDist = float.MaxValue;
             bool found = false;
@@ -757,46 +676,44 @@ namespace Kitchen.AI
                 new Vector3(0, 0, -_approachOffset),
             };
 
-            foreach (var offset in offsets)
+            if (AstarPath.active != null)
             {
-                var candidate = originalTarget + offset;
-                var nearest = AstarPath.active.GetNearest(candidate);
-                // Only accept if the candidate itself is on the NavMesh (within tight tolerance)
-                if (nearest.node != null && Vector3.Distance(nearest.position, candidate) < 0.01f)
+                foreach (var offset in offsets)
                 {
-                    float dist = Vector3.Distance(candidate, originalTarget);
-                    if (dist < bestDist)
+                    var candidate = originalTarget + offset;
+                    var nearest = AstarPath.active.GetNearest(candidate);
+                    // Only accept if the candidate itself is on the NavMesh (within tight tolerance)
+                    if (nearest.node != null && Vector3.Distance(nearest.position, candidate) < 0.01f)
                     {
-                        bestDist = dist;
-                        bestPoint = candidate;
-                        found = true;
+                        float dist = Vector3.Distance(candidate, originalTarget);
+                        if (dist < bestDist)
+                        {
+                            bestDist = dist;
+                            bestPoint = candidate;
+                            found = true;
+                        }
                     }
                 }
+            }
+            else
+            {
+                // No AstarPath in scene — use original target as-is
+                found = true;
             }
 
             if (!found)
             {
-                // Fallback: snap to nearest NavMesh point, but limit distance
-                var fallback = AstarPath.active.GetNearest(originalTarget);
-                float fallbackDist = Vector3.Distance(fallback.position, originalTarget);
-                if (fallback.node != null && fallbackDist < 2f)
+                // Fallback: no candidate on NavMesh → use GetNearest on the original target
+                if (AstarPath.active != null)
                 {
-                    bestPoint = fallback.position;
-                    found = true;
-                    Debug.Log($"[{chefName}] MoveTo: approach failed, fallback GetNearest → ({bestPoint.x:F1},{bestPoint.z:F1}) snapDist={fallbackDist:F1}");
+                    var fallback = AstarPath.active.GetNearest(originalTarget);
+                    if (fallback.node != null)
+                    {
+                        bestPoint = fallback.position;
+                        found = true;
+                        Debug.Log($"[{chefName}] MoveTo: approach failed, fallback GetNearest → ({bestPoint.x:F1},{bestPoint.z:F1})");
+                    }
                 }
-                else
-                {
-                    Debug.LogWarning($"[{chefName}] MoveTo: fallback too far (snapDist={fallbackDist:F1}), rejecting");
-                }
-            }
-
-            // Final safety: is the chosen point reasonably close to the agent?
-            float distToTarget = Vector3.Distance(transform.position, bestPoint);
-            if (found && distToTarget > 50f)
-            {
-                Debug.LogWarning($"[{chefName}] MoveTo: destination suspiciously far ({bestPoint.x:F1},{bestPoint.z:F1}) dist={distToTarget:F1}, rejecting");
-                found = false;
             }
 
             if (!found)
@@ -805,13 +722,11 @@ namespace Kitchen.AI
                 return false;
             }
 
-            AstarPath.active?.FlushGraphUpdates();
             _ai.destination = bestPoint;
             _ai.SearchPath();
             _ai.isStopped = false;
             if (_aiPath != null) _aiPath.enableRotation = true;
             _isYielding = false;
-            _isRetreating = false;
             _substate = "moving";
             _moveTimer = 0;
             _lastProgressDist = float.MaxValue;
@@ -832,10 +747,9 @@ namespace Kitchen.AI
 
         private void StartWander()
         {
-            // Wander around spawn position, not current position
             Vector3 randomDir = Random.insideUnitSphere * _wanderRadius;
             randomDir.y = 0;
-            Vector3 target = _spawnPosition + randomDir;
+            Vector3 target = transform.position + randomDir;
 
             if (!MoveTo(target))
             {
@@ -848,33 +762,8 @@ namespace Kitchen.AI
         }
 
         /// <summary>
-        /// Search for a valid NavMesh point by trying multiple directions at
-        /// increasing distances. Returns true if a point was found (stored in out point).
-        /// </summary>
-        private bool TryFindEscapePoint(Vector3 origin, Vector3 moveDir, float[] distances, Vector3[] directions, out Vector3 result)
-        {
-            result = origin;
-            if (AstarPath.active == null) return false;
-
-            foreach (float dist in distances)
-            {
-                foreach (var dir in directions)
-                {
-                    Vector3 candidate = origin + dir * dist;
-                    var nearest = AstarPath.active.GetNearest(candidate);
-                    if (nearest.node != null && Vector3.Distance(nearest.position, candidate) < 0.5f)
-                    {
-                        result = nearest.position;
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// Phase 2 (1.8s stuck): try moving in all 4 cardinal directions
-        /// (left/right/forward/back) at short distances to break the deadlock.
+        /// When stuck in a head-on deadlock, try to sidestep perpendicular to the
+        /// movement direction to let the oncoming agent pass.
         /// </summary>
         private void TrySidestepYield()
         {
@@ -884,98 +773,41 @@ namespace Kitchen.AI
             Vector3 moveDir = (_ai.destination - myPos).normalized;
             if (moveDir.magnitude < 0.1f) moveDir = transform.forward;
 
-            // 4 cardinal directions relative to movement direction
-            Vector3[] searchDirs = new[]
+            // Try left and right perpendicular directions (1.5 units offset)
+            Vector3[] sideDirs = new[]
             {
                 new Vector3(-moveDir.z, 0, moveDir.x),  // left
                 new Vector3(moveDir.z, 0, -moveDir.x),  // right
-                moveDir,                                 // forward
-                -moveDir,                                // backward
             };
 
-            float[] distances = { 1.2f, 1.8f, 2.5f };
-
-            if (TryFindEscapePoint(myPos, moveDir, distances, searchDirs, out Vector3 escape))
+            foreach (var sideDir in sideDirs)
             {
-                _yieldOriginalDest = _ai.destination;
-                _isYielding = true;
-                _ai.destination = escape;
-                _ai.SearchPath();
-                _stuckProgressTimer = 0f;
-                _lastProgressDist = float.MaxValue;
-                AIDebugLogger.Log(chefName, $"Yield: sidestep to ({escape.x:F1},{escape.z:F1})");
-                return;
+                for (float dist = 1.2f; dist <= 2.0f; dist += 0.4f)
+                {
+                    Vector3 candidate = myPos + sideDir * dist;
+                    var nearest = AstarPath.active.GetNearest(candidate);
+                    if (nearest.node != null && Vector3.Distance(nearest.position, candidate) < 0.3f)
+                    {
+                        _yieldOriginalDest = _ai.destination;
+                        _isYielding = true;
+                        _ai.destination = nearest.position;
+                        _ai.SearchPath();
+                        _stuckProgressTimer = 0f;
+                        _lastProgressDist = float.MaxValue;
+                        AIDebugLogger.Log(chefName, $"Yield: sidestep to ({nearest.position.x:F1},{nearest.position.z:F1})");
+                        return;
+                    }
+                }
             }
 
-            // No escape found — large random jitter as last resort
+            // No valid sidestep — try larger jitter as last resort
             Vector3 jitter = Random.insideUnitSphere * 2f;
             jitter.y = 0;
             _ai.destination = _ai.destination + jitter;
             _ai.SearchPath();
             _stuckProgressTimer = 0f;
             _lastProgressDist = float.MaxValue;
-            AIDebugLogger.Log(chefName, "Yield: no escape, large jitter");
-        }
-
-        /// <summary>
-        /// Phase 3 (3.5s stuck): search all 8 directions at larger distances.
-        /// Arrive at transit → immediately resume to original destination.
-        /// </summary>
-        private void TryTransitRetreat()
-        {
-            if (_ai == null || AstarPath.active == null) return;
-
-            _retreatOriginalDest = _ai.destination;
-            _isRetreating = true;
-
-            Vector3 myPos = transform.position;
-            Vector3 moveDir = (_retreatOriginalDest - myPos).normalized;
-            if (moveDir.magnitude < 0.1f) moveDir = transform.forward;
-
-            Vector3 left = new Vector3(-moveDir.z, 0, moveDir.x);
-            Vector3 right = new Vector3(moveDir.z, 0, -moveDir.x);
-
-            // 8 directions: 4 cardinal + 4 diagonals
-            Vector3[] searchDirs = new[]
-            {
-                left,                                    // left
-                right,                                   // right
-                moveDir,                                 // forward
-                -moveDir,                                // backward
-                (left  + moveDir).normalized,            // forward-left
-                (right + moveDir).normalized,            // forward-right
-                (left  - moveDir).normalized,            // back-left
-                (right - moveDir).normalized,            // back-right
-            };
-
-            float[] distances = { 2.5f, 3.5f, 5f };
-
-            if (TryFindEscapePoint(myPos, moveDir, distances, searchDirs, out Vector3 transit))
-            {
-                _ai.destination = transit;
-                _ai.SearchPath();
-                _ai.isStopped = false;
-                if (_aiPath != null) _aiPath.enableRotation = true;
-                _substate = "moving";
-                _stuckProgressTimer = 0f;
-                _lastProgressDist = float.MaxValue;
-                _moveTimer = 0f;
-                AIDebugLogger.Log(chefName, $"Retreat: transit to ({transit.x:F1},{transit.z:F1}), resume after arrival");
-                return;
-            }
-
-            // Nothing works — fall back to random large jitter
-            Vector3 jitter = Random.insideUnitSphere * 4f;
-            jitter.y = 0;
-            _ai.destination = _retreatOriginalDest + jitter;
-            _ai.SearchPath();
-            _ai.isStopped = false;
-            if (_aiPath != null) _aiPath.enableRotation = true;
-            _substate = "moving";
-            _stuckProgressTimer = 0f;
-            _lastProgressDist = float.MaxValue;
-            _moveTimer = 0f;
-            AIDebugLogger.Log(chefName, "Retreat: all directions blocked, large jitter");
+            AIDebugLogger.Log(chefName, "Yield: no sidestep available, large jitter");
         }
 
         #endregion
@@ -989,7 +821,6 @@ namespace Kitchen.AI
         {
             _isWandering = false; // Cancel any wandering
             _isYielding = false;  // Cancel any yield
-            _isRetreating = false; // Cancel any retreat
             _currentTask = task;
             _execPhase = ExecPhase.None;
             _carryTargetItem = null;
@@ -1144,28 +975,6 @@ namespace Kitchen.AI
             if (best == null)
             {
                 AIDebugLogger.LogWarning(chefName, "FindNearestFreeCounter: NO free counter found!");
-            }
-            return best;
-        }
-
-        /// <summary>
-        /// Find another free counter of the same C# type (e.g., another CuttingCounter).
-        /// Used when the target facility is occupied — redirect instead of teleporting
-        /// the held item to a random adjacent ClearCounter.
-        /// </summary>
-        private BaseCounter FindAlternativeFacility(BaseCounter original)
-        {
-            var originalType = original.GetType();
-            var counters = FindObjectsOfType(originalType);
-            BaseCounter best = null;
-            float bestDist = float.MaxValue;
-            foreach (var c in counters)
-            {
-                var bc = c as BaseCounter;
-                if (bc == null || bc == original) continue;
-                if (bc.HasKitchenObj()) continue;
-                float d = Vector3.Distance(transform.position, bc.transform.position);
-                if (d < bestDist) { bestDist = d; best = bc; }
             }
             return best;
         }
@@ -1791,33 +1600,22 @@ namespace Kitchen.AI
                 else
                 {
                     // Facility is occupied by someone else's valid ingredient.
-                    // Do NOT drop held item on a random nearby counter.
-                    // Instead, find another facility of the same type and re-route.
-                    AIDebugLogger.LogWarning(chefName, $"HandleProcess: {counter.name} occupied by {counterItem.objEnum}, finding alternative facility");
+                    // Do NOT clear it — that's unnatural instant teleporting.
+                    // Drop our held item nearby and abandon gracefully.
+                    AIDebugLogger.LogWarning(chefName, $"HandleProcess: {counter.name} occupied by {counterItem.objEnum}, not clearing — abandoning");
 
                     if (_heldItem != null)
                     {
-                        var altCounter = FindAlternativeFacility(counter);
-                        if (altCounter != null && altCounter != counter)
+                        var dropSpot = FindNearestFreeCounter(transform.position);
+                        if (dropSpot != null) dropSpot.Interact(this);
+                        else
                         {
-                            AIDebugLogger.Log(chefName, $"HandleProcess: redirecting to {altCounter.name}");
-                            _targetCounter = altCounter;
-                            if (!MoveTo(altCounter.transform.position))
-                            {
-                                // Can't reach alternative — abort
-                                AbandonTask();
-                                return;
-                            }
-                            // Successfully redirected — wait for arrival
-                            _substate = "moving";
-                            _moveTimer = 0;
-                            _lastProgressDist = float.MaxValue;
-                            _stuckProgressTimer = 0f;
-                            return;
+                            KitchenObjFactory.Instance.DropObjServerRpc(
+                                _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                                Vector3.down, 0f, default);
+                            ClearKitchenObj();
                         }
                     }
-                    // No alternative available — abandon (keep holding item for scheduler)
-                    AIDebugLogger.LogWarning(chefName, $"HandleProcess: no alternative facility, abandoning task");
                     AbandonTask();
                     return;
                 }
@@ -2120,8 +1918,6 @@ namespace Kitchen.AI
             _carryTargetItem = null;
             _moveTimer = 0f;
             _waitTimer = 0f;
-            _isYielding = false;
-            _isRetreating = false;
             _stateTimer = 0f;
             _ai.isStopped = true;
             debugState = "idle";

@@ -14250,6 +14250,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1643637505}
   - component: {fileID: 1643637504}
+  - component: {fileID: 1643637506}
   m_Layer: 0
   m_Name: KitchenAIManager
   m_TagString: Untagged
@@ -14279,12 +14280,12 @@ MonoBehaviour:
   - {fileID: 2042069038}
   - {fileID: 367351757}
   _aiMoveSpeed: 6
-  _aiInteractionRange: 2
+  _aiInteractionRange: 2.5
   _aiArrivalThreshold: 0.4
   _aiStuckTimeout: 8
   _aiAgentRadius: 0.7
   _aiRvoBasePriority: 0.5
-  _aiApproachOffset: 1
+  _aiApproachOffset: 1.2
   _aiColors:
   - {r: 1, g: 0, b: 0, a: 1}
   - {r: 0, g: 0, b: 1, a: 1}
@@ -14311,6 +14312,26 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1643637506
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1643637503}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1868c531361dea14ca5443d13a6415ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _autoStartWhenPlaying: 1
+  _toggleKey: 290
+  _captureFps: 60
+  _frameWidth: 256
+  _frameHeight: 256
+  _outputRootFolder: KitchenTrainingRecordings
+  _maxPendingWrites: 64
+  _globalCamera: {fileID: 0}
 --- !u!1 &1672804282
 GameObject:
   m_ObjectHideFlags: 0

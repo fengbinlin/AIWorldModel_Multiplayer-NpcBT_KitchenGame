@@ -64,6 +64,10 @@ namespace Kitchen.AI
         private float _zeroTaskTimer; // Time spent with 0 tasks available
         private float _lastBlackboardDumpTime; // Throttle blackboard dumps
 
+        public IReadOnlyList<AIChefController> GetChefs() => _aiChefs;
+
+        public IReadOnlyList<AgentState> GetAgentStates() => _agentStates;
+
         #region Unity Lifecycle
 
         private void Awake()
@@ -151,6 +155,7 @@ namespace Kitchen.AI
                     chef.interactionRange = _aiInteractionRange;
                     chef.arrivalThreshold = _aiArrivalThreshold;
                     chef.stuckTimeout = _aiStuckTimeout;
+                    chef.SetSpawnPosition(spawnPoint.position);
 
                     // Assign distinct color
                     Color c = _aiColors.Count > 0
@@ -201,12 +206,39 @@ namespace Kitchen.AI
                 chefIdx++;
             }
 
+            RefreshAllIdleWanderPoints();
+
             _isInitialized = true;
             Debug.Log($"[KitchenAIManager] Initialized with {_agentStates.Count} AI chefs, " +
                       $"{_blackboard.facilities.Count} facilities, " +
                       $"{_blackboard.allRecipes.Count} recipes");
             AIDebugLogger.Log("Init", $"KitchenAIManager initialized: {_agentStates.Count} chefs, " +
                 $"{_blackboard.facilities.Count} facilities");
+        }
+
+        #endregion
+
+        #region Spawn / Wander
+
+        public IReadOnlyList<Vector3> GetSpawnPositions()
+        {
+            var positions = new List<Vector3>();
+            foreach (var sp in _spawnPoints)
+            {
+                if (sp != null)
+                    positions.Add(sp.position);
+            }
+            return positions;
+        }
+
+        private void RefreshAllIdleWanderPoints()
+        {
+            var centers = GetSpawnPositions();
+            foreach (var chef in _aiChefs)
+            {
+                if (chef != null)
+                    chef.BuildIdleWanderPoints(centers);
+            }
         }
 
         #endregion

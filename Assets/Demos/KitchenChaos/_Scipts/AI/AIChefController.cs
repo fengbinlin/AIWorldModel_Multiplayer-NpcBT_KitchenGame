@@ -95,10 +95,6 @@ namespace Kitchen.AI
         private KitchenObj _heldItem;
         private Transform _holdPoint;
 
-        // NavmeshCut — always enabled. graphMask excludes this AI's own graph.
-        private NavmeshCut _navmeshCut;
-        private int _navGraphIndex = -1;
-
         // References
         private KitchenAIManager _aiManager;
 
@@ -114,37 +110,15 @@ namespace Kitchen.AI
         public string Substate => _substate;
         public bool IsIdle => _currentTask == null || _currentTask.status == "completed";
         public KitchenObj HeldItem => _heldItem;
-        public int NavGraphIndex => _navGraphIndex;
-
-        /// <summary>Apply graph index, A* Pathfinding + RVO params after spawn.</summary>
-        public void SetAIParams(int graphIndex, float radius, float maxSpeed, float rvoPriority, float approachOffset)
+        /// <summary>Apply A* Pathfinding + RVO params after spawn.</summary>
+        public void SetAIParams(float radius, float maxSpeed, float rvoPriority, float approachOffset)
         {
-            _navGraphIndex = graphIndex;
-
             if (_aiPath != null) _aiPath.radius = radius;
             if (_ai != null) _ai.maxSpeed = maxSpeed;
             _approachOffset = approachOffset;
 
             var rvo = GetComponent<Pathfinding.RVO.RVOController>();
             if (rvo != null) rvo.priority = rvoPriority;
-
-            if (_navmeshCut != null)
-            {
-                _navmeshCut.circleRadius = radius * 0.6f;
-                // Exclude own graph: cut all graphs except mine
-                GraphMask otherMasks = default;
-                for (int i = 0; i < 4; i++)
-                    if (i != graphIndex) otherMasks |= GraphMask.FromGraphIndex((uint)i);
-                _navmeshCut.graphMask = otherMasks;
-                // Disable+re-enable to force NavmeshCut to re-read graphMask
-                _navmeshCut.enabled = false;
-                _navmeshCut.enabled = true;
-                AstarPath.active?.navmeshUpdates.ForceUpdate();
-            }
-
-            var seeker = GetComponent<Seeker>();
-            if (seeker != null)
-                seeker.graphMask = GraphMask.FromGraphIndex((uint)graphIndex);
         }
 
         /// <summary>Force immediate path recalculation (called by scheduler).</summary>
@@ -184,21 +158,11 @@ namespace Kitchen.AI
             if (GetComponent<NetworkObject>() == null)
                 gameObject.AddComponent<NetworkObject>();
 
-            // Disable physics colliders — NavmeshCut + RVO handles movement/avoidance
+            // Disable physics colliders — RVO handles movement/avoidance
             foreach (var col in GetComponents<Collider>())
                 col.enabled = false;
             foreach (var col in GetComponentsInChildren<Collider>())
                 col.enabled = false;
-
-            // --- NavmeshCut: disabled until graphMask is set in SetAIParams ---
-            _navmeshCut = gameObject.AddComponent<NavmeshCut>();
-            _navmeshCut.type = NavmeshCut.MeshType.Sphere;
-            _navmeshCut.circleRadius = 0.5f;
-            _navmeshCut.height = 2f;
-            _navmeshCut.center = Vector3.zero;
-            _navmeshCut.updateDistance = 0.15f;
-            _navmeshCut.isDual = false;
-            _navmeshCut.enabled = false;
 
             // --- A* Pathfinding Project setup ---
             _aiPath = GetComponent<AIPath>();
@@ -264,7 +228,6 @@ namespace Kitchen.AI
         {
             _stateTimer += Time.deltaTime;
 
-            // 4-graph setup: each AI's NavmeshCut cuts the other 3 graphs only.
             // RVO locked when stationary, unlocked when moving.
             bool isStationary = (_substate == "waiting" || _substate == "working" || _substate == "interacting" || _substate == "paused" || _substate == "postInteract");
 

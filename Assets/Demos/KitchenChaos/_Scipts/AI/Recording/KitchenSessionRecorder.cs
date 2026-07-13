@@ -8,8 +8,11 @@ using UnityEngine;
 namespace Kitchen.AI.Recording
 {
     /// <summary>
-    /// Records AI world-model training data without blocking the game loop.
-    /// Capture is spread across multiple frames; PNG encode + disk I/O run on background threads.
+    /// Records AI training data with a locked simulation clock.
+    /// While recording, <see cref="Time.captureDeltaTime"/> is set to 1/captureFps so every
+    /// Unity frame advances exactly one sim step (A→B takes N frames regardless of wall-clock FPS).
+    /// One recording frame is captured per sim frame in LateUpdate (after AI movement).
+    /// PNG encode + disk I/O stay on background threads.
     /// </summary>
     public class KitchenSessionRecorder : MonoBehaviour
     {
@@ -18,11 +21,11 @@ namespace Kitchen.AI.Recording
         [Header("Recording")]
         [SerializeField] private bool _autoStartWhenPlaying = true;
         [SerializeField] private KeyCode _toggleKey = KeyCode.F9;
-        [SerializeField] private float _captureFps = 10f;
+        [SerializeField] private float _captureFps = 60f;
         [SerializeField] private int _frameWidth = 256;
         [SerializeField] private int _frameHeight = 256;
         [SerializeField] private string _outputRootFolder = "KitchenTrainingRecordings";
-        [Tooltip("Max background PNG writes queued. Drops frames if disk is slower than capture.")]
+        [Tooltip("Max background PNG writes queued. Blocks (freezes sim via waiting) until under limit.")]
         [SerializeField] private int _maxPendingWrites = 64;
 
         [Header("Cameras")]
@@ -32,29 +35,17 @@ namespace Kitchen.AI.Recording
         private RenderTexture _globalRt;
         private string _sessionDir;
         private string _framesJsonlPath;
-        private float _captureTimer;
         private int _frameIndex;
         private bool _isRecording;
         private bool _manualStopRequested;
         private float _recordStartTime;
-
-        // Spread one logical frame across multiple Unity frames to avoid Time.deltaTime spikes.
-        private bool _hasPendingCapture;
-        private PendingCapture _pending;
+        private bool _captureClockActive;
+        private float _savedFixedDeltaTime;
         private readonly object _jsonLock = new();
 
         public bool IsRecording => _isRecording;
         public string SessionDirectory => _sessionDir;
         public int PendingAsyncWrites => RecordingCameraUtility.PendingAsyncWrites;
-
-        private struct PendingCapture
-        {
-            public int frameIndex;
-            public string globalRelPath;
-            public string globalAbsPath;
-            public ChefRecordingFrame[] chefFrames;
-            public int captureStep; // 0=global, 1..N=agents, N+1=finalize
-        }
 
         private void Awake()
         {
@@ -83,36 +74,42 @@ namespace Kitchen.AI.Recording
                 else
                     StartRecording(manual: true);
             }
+        }
 
-            if (!_isRecording) return;
-            if (!CanRecord()) return;
-
-            // Continue an in-progress multi-step capture first.
-            if (_hasPendingCapture)
+        private void LateUpdate()
+        {
+            if (!_isRecording)
             {
-                AdvancePendingCapture();
+                TryAutoStart();
                 return;
             }
 
-            if (RecordingCameraUtility.PendingAsyncWrites >= _maxPendingWrites)
+            if (!CanRecord())
+            {
+                StopRecording(manual: false);
                 return;
+            }
 
-            _captureTimer += Time.unscaledDeltaTime;
-            float interval = 1f / Mathf.Max(1f, _captureFps);
-            if (_captureTimer < interval) return;
-            _captureTimer -= interval;
-
-            BeginCaptureFrame();
+            // One Unity frame == one locked sim step == one recording sample.
+            CaptureSimFrame();
         }
 
         private void OnDestroy()
         {
             if (_isRecording)
                 StopRecording();
+            else
+                DisableCaptureClock();
+
             if (_globalRt != null)
                 _globalRt.Release();
             if (Instance == this)
                 Instance = null;
+        }
+
+        private void OnApplicationQuit()
+        {
+            DisableCaptureClock();
         }
 
         private bool CanRecord()
@@ -122,6 +119,15 @@ namespace Kitchen.AI.Recording
             if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsServer)
                 return false;
             return true;
+        }
+
+        private void TryAutoStart()
+        {
+            if (!_autoStartWhenPlaying || _manualStopRequested) return;
+            if (CanRecord() && _agents.Count == 0)
+                BindChefs();
+            if (CanRecord() && _agents.Count > 0)
+                StartRecording(manual: false);
         }
 
         [ContextMenu("Start Recording")]
@@ -150,15 +156,17 @@ namespace Kitchen.AI.Recording
 
             _framesJsonlPath = Path.Combine(_sessionDir, "frames.jsonl");
             _frameIndex = 0;
-            _captureTimer = 0f;
+            EnableCaptureClock();
             _recordStartTime = Time.time;
-            _pending = default;
-            _hasPendingCapture = false;
             _isRecording = true;
 
             foreach (var agent in _agents)
+            {
                 agent.Initialize(_frameWidth, _frameHeight, _recordStartTime);
+                agent.BeginFrame();
+            }
 
+            float simDt = GetSimDelta();
             var manifest = new RecordingSessionManifest
             {
                 sessionId = $"session_{stamp}",
@@ -166,12 +174,13 @@ namespace Kitchen.AI.Recording
                 unityTimeStart = _recordStartTime,
                 frameWidth = _frameWidth,
                 frameHeight = _frameHeight,
-                captureFps = _captureFps,
+                captureFps = 1f / simDt,
                 chefCount = _agents.Count,
             };
             File.WriteAllText(Path.Combine(_sessionDir, "manifest.json"), JsonUtility.ToJson(manifest, true));
 
-            Debug.Log($"[KitchenSessionRecorder] Recording started → {_sessionDir}");
+            Debug.Log($"[KitchenSessionRecorder] Recording started (simDt={simDt:F4}s, " +
+                      $"captureDeltaTime locked) → {_sessionDir}");
         }
 
         [ContextMenu("Stop Recording")]
@@ -183,10 +192,37 @@ namespace Kitchen.AI.Recording
             if (manual)
                 _manualStopRequested = true;
             _isRecording = false;
-            _hasPendingCapture = false;
-            _pending = default;
+            DisableCaptureClock();
             FlushPendingWrites(timeoutSeconds: 10f);
             Debug.Log($"[KitchenSessionRecorder] Recording stopped. {_frameIndex} frames saved to {_sessionDir}");
+        }
+
+        private float GetSimDelta()
+        {
+            float fps = Mathf.Max(1f, _captureFps);
+            return 1f / fps;
+        }
+
+        private void EnableCaptureClock()
+        {
+            if (_captureClockActive) return;
+
+            float simDt = GetSimDelta();
+            _savedFixedDeltaTime = Time.fixedDeltaTime;
+            // Lock scaled delta for Update-driven systems (AIPath, AI timers, cutting, etc.).
+            Time.captureDeltaTime = simDt;
+            // Keep FixedUpdate in lockstep if anything uses it.
+            Time.fixedDeltaTime = simDt;
+            _captureClockActive = true;
+        }
+
+        private void DisableCaptureClock()
+        {
+            if (!_captureClockActive) return;
+
+            Time.captureDeltaTime = 0f;
+            Time.fixedDeltaTime = _savedFixedDeltaTime > 0f ? _savedFixedDeltaTime : 0.02f;
+            _captureClockActive = false;
         }
 
         private static void FlushPendingWrites(float timeoutSeconds)
@@ -225,86 +261,55 @@ namespace Kitchen.AI.Recording
             }
         }
 
-        private void BeginCaptureFrame()
+        /// <summary>
+        /// Capture global + all agent views in this LateUpdate so labels align with the sim step
+        /// that just ran in Update. Does not spread across frames (that would desync under captureDeltaTime).
+        /// </summary>
+        private void CaptureSimFrame()
         {
-            foreach (var agent in _agents)
-                agent.BeginFrame();
+            // Never skip a sim frame: Update already advanced time. Wait on wall clock only.
+            if (RecordingCameraUtility.PendingAsyncWrites >= _maxPendingWrites)
+                FlushPendingWrites(timeoutSeconds: 30f);
 
-            var bb = KitchenAIManager.Instance?.Blackboard;
-            _pending = new PendingCapture
+            int frame = _frameIndex;
+            string globalRel = $"global/frame_{frame:D6}.png";
+            string globalAbs = Path.Combine(_sessionDir, globalRel);
+
+            if (_globalCamera != null)
             {
-                frameIndex = _frameIndex,
-                globalRelPath = $"global/frame_{_frameIndex:D6}.png",
-                globalAbsPath = Path.Combine(_sessionDir, $"global/frame_{_frameIndex:D6}.png"),
-                chefFrames = new ChefRecordingFrame[_agents.Count],
-                captureStep = 0,
-            };
-            _hasPendingCapture = true;
-
-            AdvancePendingCapture();
-        }
-
-        private void AdvancePendingCapture()
-        {
-            int step = _pending.captureStep;
-            int agentCount = _agents.Count;
-
-            if (step == 0)
-            {
-                if (_globalCamera != null)
-                {
-                    var pixels = RecordingCameraUtility.CapturePixels(_globalCamera, _globalRt);
-                    RecordingCameraUtility.SavePixelsAsync(pixels, _frameWidth, _frameHeight, _pending.globalAbsPath);
-                }
-                _pending.captureStep = 1;
-                return;
+                var pixels = RecordingCameraUtility.CapturePixels(_globalCamera, _globalRt);
+                RecordingCameraUtility.SavePixelsAsync(pixels, _frameWidth, _frameHeight, globalAbs);
             }
 
-            int agentIdx = step - 1;
-            if (agentIdx < agentCount)
+            var chefFrames = new ChefRecordingFrame[_agents.Count];
+            for (int i = 0; i < _agents.Count; i++)
             {
-                var agent = _agents[agentIdx];
-                string rel = $"agent_{agent.Chef.agentId}/fp_{_pending.frameIndex:D6}.png";
+                var agent = _agents[i];
+                string rel = $"agent_{agent.Chef.agentId}/fp_{frame:D6}.png";
                 string abs = Path.Combine(_sessionDir, rel);
                 agent.CaptureImageAsync(abs);
-                _pending.chefFrames[agentIdx] = agent.CaptureFrame(_pending.frameIndex, rel);
-                _pending.captureStep = step + 1;
-                return;
+                chefFrames[i] = agent.CaptureFrame(frame, rel);
+                // Clear interaction latch after sampling so next Update can set it again.
+                agent.BeginFrame();
             }
 
-            FinalizeCaptureFrame();
-            _hasPendingCapture = false;
-            _pending = default;
-            _frameIndex++;
-        }
-
-        private void FinalizeCaptureFrame()
-        {
             var bb = KitchenAIManager.Instance?.Blackboard;
             float frameTime = Time.time - _recordStartTime;
             var frameData = new RecordingFrameData
             {
-                frame = _pending.frameIndex,
+                frame = frame,
                 time = frameTime,
-                globalImage = _pending.globalRelPath,
-                chefs = _pending.chefFrames,
+                globalImage = globalRel,
+                chefs = chefFrames,
                 world = KitchenWorldStateSerializer.Capture(bb),
             };
 
-            // JSONL is small — write synchronously to preserve frame order and content alignment.
             lock (_jsonLock)
             {
                 File.AppendAllText(_framesJsonlPath, JsonUtility.ToJson(frameData) + "\n");
             }
-        }
 
-        private void LateUpdate()
-        {
-            if (!_autoStartWhenPlaying || _isRecording || _manualStopRequested) return;
-            if (CanRecord() && _agents.Count == 0)
-                BindChefs();
-            if (CanRecord() && _agents.Count > 0)
-                StartRecording(manual: false);
+            _frameIndex++;
         }
     }
 }

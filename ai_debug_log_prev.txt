@@ -1,140 +1,1553 @@
 ══════════════════════════════════════════════════
   AI Chef Debug Log
-  Session: 2026-07-13 08:43:15
+  Session: 2026-07-15 01:06:12
   Platform: WindowsEditor
   Unity: 2022.3.49f1c1
 ══════════════════════════════════════════════════
 
 [00:00.000] [Init] KitchenAIManager initialized: 4 chefs, 28 facilities
-[00:04.852] ═══ SCHEDULER CYCLE #1 ═══ agents=4 tasks=0 orders=0
-[00:04.852] [Scheduler] Order #1 ← tomato (new volatile ID)
-[00:04.852] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:04.852] [Scheduler] 4 idle agents, 1 candidate tasks
-[00:04.852] [ASSIGN] Agent#3(AI_Chef) ← tomato: 取Tomato type=FETCH score=6.87 facility=ContainerCounter | d=0.00 w=0.00 u=3.75 ul=3.13 r=0.00 f=0.00 s=0.00
-[00:04.852] [STATE] AI_Chef: idle → executing FETCH | task=tomato: 取Tomato facility=ContainerCounter item=none
-[00:05.068] ═══ SCHEDULER CYCLE #2 ═══ agents=4 tasks=0 orders=1
-[00:05.068] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:05.068] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=1 skippedNoStorage=0 skippedNoFacility=0
-[00:05.273] ═══ SCHEDULER CYCLE #3 ═══ agents=4 tasks=0 orders=1
-[00:05.273] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:05.273] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=1 skippedNoStorage=0 skippedNoFacility=0
-[00:05.485] ═══ SCHEDULER CYCLE #4 ═══ agents=4 tasks=0 orders=1
-[00:05.485] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:05.485] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=1 skippedNoStorage=0 skippedNoFacility=0
-[00:05.733] ═══ SCHEDULER CYCLE #5 ═══ agents=4 tasks=0 orders=1
-[00:05.733] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:05.733] [Scheduler] 3 idle agents, 1 candidate tasks
-[00:05.733] [ASSIGN] Agent#4(AI_Chef) ← tomato: 拿盘子 type=FETCH_PLATE score=11.32 facility=PlateCounter (1) | d=0.00 w=0.00 u=5.07 ul=6.25 r=0.00 f=0.00 s=0.00
-[00:05.733] [STATE] AI_Chef: idle → executing FETCH_PLATE | task=tomato: 拿盘子 facility=PlateCounter (1) item=none
-[00:05.950] ═══ SCHEDULER CYCLE #6 ═══ agents=4 tasks=0 orders=1
-[00:05.950] [Scheduler] Order #2 ← tomato (duplicate #2)
-[00:05.950] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:05.950] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:05.950] [Scheduler] 2 idle agents, 1 candidate tasks
-[00:06.160] ═══ SCHEDULER CYCLE #7 ═══ agents=4 tasks=1 orders=2
-[00:06.160] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:06.160] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:06.160] [Scheduler] 2 idle agents, 1 candidate tasks
-[00:06.364] ═══ SCHEDULER CYCLE #8 ═══ agents=4 tasks=1 orders=2
-[00:06.364] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:06.364] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:06.364] [Scheduler] 2 idle agents, 1 candidate tasks
-[00:06.428] [STATE] AI_Chef: moving → arrived | at (3.3,-1.5) dist=0.23 time=0.0s
-[00:06.573] ═══ SCHEDULER CYCLE #9 ═══ agents=4 tasks=1 orders=2
-[00:06.573] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:06.573] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:06.573] [Scheduler] 2 idle agents, 1 candidate tasks
-[00:06.783] ═══ SCHEDULER CYCLE #10 ═══ agents=4 tasks=1 orders=2
-[00:06.783] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:06.783] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:06.783] [Scheduler] 2 idle agents, 1 candidate tasks
-[00:07.003] ═══ SCHEDULER CYCLE #11 ═══ agents=4 tasks=1 orders=2
-[00:07.003] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:07.003] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:07.003] [Scheduler] 2 idle agents, 1 candidate tasks
-[00:07.224] ═══ SCHEDULER CYCLE #12 ═══ agents=4 tasks=1 orders=2
-[00:07.224] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:07.224] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:07.224] [Scheduler] 2 idle agents, 1 candidate tasks
-[00:07.344] [STATE] AI_Chef: moving → arrived | at (3.3,0.0) dist=0.24 time=0.0s
-[00:07.363] [STATE] AI_Chef: moving → arrived | at (-3.0,1.8) dist=0.27 time=0.0s
-[00:07.426] ═══ SCHEDULER CYCLE #13 ═══ agents=4 tasks=1 orders=2
-[00:07.426] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:07.426] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:07.426] [Scheduler] 2 idle agents, 1 candidate tasks
-[00:07.645] ═══ SCHEDULER CYCLE #14 ═══ agents=4 tasks=1 orders=2
-[00:07.645] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:07.645] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:07.645] [Scheduler] 2 idle agents, 1 candidate tasks
-[00:07.645] [COMPLETE] Agent#4(AI_Chef) tomato: 拿盘子: completed
-[00:07.690] ═══ SCHEDULER CYCLE #15 ═══ agents=4 tasks=1 orders=2
-[00:07.690] [COMPLETE] Agent#4(AI_Chef) tomato: 拿盘子: released (status=completed)
-[00:07.690] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:07.690] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:07.690] [Scheduler] 3 idle agents, 2 candidate tasks
-[00:07.690] [ASSIGN] Agent#4(AI_Chef) ← tomato: 拿盘子 type=FETCH_PLATE score=12.65 facility=PlateCounter (1) | d=0.00 w=0.00 u=6.36 ul=6.25 r=0.04 f=0.00 s=0.00
-[00:07.690] [STATE] AI_Chef: idle → executing FETCH_PLATE | task=tomato: 拿盘子 facility=PlateCounter (1) item=none
-[00:07.806] [AI_Chef] FindDropTarget(Tomato) → CuttingCounter CuttingCounter (1)
-[00:07.806] [AI_Chef] FETCH got Tomato, delivering to CuttingCounter (1)
-[00:07.915] ═══ SCHEDULER CYCLE #16 ═══ agents=4 tasks=1 orders=2
-[00:07.915] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:07.915] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:07.915] [Scheduler] 2 idle agents, 1 candidate tasks
-[00:08.137] ═══ SCHEDULER CYCLE #17 ═══ agents=4 tasks=1 orders=2
-[00:08.137] [Scheduler] Order #3 ← tomato (duplicate #3)
-[00:08.137] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:08.137] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:08.137] [Scheduler] SERVE #3 tomato: no plate with [Tomato]
-[00:08.137] [Scheduler] 2 idle agents, 2 candidate tasks
-[00:08.137] [ASSIGN] Agent#2(AI_Chef) ← tomato: 拿盘子 type=FETCH_PLATE score=9.99 facility=PlateCounter (1) | d=-0.01 w=0.00 u=3.75 ul=6.25 r=0.00 f=0.00 s=0.00
-[00:08.137] [STATE] AI_Chef: idle → executing FETCH_PLATE | task=tomato: 拿盘子 facility=PlateCounter (1) item=none
-[00:08.171] [STATE] AI_Chef: moving → arrived | at (3.3,-1.5) dist=0.25 time=0.0s
-[00:08.342] ═══ SCHEDULER CYCLE #18 ═══ agents=4 tasks=1 orders=3
-[00:08.342] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:08.342] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:08.342] [Scheduler] SERVE #3 tomato: no plate with [Tomato]
-[00:08.342] [Scheduler] 1 idle agents, 1 candidate tasks
-[00:08.543] ═══ SCHEDULER CYCLE #19 ═══ agents=4 tasks=1 orders=3
-[00:08.543] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:08.543] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:08.543] [Scheduler] SERVE #3 tomato: no plate with [Tomato]
-[00:08.543] [Scheduler] 1 idle agents, 1 candidate tasks
-[00:08.758] ═══ SCHEDULER CYCLE #20 ═══ agents=4 tasks=1 orders=3
-[00:08.758] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:08.758] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:08.758] [Scheduler] SERVE #3 tomato: no plate with [Tomato]
-[00:08.758] [Scheduler] 1 idle agents, 1 candidate tasks
-[00:08.959] ═══ SCHEDULER CYCLE #21 ═══ agents=4 tasks=1 orders=3
-[00:08.959] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:08.959] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:08.959] [Scheduler] SERVE #3 tomato: no plate with [Tomato]
-[00:08.959] [Scheduler] 1 idle agents, 1 candidate tasks
-[00:09.162] ═══ SCHEDULER CYCLE #22 ═══ agents=4 tasks=1 orders=3
-[00:09.162] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:09.162] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:09.162] [Scheduler] SERVE #3 tomato: no plate with [Tomato]
-[00:09.162] [Scheduler] 1 idle agents, 1 candidate tasks
-[00:09.251] [STATE] AI_Chef: moving → arrived | at (3.3,-3.0) dist=0.21 time=0.0s
-[00:09.365] ═══ SCHEDULER CYCLE #23 ═══ agents=4 tasks=1 orders=3
-[00:09.365] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:09.365] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:09.365] [Scheduler] SERVE #3 tomato: no plate with [Tomato]
-[00:09.365] [Scheduler] 1 idle agents, 1 candidate tasks
-[00:09.557] [COMPLETE] Agent#4(AI_Chef) tomato: 拿盘子: completed
-[00:09.596] ═══ SCHEDULER CYCLE #24 ═══ agents=4 tasks=1 orders=3
-[00:09.596] [COMPLETE] Agent#4(AI_Chef) tomato: 拿盘子: released (status=completed)
-[00:09.596] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:09.596] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:09.596] [Scheduler] SERVE #3 tomato: no plate with [Tomato]
-[00:09.596] [Scheduler] 2 idle agents, 1 candidate tasks
-[00:09.813] ═══ SCHEDULER CYCLE #25 ═══ agents=4 tasks=1 orders=3
-[00:09.813] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:09.813] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:09.813] [Scheduler] SERVE #3 tomato: no plate with [Tomato]
-[00:09.813] [Scheduler] 2 idle agents, 1 candidate tasks
-[00:09.970] [STATE] AI_Chef: moving → arrived | at (-4.5,-4.8) dist=0.22 time=0.0s
-[00:10.025] ═══ SCHEDULER CYCLE #26 ═══ agents=4 tasks=1 orders=3
-[00:10.025] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
-[00:10.025] [Scheduler] SERVE #2 tomato: no plate with [Tomato]
-[00:10.025] [Scheduler] SERVE #3 tomato: no plate with [Tomato]
-[00:10.025] [Scheduler] 2 idle agents, 1 candidate tasks
+[00:05.070] ═══ SCHEDULER CYCLE #1 ═══ agents=4 tasks=0 orders=0
+[00:05.070] [Scheduler] Order #1 ← cheeseBurger (new volatile ID)
+[00:05.070] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:05.070] [Scheduler] 4 idle agents, 3 candidate tasks
+[00:05.070] [ASSIGN] Agent#4(AI_Chef) ← cheeseBurger: 取Bread type=FETCH score=10.00 facility=ContainerCounter | d=0.00 w=0.00 u=3.75 ul=6.25 r=0.00 f=0.00 s=0.00
+[00:05.070] [STATE] AI_Chef: idle → executing FETCH | task=cheeseBurger: 取Bread facility=ContainerCounter item=none
+[00:05.070] [ASSIGN] Agent#3(AI_Chef) ← cheeseBurger: 取Cabbage type=FETCH score=8.43 facility=ContainerCounter | d=0.00 w=0.00 u=3.75 ul=4.69 r=0.00 f=0.00 s=0.00
+[00:05.070] [STATE] AI_Chef: idle → executing FETCH | task=cheeseBurger: 取Cabbage facility=ContainerCounter item=none
+[00:05.070] [ASSIGN] Agent#2(AI_Chef) ← cheeseBurger: 取MeatPattyUncooked type=FETCH score=4.99 facility=ContainerCounter (1) | d=-0.01 w=0.00 u=3.75 ul=1.25 r=0.00 f=0.00 s=0.00
+[00:05.070] [STATE] AI_Chef: idle → executing FETCH | task=cheeseBurger: 取MeatPattyUncooked facility=ContainerCounter (1) item=none
+[00:05.270] ═══ SCHEDULER CYCLE #2 ═══ agents=4 tasks=0 orders=1
+[00:05.270] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:05.270] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=3 skippedNoStorage=0 skippedNoFacility=0
+[00:05.470] ═══ SCHEDULER CYCLE #3 ═══ agents=4 tasks=0 orders=1
+[00:05.470] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:05.470] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=3 skippedNoStorage=0 skippedNoFacility=0
+[00:05.670] ═══ SCHEDULER CYCLE #4 ═══ agents=4 tasks=0 orders=1
+[00:05.670] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:05.670] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=3 skippedNoStorage=0 skippedNoFacility=0
+[00:05.870] ═══ SCHEDULER CYCLE #5 ═══ agents=4 tasks=0 orders=1
+[00:05.870] [Scheduler] Order #2 ← meatCheeseBurger (new volatile ID)
+[00:05.870] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:05.870] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:05.870] [Scheduler] 1 idle agents, 3 candidate tasks
+[00:05.870] [ASSIGN] Agent#1(AI_Chef) ← meatCheeseBurger: 取CheeseBlock type=FETCH score=7.50 facility=ContainerCounter | d=0.00 w=0.00 u=3.75 ul=3.75 r=0.00 f=0.00 s=0.00
+[00:05.870] [STATE] AI_Chef: idle → executing FETCH | task=meatCheeseBurger: 取CheeseBlock facility=ContainerCounter item=none
+[00:05.904] [STATE] AI_Chef: moving → arrived | at (0.0,1.8) dist=0.04 time=0.0s
+[00:06.070] ═══ SCHEDULER CYCLE #6 ═══ agents=4 tasks=2 orders=2
+[00:06.070] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:06.070] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:06.270] ═══ SCHEDULER CYCLE #7 ═══ agents=4 tasks=4 orders=2
+[00:06.270] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:06.270] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:06.270] [AI_Chef] FindDropTarget(Bread) → ClearCounter ClearCounter (5)
+[00:06.270] [AI_Chef] FETCH got Bread, delivering to ClearCounter (5)
+[00:06.470] ═══ SCHEDULER CYCLE #8 ═══ agents=4 tasks=4 orders=2
+[00:06.470] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:06.470] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:06.670] ═══ SCHEDULER CYCLE #9 ═══ agents=4 tasks=4 orders=2
+[00:06.670] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:06.670] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:06.704] [STATE] AI_Chef: moving → arrived | at (1.5,1.8) dist=0.28 time=0.0s
+[00:06.770] [STATE] AI_Chef: moving → arrived | at (-1.5,1.8) dist=0.16 time=0.0s
+[00:06.870] ═══ SCHEDULER CYCLE #10 ═══ agents=4 tasks=4 orders=2
+[00:06.870] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:06.870] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:07.037] [AI_Chef] FindDropTarget(Cabbage) → CuttingCounter CuttingCounter (1)
+[00:07.037] [AI_Chef] FETCH got Cabbage, delivering to CuttingCounter (1)
+[00:07.070] ═══ SCHEDULER CYCLE #11 ═══ agents=4 tasks=4 orders=2
+[00:07.070] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:07.070] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:07.170] [STATE] AI_Chef: moving → arrived | at (3.0,1.8) dist=0.20 time=0.0s
+[00:07.204] [AI_Chef] FindDropTarget(CheeseBlock) → CuttingCounter CuttingCounter (1)
+[00:07.204] [AI_Chef] FETCH got CheeseBlock, delivering to CuttingCounter (1)
+[00:07.270] ═══ SCHEDULER CYCLE #12 ═══ agents=4 tasks=4 orders=2
+[00:07.270] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:07.270] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:07.470] ═══ SCHEDULER CYCLE #13 ═══ agents=4 tasks=4 orders=2
+[00:07.470] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:07.470] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:07.570] [AI_Chef] FindDropTarget(MeatPattyUncooked) → StoveCounter StoveCounter (2)
+[00:07.570] [AI_Chef] FETCH got MeatPattyUncooked, delivering to StoveCounter (2)
+[00:07.670] ═══ SCHEDULER CYCLE #14 ═══ agents=4 tasks=4 orders=2
+[00:07.670] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:07.670] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:07.870] ═══ SCHEDULER CYCLE #15 ═══ agents=4 tasks=4 orders=2
+[00:07.870] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:07.870] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.070] ═══ SCHEDULER CYCLE #16 ═══ agents=4 tasks=4 orders=2
+[00:08.070] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:08.070] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.270] ═══ SCHEDULER CYCLE #17 ═══ agents=4 tasks=4 orders=2
+[00:08.270] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:08.270] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.470] ═══ SCHEDULER CYCLE #18 ═══ agents=4 tasks=4 orders=2
+[00:08.470] [Scheduler] Order #3 ← meatCheeseBurger (duplicate #2)
+[00:08.470] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:08.470] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.470] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.570] [STATE] AI_Chef: moving → arrived | at (-7.5,-4.8) dist=0.21 time=0.0s
+[00:08.670] ═══ SCHEDULER CYCLE #19 ═══ agents=4 tasks=5 orders=3
+[00:08.670] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:08.670] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.670] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.837] [COMPLETE] Agent#4(AI_Chef) cheeseBurger: 取Bread: completed
+[00:08.870] ═══ SCHEDULER CYCLE #20 ═══ agents=4 tasks=5 orders=3
+[00:08.870] [COMPLETE] Agent#4(AI_Chef) cheeseBurger: 取Bread: released (status=completed)
+[00:08.870] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:08.870] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.870] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.870] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:08.870] [ASSIGN] Agent#4(AI_Chef) ← cheeseBurger: 拿盘子 type=FETCH_PLATE score=16.94 facility=PlateCounter (1) | d=-0.01 w=0.00 u=9.45 ul=7.50 r=0.00 f=0.00 s=0.00
+[00:08.870] [STATE] AI_Chef: idle → executing FETCH_PLATE | task=cheeseBurger: 拿盘子 facility=PlateCounter (1) item=none
+[00:09.037] [STATE] AI_Chef: moving → arrived | at (-4.5,-4.8) dist=0.17 time=0.0s
+[00:09.070] ═══ SCHEDULER CYCLE #21 ═══ agents=4 tasks=4 orders=3
+[00:09.070] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:09.070] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.070] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.270] ═══ SCHEDULER CYCLE #22 ═══ agents=4 tasks=4 orders=3
+[00:09.270] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:09.270] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.270] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.270] [COMPLETE] Agent#3(AI_Chef) cheeseBurger: 取Cabbage: completed
+[00:09.304] ═══ SCHEDULER CYCLE #23 ═══ agents=4 tasks=4 orders=3
+[00:09.304] [COMPLETE] Agent#3(AI_Chef) cheeseBurger: 取Cabbage: released (status=completed)
+[00:09.304] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:09.304] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.304] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.304] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:09.304] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: 拿盘子 type=FETCH_PLATE score=16.39 facility=PlateCounter (1) | d=-0.01 w=0.00 u=8.90 ul=7.50 r=0.00 f=0.00 s=0.00
+[00:09.304] [STATE] AI_Chef: idle → executing FETCH_PLATE | task=meatCheeseBurger: 拿盘子 facility=PlateCounter (1) item=none
+[00:09.437] [STATE] AI_Chef: moving → arrived | at (-1.5,-4.8) dist=0.16 time=0.0s
+[00:09.504] ═══ SCHEDULER CYCLE #24 ═══ agents=4 tasks=4 orders=3
+[00:09.504] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:09.504] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.504] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.670] [COMPLETE] Agent#2(AI_Chef) cheeseBurger: 取MeatPattyUncooked: completed
+[00:09.704] ═══ SCHEDULER CYCLE #25 ═══ agents=4 tasks=5 orders=3
+[00:09.704] [COMPLETE] Agent#2(AI_Chef) cheeseBurger: 取MeatPattyUncooked: released (status=completed)
+[00:09.704] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:09.704] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.704] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.704] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:09.704] [ASSIGN] Agent#2(AI_Chef) ← cheeseBurger: 取Bread type=FETCH score=16.98 facility=ContainerCounter | d=-0.01 w=0.00 u=10.70 ul=6.25 r=0.04 f=0.00 s=0.00
+[00:09.704] [STATE] AI_Chef: idle → executing FETCH | task=cheeseBurger: 取Bread facility=ContainerCounter item=none
+[00:09.804] [STATE] AI_Chef: moving → arrived | at (-4.5,-4.8) dist=0.17 time=0.0s
+[00:09.904] ═══ SCHEDULER CYCLE #26 ═══ agents=4 tasks=5 orders=3
+[00:09.904] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:09.904] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.904] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.070] [COMPLETE] Agent#1(AI_Chef) meatCheeseBurger: 取CheeseBlock: completed
+[00:10.070] [AI_Chef] CleanupTask: dropping CheeseBlock at ClearCounter (7)
+[00:10.104] ═══ SCHEDULER CYCLE #27 ═══ agents=4 tasks=6 orders=3
+[00:10.104] [COMPLETE] Agent#1(AI_Chef) meatCheeseBurger: 取CheeseBlock: released (status=completed)
+[00:10.104] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:10.104] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.104] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.104] [Scheduler] 1 idle agents, 7 candidate tasks
+[00:10.104] [ASSIGN] Agent#1(AI_Chef) ← cheeseBurger: Cabbage→CabbageSlices type=PROCESS score=15.88 facility=CuttingCounter (1) | d=0.00 w=-1.67 u=11.30 ul=6.25 r=0.00 f=0.00 s=0.00
+[00:10.104] [STATE] AI_Chef: idle → executing PROCESS | task=cheeseBurger: Cabbage→CabbageSlices facility=CuttingCounter (1) item=none
+[00:10.104] [AI_Chef] ExecuteProcess: counter CuttingCounter (1) has Cabbage, → direct interact
+[00:10.137] [STATE] AI_Chef: moving → arrived | at (-4.5,-4.8) dist=0.12 time=0.0s
+[00:10.304] ═══ SCHEDULER CYCLE #28 ═══ agents=4 tasks=6 orders=3
+[00:10.304] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:10.304] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.304] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.470] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Cabbage taskInput=Cabbage taskOutput=CabbageSlices
+[00:10.470] [STATE] AI_Chef: start cutting → Cabbage | → CabbageSlices on CuttingCounter (1)
+[00:10.504] ═══ SCHEDULER CYCLE #29 ═══ agents=4 tasks=6 orders=3
+[00:10.504] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:10.504] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.504] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.704] ═══ SCHEDULER CYCLE #30 ═══ agents=4 tasks=6 orders=3
+[00:10.704] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:10.704] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.704] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.904] ═══ SCHEDULER CYCLE #31 ═══ agents=4 tasks=6 orders=3
+[00:10.904] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:10.904] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.904] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.104] ═══ SCHEDULER CYCLE #32 ═══ agents=4 tasks=6 orders=3
+[00:11.104] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:11.104] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.104] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.304] ═══ SCHEDULER CYCLE #33 ═══ agents=4 tasks=6 orders=3
+[00:11.304] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:11.304] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.304] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.504] ═══ SCHEDULER CYCLE #34 ═══ agents=4 tasks=6 orders=3
+[00:11.504] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:11.504] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.504] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.637] [STATE] AI_Chef: moving → arrived | at (0.0,1.8) dist=0.16 time=0.0s
+[00:11.704] ═══ SCHEDULER CYCLE #35 ═══ agents=4 tasks=6 orders=3
+[00:11.704] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:11.704] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.704] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.904] ═══ SCHEDULER CYCLE #36 ═══ agents=4 tasks=6 orders=3
+[00:11.904] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:11.904] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.904] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.970] [AI_Chef] FindDropTarget(Bread) → ClearCounter ClearCounter (11)
+[00:11.970] [AI_Chef] FETCH got Bread, delivering to ClearCounter (11)
+[00:12.104] ═══ SCHEDULER CYCLE #37 ═══ agents=4 tasks=6 orders=3
+[00:12.104] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:12.104] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.104] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.304] ═══ SCHEDULER CYCLE #38 ═══ agents=4 tasks=6 orders=3
+[00:12.304] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:12.304] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.304] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.504] ═══ SCHEDULER CYCLE #39 ═══ agents=4 tasks=6 orders=3
+[00:12.504] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:12.504] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.504] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.504] [STATE] AI_Chef: working → done | duration=2.0s task=cheeseBurger: Cabbage→CabbageSlices
+[00:12.504] [AI_Chef] Working done but output not ready (counter has Cabbage), entering wait
+[00:12.704] ═══ SCHEDULER CYCLE #40 ═══ agents=4 tasks=6 orders=3
+[00:12.704] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:12.704] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.704] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.770] [STATE] AI_Chef: moving → arrived | at (3.6,-1.2) dist=0.05 time=0.0s
+[00:12.870] [STATE] AI_Chef: moving → arrived | at (3.2,-2.1) dist=0.04 time=0.0s
+[00:12.904] ═══ SCHEDULER CYCLE #41 ═══ agents=4 tasks=6 orders=3
+[00:12.904] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:12.904] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.904] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:13.104] ═══ SCHEDULER CYCLE #42 ═══ agents=4 tasks=6 orders=3
+[00:13.104] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:13.104] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:13.104] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:13.304] ═══ SCHEDULER CYCLE #43 ═══ agents=4 tasks=6 orders=3
+[00:13.304] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:13.304] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:13.304] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:13.504] ═══ SCHEDULER CYCLE #44 ═══ agents=4 tasks=6 orders=3
+[00:13.504] [Scheduler] SERVE #1 cheeseBurger: no plate with [Bread,CabbageSlices,MeatPattyCooked]
+[00:13.504] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:13.504] [Scheduler] SERVE #3 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:00.000] [Init] KitchenAIManager initialized: 4 chefs, 28 facilities
+[00:04.016] ═══ SCHEDULER CYCLE #1 ═══ agents=4 tasks=0 orders=0
+[00:04.016] [Scheduler] Order #1 ← tomato (new volatile ID)
+[00:04.016] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:04.016] [Scheduler] 4 idle agents, 1 candidate tasks
+[00:04.016] [ASSIGN] Agent#3(AI_Chef) ← tomato: 取Tomato type=FETCH score=6.87 facility=ContainerCounter | d=0.00 w=0.00 u=3.75 ul=3.13 r=0.00 f=0.00 s=0.00
+[00:04.016] [STATE] AI_Chef: idle → executing FETCH | task=tomato: 取Tomato facility=ContainerCounter item=none
+[00:04.216] ═══ SCHEDULER CYCLE #2 ═══ agents=4 tasks=0 orders=1
+[00:04.216] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:04.216] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=1 skippedNoStorage=0 skippedNoFacility=0
+[00:04.416] ═══ SCHEDULER CYCLE #3 ═══ agents=4 tasks=0 orders=1
+[00:04.416] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:04.416] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=1 skippedNoStorage=0 skippedNoFacility=0
+[00:04.616] ═══ SCHEDULER CYCLE #4 ═══ agents=4 tasks=0 orders=1
+[00:04.616] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:04.616] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=1 skippedNoStorage=0 skippedNoFacility=0
+[00:04.816] ═══ SCHEDULER CYCLE #5 ═══ agents=4 tasks=0 orders=1
+[00:04.816] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:04.816] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=1 skippedNoStorage=0 skippedNoFacility=0
+[00:05.016] ═══ SCHEDULER CYCLE #6 ═══ agents=4 tasks=0 orders=1
+[00:05.016] [Scheduler] Order #2 ← meatCheeseBurger (new volatile ID)
+[00:05.016] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:05.016] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:05.016] [Scheduler] 3 idle agents, 5 candidate tasks
+[00:05.016] [ASSIGN] Agent#2(AI_Chef) ← tomato: 拿盘子 type=FETCH_PLATE score=11.49 facility=PlateCounter (1) | d=-0.01 w=0.00 u=5.25 ul=6.25 r=0.00 f=0.00 s=0.00
+[00:05.016] [STATE] AI_Chef: idle → executing FETCH_PLATE | task=tomato: 拿盘子 facility=PlateCounter (1) item=none
+[00:05.016] [ASSIGN] Agent#1(AI_Chef) ← meatCheeseBurger: 拿盘子 type=FETCH_PLATE score=11.24 facility=PlateCounter (1) | d=-0.01 w=0.00 u=3.75 ul=7.50 r=0.00 f=0.00 s=0.00
+[00:05.016] [STATE] AI_Chef: idle → executing FETCH_PLATE | task=meatCheeseBurger: 拿盘子 facility=PlateCounter (1) item=none
+[00:05.016] [ASSIGN] Agent#4(AI_Chef) ← meatCheeseBurger: 取Bread type=FETCH score=10.00 facility=ContainerCounter | d=0.00 w=0.00 u=3.75 ul=6.25 r=0.00 f=0.00 s=0.00
+[00:05.016] [STATE] AI_Chef: idle → executing FETCH | task=meatCheeseBurger: 取Bread facility=ContainerCounter item=none
+[00:05.216] ═══ SCHEDULER CYCLE #7 ═══ agents=4 tasks=2 orders=2
+[00:05.216] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:05.216] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:05.250] [STATE] AI_Chef: moving → arrived | at (-3.0,1.8) dist=0.10 time=0.0s
+[00:05.416] ═══ SCHEDULER CYCLE #8 ═══ agents=4 tasks=2 orders=2
+[00:05.416] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:05.416] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:05.616] ═══ SCHEDULER CYCLE #9 ═══ agents=4 tasks=2 orders=2
+[00:05.616] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:05.616] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:05.616] [AI_Chef] FindDropTarget(Tomato) → CuttingCounter CuttingCounter (1)
+[00:05.616] [AI_Chef] FETCH got Tomato, delivering to CuttingCounter (1)
+[00:05.816] ═══ SCHEDULER CYCLE #10 ═══ agents=4 tasks=2 orders=2
+[00:05.816] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:05.816] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:06.016] ═══ SCHEDULER CYCLE #11 ═══ agents=4 tasks=2 orders=2
+[00:06.016] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:06.016] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:06.216] ═══ SCHEDULER CYCLE #12 ═══ agents=4 tasks=2 orders=2
+[00:06.216] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:06.216] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:06.416] ═══ SCHEDULER CYCLE #13 ═══ agents=4 tasks=2 orders=2
+[00:06.416] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:06.416] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:06.616] ═══ SCHEDULER CYCLE #14 ═══ agents=4 tasks=2 orders=2
+[00:06.616] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:06.616] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:06.750] [STATE] AI_Chef: moving → arrived | at (3.3,-1.5) dist=0.20 time=0.0s
+[00:06.816] ═══ SCHEDULER CYCLE #15 ═══ agents=4 tasks=2 orders=2
+[00:06.816] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:06.816] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:06.883] [STATE] AI_Chef: moving → arrived | at (0.0,1.8) dist=0.16 time=0.0s
+[00:07.016] ═══ SCHEDULER CYCLE #16 ═══ agents=4 tasks=2 orders=2
+[00:07.016] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:07.016] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:07.216] ═══ SCHEDULER CYCLE #17 ═══ agents=4 tasks=2 orders=2
+[00:07.216] [Scheduler] Order #3 ← salad (new volatile ID)
+[00:07.216] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:07.216] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:07.216] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:07.350] [AI_Chef] FindDropTarget(Bread) → ClearCounter ClearCounter (5)
+[00:07.350] [AI_Chef] FETCH got Bread, delivering to ClearCounter (5)
+[00:07.416] ═══ SCHEDULER CYCLE #18 ═══ agents=4 tasks=4 orders=3
+[00:07.416] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:07.416] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:07.416] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:07.483] [STATE] AI_Chef: moving → arrived | at (-4.5,-4.8) dist=0.22 time=0.0s
+[00:07.616] ═══ SCHEDULER CYCLE #19 ═══ agents=4 tasks=4 orders=3
+[00:07.616] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:07.616] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:07.616] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:07.683] [COMPLETE] Agent#3(AI_Chef) tomato: 取Tomato: completed
+[00:07.716] ═══ SCHEDULER CYCLE #20 ═══ agents=4 tasks=4 orders=3
+[00:07.716] [COMPLETE] Agent#3(AI_Chef) tomato: 取Tomato: released (status=completed)
+[00:07.716] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:07.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:07.716] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:07.716] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:07.716] [ASSIGN] Agent#3(AI_Chef) ← tomato: 取Tomato type=FETCH score=12.46 facility=ContainerCounter | d=-0.01 w=0.00 u=9.30 ul=3.13 r=0.04 f=0.00 s=0.00
+[00:07.716] [STATE] AI_Chef: idle → executing FETCH | task=tomato: 取Tomato facility=ContainerCounter item=none
+[00:07.750] [STATE] AI_Chef: moving → arrived | at (3.3,0.0) dist=0.11 time=0.0s
+[00:07.916] ═══ SCHEDULER CYCLE #21 ═══ agents=4 tasks=4 orders=3
+[00:07.916] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:07.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:07.916] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:08.050] [COMPLETE] Agent#1(AI_Chef) meatCheeseBurger: 拿盘子: completed
+[00:08.083] ═══ SCHEDULER CYCLE #22 ═══ agents=4 tasks=5 orders=3
+[00:08.083] [COMPLETE] Agent#1(AI_Chef) meatCheeseBurger: 拿盘子: released (status=completed)
+[00:08.083] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:08.083] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.083] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:08.083] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:08.083] [ASSIGN] Agent#1(AI_Chef) ← salad: 拿盘子 type=FETCH_PLATE score=12.90 facility=PlateCounter (1) | d=0.00 w=0.00 u=5.05 ul=7.81 r=0.04 f=0.00 s=0.00
+[00:08.083] [STATE] AI_Chef: idle → executing FETCH_PLATE | task=salad: 拿盘子 facility=PlateCounter (1) item=none
+[00:08.283] ═══ SCHEDULER CYCLE #23 ═══ agents=4 tasks=4 orders=3
+[00:08.283] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:08.283] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.283] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:08.483] ═══ SCHEDULER CYCLE #24 ═══ agents=4 tasks=4 orders=3
+[00:08.483] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:08.483] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.483] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:08.683] ═══ SCHEDULER CYCLE #25 ═══ agents=4 tasks=4 orders=3
+[00:08.683] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:08.683] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.683] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:08.883] ═══ SCHEDULER CYCLE #26 ═══ agents=4 tasks=4 orders=3
+[00:08.883] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:08.883] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:08.883] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:09.083] ═══ SCHEDULER CYCLE #27 ═══ agents=4 tasks=4 orders=3
+[00:09.083] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:09.083] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.083] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:09.116] [STATE] AI_Chef: moving → arrived | at (3.3,-1.5) dist=0.13 time=0.0s
+[00:09.283] ═══ SCHEDULER CYCLE #28 ═══ agents=4 tasks=4 orders=3
+[00:09.283] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:09.283] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.283] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:09.483] ═══ SCHEDULER CYCLE #29 ═══ agents=4 tasks=4 orders=3
+[00:09.483] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:09.483] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.483] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:09.550] [STATE] AI_Chef: moving → arrived | at (-3.0,1.8) dist=0.19 time=0.0s
+[00:09.550] [STATE] AI_Chef: moving → arrived | at (-7.5,-4.8) dist=0.18 time=0.0s
+[00:09.683] ═══ SCHEDULER CYCLE #30 ═══ agents=4 tasks=4 orders=3
+[00:09.683] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:09.683] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.683] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:09.816] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: 取Bread: completed
+[00:09.850] ═══ SCHEDULER CYCLE #31 ═══ agents=4 tasks=4 orders=3
+[00:09.850] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: 取Bread: released (status=completed)
+[00:09.850] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:09.850] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:09.850] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:09.850] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:09.850] [ASSIGN] Agent#4(AI_Chef) ← meatCheeseBurger: 加Bread到盘子 type=ADD_TO_PLATE score=15.97 facility=ClearCounter (10) item=Bread@(-8, 1, -6) | d=0.00 w=-1.28 u=11.00 ul=14.25 r=0.00 f=0.00 s=-8.00
+[00:09.850] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=meatCheeseBurger: 加Bread到盘子 facility=ClearCounter (10) item=Bread
+[00:09.850] [AI_Chef] ExecuteAddToPlate: picking up Bread from ClearCounter (5)
+[00:09.883] [AI_Chef] FindDropTarget(Tomato) → CuttingCounter CuttingCounter
+[00:09.883] [AI_Chef] FETCH got Tomato, delivering to CuttingCounter
+[00:09.916] [STATE] AI_Chef: moving → arrived | at (-7.5,-4.8) dist=0.12 time=0.0s
+[00:10.050] ═══ SCHEDULER CYCLE #32 ═══ agents=4 tasks=4 orders=3
+[00:10.050] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:10.050] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.050] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:10.083] [STATE] AI_Chef: GotoItem → counter-pickup | taking Bread from ClearCounter (5)
+[00:10.083] [STATE] AI_Chef: GotoItem → GotoDest | carrying Bread, heading to ClearCounter (10)
+[00:10.250] ═══ SCHEDULER CYCLE #33 ═══ agents=4 tasks=4 orders=3
+[00:10.250] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:10.250] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.250] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:10.450] ═══ SCHEDULER CYCLE #34 ═══ agents=4 tasks=4 orders=3
+[00:10.450] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:10.450] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.450] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:10.483] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.19 time=0.0s
+[00:10.650] ═══ SCHEDULER CYCLE #35 ═══ agents=4 tasks=4 orders=3
+[00:10.650] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:10.650] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.650] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:10.750] [COMPLETE] Agent#3(AI_Chef) tomato: 取Tomato: completed
+[00:10.783] ═══ SCHEDULER CYCLE #36 ═══ agents=4 tasks=4 orders=3
+[00:10.783] [COMPLETE] Agent#3(AI_Chef) tomato: 取Tomato: released (status=completed)
+[00:10.783] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:10.783] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.783] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:10.783] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:10.783] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: 取CheeseBlock type=FETCH score=16.23 facility=ContainerCounter | d=0.00 w=0.00 u=12.40 ul=3.75 r=0.08 f=0.00 s=0.00
+[00:10.783] [STATE] AI_Chef: idle → executing FETCH | task=meatCheeseBurger: 取CheeseBlock facility=ContainerCounter item=none
+[00:10.983] ═══ SCHEDULER CYCLE #37 ═══ agents=4 tasks=3 orders=3
+[00:10.983] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:10.983] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:10.983] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:11.183] ═══ SCHEDULER CYCLE #38 ═══ agents=4 tasks=3 orders=3
+[00:11.183] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:11.183] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.183] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:11.383] ═══ SCHEDULER CYCLE #39 ═══ agents=4 tasks=3 orders=3
+[00:11.383] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:11.383] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.383] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:11.583] ═══ SCHEDULER CYCLE #40 ═══ agents=4 tasks=3 orders=3
+[00:11.583] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:11.583] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.583] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:11.616] [STATE] AI_Chef: moving → arrived | at (3.8,-2.3) dist=0.02 time=0.0s
+[00:11.650] [STATE] AI_Chef: moving → arrived | at (-1.5,1.8) dist=0.21 time=0.0s
+[00:11.783] ═══ SCHEDULER CYCLE #41 ═══ agents=4 tasks=3 orders=3
+[00:11.783] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:11.783] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.783] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:11.816] [STATE] AI_Chef: moving → arrived | at (3.3,-3.0) dist=0.30 time=0.0s
+[00:11.983] ═══ SCHEDULER CYCLE #42 ═══ agents=4 tasks=3 orders=3
+[00:11.983] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:11.983] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:11.983] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:12.083] [COMPLETE] Agent#1(AI_Chef) salad: 拿盘子: completed
+[00:12.083] [AI_Chef] FindDropTarget(CheeseBlock) → ClearCounter ClearCounter (5)
+[00:12.083] [AI_Chef] FETCH got CheeseBlock, delivering to ClearCounter (5)
+[00:12.116] ═══ SCHEDULER CYCLE #43 ═══ agents=4 tasks=3 orders=3
+[00:12.116] [COMPLETE] Agent#1(AI_Chef) salad: 拿盘子: released (status=completed)
+[00:12.116] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:12.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.116] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:12.116] [Scheduler] 1 idle agents, 3 candidate tasks
+[00:12.116] [ASSIGN] Agent#1(AI_Chef) ← salad: 取Cabbage type=FETCH score=15.78 facility=ContainerCounter | d=-0.01 w=0.00 u=11.10 ul=4.69 r=0.00 f=0.00 s=0.00
+[00:12.116] [STATE] AI_Chef: idle → executing FETCH | task=salad: 取Cabbage facility=ContainerCounter item=none
+[00:12.316] ═══ SCHEDULER CYCLE #44 ═══ agents=4 tasks=2 orders=3
+[00:12.316] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:12.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.316] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:12.516] ═══ SCHEDULER CYCLE #45 ═══ agents=4 tasks=2 orders=3
+[00:12.516] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:12.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.516] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:12.616] [STATE] AI_Chef: moving → arrived | at (3.3,0.0) dist=0.18 time=0.0s
+[00:12.716] ═══ SCHEDULER CYCLE #46 ═══ agents=4 tasks=2 orders=3
+[00:12.716] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:12.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.716] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:12.850] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: 加Bread到盘子: completed
+[00:12.883] ═══ SCHEDULER CYCLE #47 ═══ agents=4 tasks=2 orders=3
+[00:12.883] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: 加Bread到盘子: released (status=completed)
+[00:12.883] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:12.883] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:12.883] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:12.883] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:12.883] [ASSIGN] Agent#4(AI_Chef) ← meatCheeseBurger: 取MeatPattyUncooked type=FETCH score=16.84 facility=ContainerCounter (1) | d=0.00 w=0.00 u=15.55 ul=1.25 r=0.04 f=0.00 s=0.00
+[00:12.883] [STATE] AI_Chef: idle → executing FETCH | task=meatCheeseBurger: 取MeatPattyUncooked facility=ContainerCounter (1) item=none
+[00:13.083] ═══ SCHEDULER CYCLE #48 ═══ agents=4 tasks=1 orders=3
+[00:13.083] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:13.083] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:13.083] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:13.283] ═══ SCHEDULER CYCLE #49 ═══ agents=4 tasks=1 orders=3
+[00:13.283] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:13.283] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:13.283] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:13.350] [STATE] AI_Chef: moving → arrived | at (3.3,0.0) dist=0.20 time=0.0s
+[00:13.450] [STATE] AI_Chef: moving → arrived | at (1.5,1.8) dist=0.19 time=0.0s
+[00:13.483] ═══ SCHEDULER CYCLE #50 ═══ agents=4 tasks=1 orders=3
+[00:13.483] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:13.483] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:13.483] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:13.516] [STATE] AI_Chef: moving → arrived | at (3.0,1.8) dist=0.17 time=0.0s
+[00:13.616] [COMPLETE] Agent#2(AI_Chef) tomato: 拿盘子: completed
+[00:13.616] [AI_Chef] CleanupTask: moving to ClearCounter (17) to drop Plate (dist=4.5)
+[00:13.683] ═══ SCHEDULER CYCLE #51 ═══ agents=4 tasks=1 orders=3
+[00:13.683] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:13.683] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:13.683] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:13.816] [AI_Chef] FindDropTarget(Cabbage) → ClearCounter ClearCounter (5)
+[00:13.816] [AI_Chef] FETCH got Cabbage, delivering to ClearCounter (5)
+[00:13.850] [AI_Chef] FindDropTarget(MeatPattyUncooked) → StoveCounter StoveCounter (2)
+[00:13.850] [AI_Chef] FETCH got MeatPattyUncooked, delivering to StoveCounter (2)
+[00:13.883] ═══ SCHEDULER CYCLE #52 ═══ agents=4 tasks=1 orders=3
+[00:13.883] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:13.883] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:13.883] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:14.083] ═══ SCHEDULER CYCLE #53 ═══ agents=4 tasks=1 orders=3
+[00:14.083] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:14.083] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:14.083] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:14.150] [STATE] AI_Chef: moving → arrived | at (-7.5,-4.8) dist=0.16 time=0.0s
+[00:14.283] ═══ SCHEDULER CYCLE #54 ═══ agents=4 tasks=1 orders=3
+[00:14.283] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:14.283] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:14.283] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:14.383] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: 取CheeseBlock: completed
+[00:14.416] ═══ SCHEDULER CYCLE #55 ═══ agents=4 tasks=1 orders=3
+[00:14.416] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: 取CheeseBlock: released (status=completed)
+[00:14.416] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:14.416] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:14.416] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:14.416] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:14.416] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=22.31 facility=CuttingCounter | d=-0.01 w=-0.53 u=17.85 ul=5.00 r=0.00 f=0.00 s=0.00
+[00:14.416] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:14.416] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:14.616] ═══ SCHEDULER CYCLE #56 ═══ agents=4 tasks=1 orders=3
+[00:14.616] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:14.616] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:14.616] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:14.783] [STATE] AI_Chef: moving → arrived | at (3.3,-4.5) dist=0.19 time=0.0s
+[00:14.816] ═══ SCHEDULER CYCLE #57 ═══ agents=4 tasks=1 orders=3
+[00:14.816] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:14.816] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:14.816] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:15.016] ═══ SCHEDULER CYCLE #58 ═══ agents=4 tasks=1 orders=3
+[00:15.016] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:15.016] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:15.016] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:15.083] [COMPLETE] Agent#2(AI_Chef) tomato: 拿盘子: completed
+[00:15.116] ═══ SCHEDULER CYCLE #59 ═══ agents=4 tasks=1 orders=3
+[00:15.116] [COMPLETE] Agent#2(AI_Chef) tomato: 拿盘子: released (status=completed)
+[00:15.116] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:15.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:15.116] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:15.116] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:15.116] [ASSIGN] Agent#2(AI_Chef) ← tomato: 加Tomato到盘子 type=ADD_TO_PLATE score=22.78 facility=ClearCounter (17) item=Tomato@(-5, 1, -6) | d=-0.01 w=-1.99 u=20.40 ul=12.38 r=0.00 f=0.00 s=-8.00
+[00:15.116] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=tomato: 加Tomato到盘子 facility=ClearCounter (17) item=Tomato
+[00:15.116] [AI_Chef] ExecuteAddToPlate: picking up Tomato from CuttingCounter (1)
+[00:15.316] ═══ SCHEDULER CYCLE #60 ═══ agents=4 tasks=1 orders=3
+[00:15.316] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:15.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:15.316] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:15.516] ═══ SCHEDULER CYCLE #61 ═══ agents=4 tasks=1 orders=3
+[00:15.516] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:15.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:15.516] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:15.716] ═══ SCHEDULER CYCLE #62 ═══ agents=4 tasks=1 orders=3
+[00:15.716] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:15.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:15.716] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:15.783] [STATE] AI_Chef: moving → arrived | at (-1.5,-4.8) dist=0.17 time=0.0s
+[00:15.916] ═══ SCHEDULER CYCLE #63 ═══ agents=4 tasks=1 orders=3
+[00:15.916] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:15.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:15.916] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:16.016] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: 取MeatPattyUncooked: completed
+[00:16.050] ═══ SCHEDULER CYCLE #64 ═══ agents=4 tasks=1 orders=3
+[00:16.050] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: 取MeatPattyUncooked: released (status=completed)
+[00:16.050] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:16.050] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:16.050] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:16.050] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:16.050] [ASSIGN] Agent#4(AI_Chef) ← meatCheeseBurger: MeatPattyUncooked→MeatPattyCooked type=PROCESS score=20.81 facility=StoveCounter (2) | d=0.00 w=-1.99 u=20.30 ul=2.50 r=0.00 f=0.00 s=0.00
+[00:16.050] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: MeatPattyUncooked→MeatPattyCooked facility=StoveCounter (2) item=none
+[00:16.050] [AI_Chef] ExecuteProcess: counter StoveCounter (2) has MeatPattyUncooked, → direct interact
+[00:16.116] [STATE] AI_Chef: moving → arrived | at (-1.5,-4.8) dist=0.17 time=0.0s
+[00:16.150] [STATE] AI_Chef: moving → arrived | at (-7.5,-4.8) dist=0.16 time=0.0s
+[00:16.183] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.16 time=0.0s
+[00:16.250] ═══ SCHEDULER CYCLE #65 ═══ agents=4 tasks=1 orders=3
+[00:16.250] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:16.250] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:16.250] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:16.416] [COMPLETE] Agent#1(AI_Chef) salad: 取Cabbage: completed
+[00:16.416] [AI_Chef] CleanupTask: dropping Cabbage at ClearCounter (7)
+[00:16.450] ═══ SCHEDULER CYCLE #66 ═══ agents=4 tasks=1 orders=3
+[00:16.450] [COMPLETE] Agent#1(AI_Chef) salad: 取Cabbage: released (status=completed)
+[00:16.450] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:16.450] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:16.450] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:16.450] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:16.450] [ASSIGN] Agent#1(AI_Chef) ← salad: Tomato→TomatoSlices type=PROCESS score=20.22 facility=CuttingCounter (1) | d=0.00 w=-0.51 u=17.60 ul=3.13 r=0.00 f=0.00 s=0.00
+[00:16.450] [STATE] AI_Chef: idle → executing PROCESS | task=salad: Tomato→TomatoSlices facility=CuttingCounter (1) item=none
+[00:16.450] [AI_Chef] ExecuteProcess: counter CuttingCounter (1) has Tomato, → direct interact
+[00:16.450] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=MeatPattyUncooked taskInput=MeatPattyUncooked taskOutput=MeatPattyCooked
+[00:16.450] [STATE] AI_Chef: start/subscribe cooking → MeatPattyUncooked | → MeatPattyCooked on StoveCounter (2)
+[00:16.583] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:16.583] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:16.583] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:16.616] ═══ SCHEDULER CYCLE #67 ═══ agents=4 tasks=1 orders=3
+[00:16.616] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:16.616] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:16.616] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:16.616] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:16.616] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:16.616] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=24.20 facility=CuttingCounter | d=0.00 w=-1.99 u=21.15 ul=5.00 r=0.04 f=0.00 s=0.00
+[00:16.616] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:16.616] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:16.683] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.14 time=0.0s
+[00:16.816] ═══ SCHEDULER CYCLE #68 ═══ agents=4 tasks=1 orders=3
+[00:16.816] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:16.816] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:16.816] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:17.016] ═══ SCHEDULER CYCLE #69 ═══ agents=4 tasks=1 orders=3
+[00:17.016] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:17.016] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:17.016] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:17.016] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:17.016] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:17.016] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:17.050] ═══ SCHEDULER CYCLE #70 ═══ agents=4 tasks=1 orders=3
+[00:17.050] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:17.050] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:17.050] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:17.050] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:17.050] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:17.050] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=24.89 facility=CuttingCounter | d=0.00 w=-1.99 u=21.80 ul=5.00 r=0.08 f=0.00 s=0.00
+[00:17.050] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:17.050] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:17.116] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.13 time=0.0s
+[00:17.250] ═══ SCHEDULER CYCLE #71 ═══ agents=4 tasks=1 orders=3
+[00:17.250] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:17.250] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:17.250] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:17.316] [STATE] AI_Chef: moving → arrived | at (-4.5,-4.8) dist=0.20 time=0.0s
+[00:17.450] ═══ SCHEDULER CYCLE #72 ═══ agents=4 tasks=1 orders=3
+[00:17.450] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:17.450] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:17.450] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:17.450] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:17.450] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:17.450] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:17.483] ═══ SCHEDULER CYCLE #73 ═══ agents=4 tasks=1 orders=3
+[00:17.483] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:17.483] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:17.483] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:17.483] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:17.483] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:17.483] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=25.58 facility=CuttingCounter | d=0.00 w=-1.99 u=22.45 ul=5.00 r=0.12 f=0.00 s=0.00
+[00:17.483] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:17.483] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:17.550] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.11 time=0.0s
+[00:17.683] ═══ SCHEDULER CYCLE #74 ═══ agents=4 tasks=1 orders=3
+[00:17.683] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:17.683] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:17.683] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:17.750] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=Tomato taskOutput=TomatoSlices
+[00:17.750] [STATE] AI_Chef: start cutting → Tomato | → TomatoSlices on CuttingCounter (1)
+[00:17.883] ═══ SCHEDULER CYCLE #75 ═══ agents=4 tasks=1 orders=3
+[00:17.883] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:17.883] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:17.883] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:17.883] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:17.883] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:17.883] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:17.916] ═══ SCHEDULER CYCLE #76 ═══ agents=4 tasks=1 orders=3
+[00:17.916] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:17.916] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:17.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:17.916] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:17.916] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:17.916] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=26.27 facility=CuttingCounter | d=0.00 w=-1.99 u=23.10 ul=5.00 r=0.16 f=0.00 s=0.00
+[00:17.916] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:17.916] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:17.983] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.09 time=0.0s
+[00:18.116] ═══ SCHEDULER CYCLE #77 ═══ agents=4 tasks=1 orders=3
+[00:18.116] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:18.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:18.116] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:18.316] ═══ SCHEDULER CYCLE #78 ═══ agents=4 tasks=1 orders=3
+[00:18.316] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:18.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:18.316] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:18.316] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:18.316] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:18.316] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:18.350] ═══ SCHEDULER CYCLE #79 ═══ agents=4 tasks=1 orders=3
+[00:18.350] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:18.350] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:18.350] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:18.350] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:18.350] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:18.350] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=26.96 facility=CuttingCounter | d=0.00 w=-1.99 u=23.75 ul=5.00 r=0.20 f=0.00 s=0.00
+[00:18.350] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:18.350] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:18.416] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.08 time=0.0s
+[00:18.550] ═══ SCHEDULER CYCLE #80 ═══ agents=4 tasks=1 orders=3
+[00:18.550] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:18.550] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:18.550] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:18.750] ═══ SCHEDULER CYCLE #81 ═══ agents=4 tasks=1 orders=3
+[00:18.750] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:18.750] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:18.750] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:18.750] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:18.750] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:18.750] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:18.783] ═══ SCHEDULER CYCLE #82 ═══ agents=4 tasks=1 orders=3
+[00:18.783] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:18.783] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:18.783] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:18.783] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:18.783] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:18.783] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=27.65 facility=CuttingCounter | d=0.00 w=-1.99 u=24.40 ul=5.00 r=0.24 f=0.00 s=0.00
+[00:18.783] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:18.783] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:18.850] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.06 time=0.0s
+[00:18.983] ═══ SCHEDULER CYCLE #83 ═══ agents=4 tasks=1 orders=3
+[00:18.983] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:18.983] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:18.983] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:19.183] ═══ SCHEDULER CYCLE #84 ═══ agents=4 tasks=1 orders=3
+[00:19.183] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:19.183] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:19.183] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:19.183] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:19.183] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:19.183] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:19.216] ═══ SCHEDULER CYCLE #85 ═══ agents=4 tasks=1 orders=3
+[00:19.216] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:19.216] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:19.216] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:19.216] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:19.216] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:19.216] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=28.31 facility=CuttingCounter | d=0.00 w=-1.99 u=25.05 ul=5.00 r=0.25 f=0.00 s=0.00
+[00:19.216] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:19.216] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:19.283] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.04 time=0.0s
+[00:19.416] ═══ SCHEDULER CYCLE #86 ═══ agents=4 tasks=1 orders=3
+[00:19.416] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:19.416] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:19.416] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:19.616] ═══ SCHEDULER CYCLE #87 ═══ agents=4 tasks=1 orders=3
+[00:19.616] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:19.616] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:19.616] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:19.616] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:19.616] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:19.616] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:19.650] ═══ SCHEDULER CYCLE #88 ═══ agents=4 tasks=1 orders=3
+[00:19.650] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:19.650] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:19.650] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:19.650] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:19.650] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:19.650] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=28.96 facility=CuttingCounter | d=0.00 w=-1.99 u=25.70 ul=5.00 r=0.25 f=0.00 s=0.00
+[00:19.650] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:19.650] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:19.716] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.03 time=0.0s
+[00:19.783] [STATE] AI_Chef: working → done | duration=2.0s task=salad: Tomato→TomatoSlices
+[00:19.783] [AI_Chef] Working done but output not ready (counter has Tomato), entering wait
+[00:19.850] ═══ SCHEDULER CYCLE #89 ═══ agents=4 tasks=1 orders=3
+[00:19.850] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:19.850] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:19.850] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:20.050] ═══ SCHEDULER CYCLE #90 ═══ agents=4 tasks=1 orders=3
+[00:20.050] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:20.050] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:20.050] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:20.050] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:20.050] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:20.050] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:20.083] ═══ SCHEDULER CYCLE #91 ═══ agents=4 tasks=1 orders=3
+[00:20.083] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:20.083] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:20.083] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:20.083] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:20.083] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:20.083] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=29.61 facility=CuttingCounter | d=0.00 w=-1.99 u=26.35 ul=5.00 r=0.25 f=0.00 s=0.00
+[00:20.083] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:20.083] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:20.150] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.01 time=0.0s
+[00:20.283] ═══ SCHEDULER CYCLE #92 ═══ agents=4 tasks=1 orders=3
+[00:20.283] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:20.283] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:20.283] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:20.483] ═══ SCHEDULER CYCLE #93 ═══ agents=4 tasks=1 orders=3
+[00:20.483] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:20.483] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:20.483] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:20.483] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:20.483] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:20.483] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:20.516] ═══ SCHEDULER CYCLE #94 ═══ agents=4 tasks=1 orders=3
+[00:20.516] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:20.516] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:20.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:20.516] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:20.516] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:20.516] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=30.26 facility=CuttingCounter | d=0.00 w=-1.99 u=27.00 ul=5.00 r=0.25 f=0.00 s=0.00
+[00:20.516] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:20.516] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:20.583] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.00 time=0.0s
+[00:20.716] ═══ SCHEDULER CYCLE #95 ═══ agents=4 tasks=1 orders=3
+[00:20.716] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:20.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:20.716] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:20.916] ═══ SCHEDULER CYCLE #96 ═══ agents=4 tasks=1 orders=3
+[00:20.916] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:20.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:20.916] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:20.916] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:20.916] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:20.916] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:20.950] ═══ SCHEDULER CYCLE #97 ═══ agents=4 tasks=1 orders=3
+[00:20.950] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:20.950] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:20.950] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:20.950] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:20.950] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:20.950] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=30.91 facility=CuttingCounter | d=0.00 w=-1.99 u=27.65 ul=5.00 r=0.25 f=0.00 s=0.00
+[00:20.950] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:20.950] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:21.016] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.00 time=0.0s
+[00:21.150] ═══ SCHEDULER CYCLE #98 ═══ agents=4 tasks=1 orders=3
+[00:21.150] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:21.150] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:21.150] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:21.350] ═══ SCHEDULER CYCLE #99 ═══ agents=4 tasks=1 orders=3
+[00:21.350] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:21.350] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:21.350] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:21.350] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:21.350] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:21.350] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:21.383] ═══ SCHEDULER CYCLE #100 ═══ agents=4 tasks=1 orders=3
+[00:21.383] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:21.383] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:21.383] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:21.383] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:21.383] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:21.383] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=31.56 facility=CuttingCounter | d=0.00 w=-1.99 u=28.30 ul=5.00 r=0.25 f=0.00 s=0.00
+[00:21.383] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:21.383] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:21.450] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.00 time=0.0s
+[00:21.583] ═══ SCHEDULER CYCLE #101 ═══ agents=4 tasks=1 orders=3
+[00:21.583] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:21.583] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:21.583] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:21.783] ═══ SCHEDULER CYCLE #102 ═══ agents=4 tasks=1 orders=3
+[00:21.783] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:21.783] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:21.783] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:21.783] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:21.783] [WARN] [AI_Chef] HandleProcess: CuttingCounter occupied by Tomato, not clearing — abandoning
+[00:21.783] [ABANDON] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:21.816] ═══ SCHEDULER CYCLE #103 ═══ agents=4 tasks=2 orders=3
+[00:21.816] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:21.816] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:21.816] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:21.816] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:21.816] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:21.816] [ASSIGN] Agent#3(AI_Chef) ← tomato: 取Tomato type=FETCH score=33.69 facility=ContainerCounter | d=0.00 w=0.00 u=30.45 ul=3.13 r=0.12 f=0.00 s=0.00
+[00:21.816] [STATE] AI_Chef: idle → executing FETCH | task=tomato: 取Tomato facility=ContainerCounter item=none
+[00:21.950] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=TomatoSlices taskInput=Tomato taskOutput=TomatoSlices
+[00:21.950] [STATE] AI_Chef: taking output → TomatoSlices | from CuttingCounter (1)
+[00:21.950] [COMPLETE] Agent#1(AI_Chef) salad: Tomato→TomatoSlices: completed
+[00:21.950] [AI_Chef] CleanupTask: moving to ClearCounter (16) to drop TomatoSlices (dist=9.4)
+[00:22.016] ═══ SCHEDULER CYCLE #104 ═══ agents=4 tasks=3 orders=3
+[00:22.016] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:22.016] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:22.016] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:22.040] [AI_Chef] Stove stage changed: MeatPattyCooked (want MeatPattyCooked)
+[00:22.040] [STATE] AI_Chef: stove grab → MeatPattyCooked | output ready, taking before burn
+[00:22.040] [AI_Chef] Delivering cooked MeatPattyCooked to ClearCounter (10) (direct-to-plate)
+[00:22.216] ═══ SCHEDULER CYCLE #105 ═══ agents=4 tasks=2 orders=3
+[00:22.216] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:22.216] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:22.216] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:22.383] [STATE] AI_Chef: moving → arrived | at (-3.0,1.8) dist=0.18 time=0.0s
+[00:22.416] ═══ SCHEDULER CYCLE #106 ═══ agents=4 tasks=3 orders=3
+[00:22.416] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:22.416] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:22.416] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:22.616] ═══ SCHEDULER CYCLE #107 ═══ agents=4 tasks=3 orders=3
+[00:22.616] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:22.616] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:22.616] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:22.816] ═══ SCHEDULER CYCLE #108 ═══ agents=4 tasks=3 orders=3
+[00:22.816] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:22.816] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:22.816] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:22.850] [AI_Chef] FindDropTarget(Tomato) → plate at ClearCounter (17)
+[00:22.850] [AI_Chef] FETCH got Tomato, delivering to ClearCounter (17)
+[00:23.016] ═══ SCHEDULER CYCLE #109 ═══ agents=4 tasks=3 orders=3
+[00:23.016] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:23.016] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:23.016] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:23.116] [WARN] [AI_Chef] Stuck moving for 8s (dist=0.6)
+[00:23.116] [ABANDON] Agent#2(AI_Chef) tomato: 加Tomato到盘子: substate=moving phase=GotoItem timer=8.0
+[00:23.150] ═══ SCHEDULER CYCLE #110 ═══ agents=4 tasks=3 orders=3
+[00:23.150] [COMPLETE] Agent#2(AI_Chef) tomato: 加Tomato到盘子: released (status=abandoned)
+[00:23.150] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:23.150] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:23.150] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:23.150] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:23.150] [ASSIGN] Agent#2(AI_Chef) ← tomato: 加Tomato到盘子 type=ADD_TO_PLATE score=47.07 facility=ClearCounter (17) item=Tomato@(-5, 1, 3) | d=-0.01 w=-0.79 u=32.45 ul=12.38 r=0.04 f=3.00 s=0.00
+[00:23.150] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=tomato: 加Tomato到盘子 facility=ClearCounter (17) item=Tomato
+[00:23.150] [AI_Chef] ExecuteAddToPlate: picking up Tomato from CuttingCounter
+[00:23.350] ═══ SCHEDULER CYCLE #111 ═══ agents=4 tasks=3 orders=3
+[00:23.350] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:23.350] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:23.350] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:23.550] ═══ SCHEDULER CYCLE #112 ═══ agents=4 tasks=3 orders=3
+[00:23.550] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:23.550] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:23.550] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:23.650] [STATE] AI_Chef: moving → arrived | at (3.3,0.0) dist=0.21 time=0.0s
+[00:23.750] ═══ SCHEDULER CYCLE #113 ═══ agents=4 tasks=3 orders=3
+[00:23.750] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:23.750] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:23.750] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:23.883] [STATE] AI_Chef: moving → arrived | at (3.3,-3.0) dist=0.20 time=0.0s
+[00:23.883] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: MeatPattyUncooked→MeatPattyCooked: completed
+[00:23.916] ═══ SCHEDULER CYCLE #114 ═══ agents=4 tasks=3 orders=3
+[00:23.916] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: MeatPattyUncooked→MeatPattyCooked: released (status=completed)
+[00:23.916] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:23.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:23.916] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:23.916] [Scheduler] 1 idle agents, 2 candidate tasks
+[00:23.916] [ASSIGN] Agent#4(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=35.99 facility=CuttingCounter | d=-0.01 w=-1.15 u=32.10 ul=5.00 r=0.04 f=0.00 s=0.00
+[00:23.916] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:23.916] [AI_Chef] ExecuteProcess: counter CuttingCounter has Tomato, → direct interact
+[00:24.050] [COMPLETE] Agent#1(AI_Chef) salad: Tomato→TomatoSlices: completed
+[00:24.083] ═══ SCHEDULER CYCLE #115 ═══ agents=4 tasks=1 orders=3
+[00:24.083] [COMPLETE] Agent#1(AI_Chef) salad: Tomato→TomatoSlices: released (status=completed)
+[00:24.083] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:24.083] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:24.083] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:24.083] [Scheduler] 1 idle agents, 1 candidate tasks
+[00:24.083] [ASSIGN] Agent#1(AI_Chef) ← salad: Cabbage→CabbageSlices type=PROCESS score=35.33 facility=CuttingCounter (1) | d=-0.01 w=0.00 u=29.05 ul=6.25 r=0.04 f=0.00 s=0.00
+[00:24.083] [STATE] AI_Chef: idle → executing PROCESS | task=salad: Cabbage→CabbageSlices facility=CuttingCounter (1) item=none
+[00:24.083] [AI_Chef] ExecuteProcess: self-fetching Cabbage from ClearCounter (7) → CuttingCounter (1)
+[00:24.283] ═══ SCHEDULER CYCLE #116 ═══ agents=4 tasks=0 orders=3
+[00:24.283] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:24.283] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:24.283] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:24.283] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:24.483] ═══ SCHEDULER CYCLE #117 ═══ agents=4 tasks=0 orders=3
+[00:24.483] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:24.483] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:24.483] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:24.483] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:24.683] ═══ SCHEDULER CYCLE #118 ═══ agents=4 tasks=0 orders=3
+[00:24.683] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:24.683] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:24.683] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:24.683] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:24.716] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.14 time=0.0s
+[00:24.850] [STATE] AI_Chef: moving → arrived | at (3.3,-4.5) dist=0.16 time=0.0s
+[00:24.883] ═══ SCHEDULER CYCLE #119 ═══ agents=4 tasks=0 orders=3
+[00:24.883] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:24.883] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:24.883] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:24.883] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:24.883] [STATE] AI_Chef: GotoItem → counter-pickup | taking Tomato from CuttingCounter
+[00:24.883] [STATE] AI_Chef: GotoItem → GotoDest | carrying Tomato, heading to ClearCounter (17)
+[00:25.083] ═══ SCHEDULER CYCLE #120 ═══ agents=4 tasks=0 orders=3
+[00:25.083] [Scheduler] SERVE #1 tomato: no plate with [Tomato]
+[00:25.083] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:25.083] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:25.083] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:25.083] [COMPLETE] Agent#3(AI_Chef) tomato: 取Tomato: completed
+[00:25.116] ═══ SCHEDULER CYCLE #121 ═══ agents=4 tasks=0 orders=3
+[00:25.116] [COMPLETE] Agent#3(AI_Chef) tomato: 取Tomato: released (status=completed)
+[00:25.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:25.116] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:25.116] [Scheduler] 1 idle agents, 1 candidate tasks
+[00:25.116] [ASSIGN] Agent#3(AI_Chef) ← tomato: 出餐tomato type=SERVE score=57.90 facility=DeliveryCounter item=Plate@(5, 1, -5) | d=0.00 w=0.00 u=35.40 ul=22.50 r=0.00 f=0.00 s=0.00
+[00:25.116] [STATE] AI_Chef: idle → executing SERVE | task=tomato: 出餐tomato facility=DeliveryCounter item=Plate
+[00:25.283] [STATE] AI_Chef: moving → arrived | at (3.5,-4.5) dist=0.22 time=0.0s
+[00:25.316] ═══ SCHEDULER CYCLE #122 ═══ agents=4 tasks=0 orders=3
+[00:25.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:25.316] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:25.316] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:25.483] [STATE] AI_Chef: GotoItem → counter-pickup | taking Plate from ClearCounter (17)
+[00:25.483] [STATE] AI_Chef: GotoItem → GotoDest | carrying Plate, heading to DeliveryCounter
+[00:25.516] ═══ SCHEDULER CYCLE #123 ═══ agents=4 tasks=0 orders=3
+[00:25.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:25.516] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:25.516] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:25.716] ═══ SCHEDULER CYCLE #124 ═══ agents=4 tasks=0 orders=3
+[00:25.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:25.716] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:25.716] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:25.883] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.20 time=0.0s
+[00:25.916] ═══ SCHEDULER CYCLE #125 ═══ agents=4 tasks=0 orders=3
+[00:25.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:25.916] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:25.916] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:26.116] ═══ SCHEDULER CYCLE #126 ═══ agents=4 tasks=0 orders=3
+[00:26.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:26.116] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:26.116] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:26.316] ═══ SCHEDULER CYCLE #127 ═══ agents=4 tasks=0 orders=3
+[00:26.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:26.316] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:26.316] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:26.350] [STATE] AI_Chef: moving → arrived | at (-6.0,-4.8) dist=0.10 time=0.0s
+[00:26.350] [AI_Chef] HandleProcess: held=none counterHas=False counterItem=empty taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:26.350] [WARN] [AI_Chef] HandleProcess: counter empty, nothing to process — abandoning
+[00:26.350] [ABANDON] Agent#4(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: substate=interacting phase=None timer=0.2
+[00:26.383] ═══ SCHEDULER CYCLE #128 ═══ agents=4 tasks=0 orders=3
+[00:26.383] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=abandoned)
+[00:26.383] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:26.383] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:26.383] [Scheduler] 1 idle agents, 1 candidate tasks
+[00:26.383] [ASSIGN] Agent#4(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=40.88 facility=CuttingCounter | d=0.00 w=0.00 u=35.80 ul=5.00 r=0.08 f=0.00 s=0.00
+[00:26.383] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:26.383] [AI_Chef] ExecuteProcess: self-fetching CheeseBlock from ClearCounter (5) → CuttingCounter
+[00:26.583] ═══ SCHEDULER CYCLE #129 ═══ agents=4 tasks=0 orders=3
+[00:26.583] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:26.583] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:26.583] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:26.616] [STATE] AI_Chef: GotoItem → counter-pickup | taking Cabbage from ClearCounter (7)
+[00:26.616] [STATE] AI_Chef: GotoItem → GotoFacility | carrying Cabbage, heading to CuttingCounter (1)
+[00:26.783] ═══ SCHEDULER CYCLE #130 ═══ agents=4 tasks=0 orders=3
+[00:26.783] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:26.783] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:26.783] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=12 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:26.983] ═══ SCHEDULER CYCLE #131 ═══ agents=4 tasks=0 orders=3
+[00:26.983] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:26.983] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:26.983] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=12 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:27.183] ═══ SCHEDULER CYCLE #132 ═══ agents=4 tasks=0 orders=3
+[00:27.183] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:27.183] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:27.183] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=12 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:27.383] ═══ SCHEDULER CYCLE #133 ═══ agents=4 tasks=0 orders=3
+[00:27.383] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:27.383] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:27.383] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=12 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:27.416] [STATE] AI_Chef: moving → arrived | at (-4.5,-4.8) dist=0.10 time=0.0s
+[00:27.483] [STATE] AI_Chef: moving → arrived | at (3.3,-4.5) dist=0.19 time=0.0s
+[00:27.583] ═══ SCHEDULER CYCLE #134 ═══ agents=4 tasks=0 orders=3
+[00:27.583] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:27.583] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:27.583] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=12 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:27.616] [STATE] AI_Chef: moving → arrived | at (3.3,1.5) dist=0.14 time=0.0s
+[00:27.716] [AI_Chef] DropItemAtFacility:  → CuttingCounter (1)
+[00:27.783] ═══ SCHEDULER CYCLE #135 ═══ agents=4 tasks=0 orders=3
+[00:27.783] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:27.783] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:27.783] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=13 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:27.783] [COMPLETE] Agent#2(AI_Chef) tomato: 加Tomato到盘子: completed
+[00:27.816] ═══ SCHEDULER CYCLE #136 ═══ agents=4 tasks=0 orders=3
+[00:27.816] [COMPLETE] Agent#2(AI_Chef) tomato: 加Tomato到盘子: released (status=completed)
+[00:27.816] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:27.816] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:27.816] [WARN] [Scheduler] 0 tasks for 3 orders! skippedCompleted=15 skippedActive=3 skippedNoStorage=0 skippedNoFacility=0
+[00:27.816] [WARN] [Scheduler] 1 idle agents but 0 candidate tasks with 3 orders (0s). Dumping blackboard...
+[00:27.816] ═══ BLACKBOARD SNAPSHOT ═══
+  Facilities (28):
+    ClearCounter (5) type=AssemblyTable [occupied] reservedBy=0
+    StoveCounter (2) type=FryingPan reservedBy=-1
+    ContainerCounter type=Storage reservedBy=-1
+    ClearCounter (11) type=AssemblyTable reservedBy=0
+    ClearCounter (9) type=AssemblyTable reservedBy=0
+    CuttingCounter (1) type=CuttingBoard [reserved] reservedBy=1
+    ClearCounter (12) type=AssemblyTable reservedBy=0
+    TrashCounter type=TrashCan reservedBy=0
+    ClearCounter (16) type=AssemblyTable [occupied] reservedBy=0
+    ClearCounter (1) type=AssemblyTable reservedBy=0
+    ContainerCounter type=Storage reservedBy=-1
+    ContainerCounter type=Storage reservedBy=-1
+    DeliveryCounter type=ServingCounter [reserved] reservedBy=3
+    ClearCounter (15) type=AssemblyTable reservedBy=0
+    ContainerCounter (1) type=Storage reservedBy=-1
+    StoveCounter type=FryingPan reservedBy=0
+    ClearCounter (2) type=AssemblyTable reservedBy=0
+    CuttingCounter type=CuttingBoard [reserved] reservedBy=4
+    ContainerCounter type=Storage reservedBy=-1
+    ClearCounter (7) type=AssemblyTable reservedBy=0
+    ClearCounter (17) type=AssemblyTable [occupied] reservedBy=0
+    ClearCounter (13) type=AssemblyTable reservedBy=0
+    PlateCounter type=PlatesCounter reservedBy=0
+    ClearCounter (14) type=AssemblyTable reservedBy=0
+    ClearCounter (10) type=AssemblyTable [occupied] reservedBy=0
+    StoveCounter (1) type=FryingPan reservedBy=0
+    PlateCounter (1) type=PlatesCounter reservedBy=0
+    ClearCounter (3) type=AssemblyTable reservedBy=0
+  Items (6):
+    Plate stage=Plate
+    Plate stage=Plate
+    Tomato stage=Raw
+    Plate stage=Plate carriedBy=3 reservedByTask=620
+    CheeseBlock stage=Raw
+    Cabbage stage=Raw
+  Agents (4):
+    Agent#1 substate=interacting pos=(-4.5,-4.8) task=salad: Cabbage→CabbageSlices
+    Agent#2 substate=idle pos=(3.3,-4.4) task=none
+    Agent#3 substate=paused pos=(3.3,1.4) task=tomato: 出餐tomato
+    Agent#4 substate=moving pos=(-7.0,-3.6) task=meatCheeseBurger: CheeseBlock→CheeseSlices
+  Orders: 3
+[00:27.883] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Cabbage taskInput=Cabbage taskOutput=CabbageSlices
+[00:27.883] [STATE] AI_Chef: start cutting → Cabbage | → CabbageSlices on CuttingCounter (1)
+[00:27.883] [COMPLETE] Agent#3(AI_Chef) tomato: 出餐tomato: completed
+[00:27.883] [Scheduler] Order #1 served — releasing plate
+[00:27.916] ═══ SCHEDULER CYCLE #137 ═══ agents=4 tasks=0 orders=3
+[00:27.916] [COMPLETE] Agent#3(AI_Chef) tomato: 出餐tomato: released (status=completed)
+[00:27.916] [Scheduler] Order #1 (tomato) left queue — cleaned up
+[00:27.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:27.916] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:27.916] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=12 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:28.116] ═══ SCHEDULER CYCLE #138 ═══ agents=4 tasks=0 orders=2
+[00:28.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:28.116] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:28.116] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=12 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:28.150] [STATE] AI_Chef: moving → arrived | at (-7.5,-4.8) dist=0.21 time=0.0s
+[00:28.316] ═══ SCHEDULER CYCLE #139 ═══ agents=4 tasks=0 orders=2
+[00:28.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:28.316] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:28.316] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=12 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:28.383] [STATE] AI_Chef: GotoItem → counter-pickup | taking CheeseBlock from ClearCounter (5)
+[00:28.383] [STATE] AI_Chef: GotoItem → GotoFacility | carrying CheeseBlock, heading to CuttingCounter
+[00:28.516] ═══ SCHEDULER CYCLE #140 ═══ agents=4 tasks=0 orders=2
+[00:28.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:28.516] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:28.516] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=11 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:28.716] ═══ SCHEDULER CYCLE #141 ═══ agents=4 tasks=0 orders=2
+[00:28.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:28.716] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:28.716] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=11 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:28.916] ═══ SCHEDULER CYCLE #142 ═══ agents=4 tasks=0 orders=2
+[00:28.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:28.916] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:28.916] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=11 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:29.116] ═══ SCHEDULER CYCLE #143 ═══ agents=4 tasks=0 orders=2
+[00:29.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:29.116] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:29.116] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=11 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:29.316] ═══ SCHEDULER CYCLE #144 ═══ agents=4 tasks=0 orders=2
+[00:29.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:29.316] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:29.316] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=11 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:29.516] ═══ SCHEDULER CYCLE #145 ═══ agents=4 tasks=0 orders=2
+[00:29.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:29.516] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:29.516] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=11 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:29.716] ═══ SCHEDULER CYCLE #146 ═══ agents=4 tasks=0 orders=2
+[00:29.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:29.716] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:29.716] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=11 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:29.916] ═══ SCHEDULER CYCLE #147 ═══ agents=4 tasks=0 orders=2
+[00:29.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:29.916] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:29.916] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=11 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:29.916] [STATE] AI_Chef: working → done | duration=2.0s task=salad: Cabbage→CabbageSlices
+[00:29.916] [AI_Chef] Working done but output not ready (counter has Cabbage), entering wait
+[00:30.116] ═══ SCHEDULER CYCLE #148 ═══ agents=4 tasks=0 orders=2
+[00:30.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:30.116] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:30.116] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=11 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:30.316] ═══ SCHEDULER CYCLE #149 ═══ agents=4 tasks=0 orders=2
+[00:30.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:30.316] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:30.316] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=11 skippedActive=2 skippedNoStorage=0 skippedNoFacility=0
+[00:30.483] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.20 time=0.0s
+[00:30.516] ═══ SCHEDULER CYCLE #150 ═══ agents=4 tasks=0 orders=2
+[00:30.516] [Scheduler] Order #4 ← meatCheeseBurger (duplicate #2)
+[00:30.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:30.516] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:30.516] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:30.516] [Scheduler] 2 idle agents, 4 candidate tasks
+[00:30.516] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: 取Bread type=FETCH score=48.41 facility=ContainerCounter | d=0.00 w=0.00 u=42.00 ul=6.25 r=0.16 f=0.00 s=0.00
+[00:30.516] [STATE] AI_Chef: idle → executing FETCH | task=meatCheeseBurger: 取Bread facility=ContainerCounter item=none
+[00:30.516] [ASSIGN] Agent#2(AI_Chef) ← meatCheeseBurger: 取CheeseBlock type=FETCH score=45.75 facility=ContainerCounter | d=0.00 w=0.00 u=42.00 ul=3.75 r=0.00 f=0.00 s=0.00
+[00:30.516] [STATE] AI_Chef: idle → executing FETCH | task=meatCheeseBurger: 取CheeseBlock facility=ContainerCounter item=none
+[00:30.683] [AI_Chef] DropItemAtFacility:  → CuttingCounter
+[00:30.716] ═══ SCHEDULER CYCLE #151 ═══ agents=4 tasks=2 orders=3
+[00:30.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:30.716] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:30.716] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:30.850] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=CheeseBlock taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:30.850] [STATE] AI_Chef: start cutting → CheeseBlock | → CheeseSlices on CuttingCounter
+[00:30.916] ═══ SCHEDULER CYCLE #152 ═══ agents=4 tasks=3 orders=3
+[00:30.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:30.916] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:30.916] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:31.016] [STATE] AI_Chef: moving → arrived | at (-1.5,1.8) dist=0.20 time=0.0s
+[00:31.016] [STATE] AI_Chef: moving → arrived | at (0.0,1.8) dist=0.19 time=0.0s
+[00:31.116] ═══ SCHEDULER CYCLE #153 ═══ agents=4 tasks=3 orders=3
+[00:31.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:31.116] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:31.116] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:31.316] ═══ SCHEDULER CYCLE #154 ═══ agents=4 tasks=3 orders=3
+[00:31.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:31.316] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:31.316] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:31.450] [AI_Chef] FindDropTarget(CheeseBlock) → ClearCounter ClearCounter (5)
+[00:31.450] [AI_Chef] FETCH got CheeseBlock, delivering to ClearCounter (5)
+[00:31.483] [AI_Chef] FindDropTarget(Bread) → ClearCounter ClearCounter (5)
+[00:31.483] [AI_Chef] FETCH got Bread, delivering to ClearCounter (5)
+[00:31.516] ═══ SCHEDULER CYCLE #155 ═══ agents=4 tasks=3 orders=3
+[00:31.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:31.516] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:31.516] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:31.716] ═══ SCHEDULER CYCLE #156 ═══ agents=4 tasks=3 orders=3
+[00:31.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:31.716] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:31.716] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:31.916] ═══ SCHEDULER CYCLE #157 ═══ agents=4 tasks=3 orders=3
+[00:31.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:31.916] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:31.916] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:32.083] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=CabbageSlices taskInput=Cabbage taskOutput=CabbageSlices
+[00:32.083] [STATE] AI_Chef: taking output → CabbageSlices | from CuttingCounter (1)
+[00:32.083] [COMPLETE] Agent#1(AI_Chef) salad: Cabbage→CabbageSlices: completed
+[00:32.083] [AI_Chef] CleanupTask: moving to ClearCounter (16) to drop CabbageSlices (dist=9.2)
+[00:32.116] ═══ SCHEDULER CYCLE #158 ═══ agents=4 tasks=4 orders=3
+[00:32.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:32.116] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:32.116] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:32.316] ═══ SCHEDULER CYCLE #159 ═══ agents=4 tasks=4 orders=3
+[00:32.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:32.316] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:32.316] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:32.516] ═══ SCHEDULER CYCLE #160 ═══ agents=4 tasks=4 orders=3
+[00:32.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:32.516] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:32.516] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:32.716] ═══ SCHEDULER CYCLE #161 ═══ agents=4 tasks=4 orders=3
+[00:32.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:32.716] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:32.716] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:32.883] [STATE] AI_Chef: working → done | duration=2.0s task=meatCheeseBurger: CheeseBlock→CheeseSlices
+[00:32.883] [AI_Chef] Working done but output not ready (counter has CheeseBlock), entering wait
+[00:32.916] ═══ SCHEDULER CYCLE #162 ═══ agents=4 tasks=4 orders=3
+[00:32.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:32.916] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:32.916] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:33.116] ═══ SCHEDULER CYCLE #163 ═══ agents=4 tasks=4 orders=3
+[00:33.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:33.116] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:33.116] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:33.316] ═══ SCHEDULER CYCLE #164 ═══ agents=4 tasks=4 orders=3
+[00:33.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:33.316] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:33.316] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:33.383] [STATE] AI_Chef: moving → arrived | at (-7.5,-4.8) dist=0.03 time=0.0s
+[00:33.516] ═══ SCHEDULER CYCLE #165 ═══ agents=4 tasks=4 orders=3
+[00:33.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:33.516] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:33.516] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:33.616] [COMPLETE] Agent#2(AI_Chef) meatCheeseBurger: 取CheeseBlock: completed
+[00:33.650] ═══ SCHEDULER CYCLE #166 ═══ agents=4 tasks=4 orders=3
+[00:33.650] [COMPLETE] Agent#2(AI_Chef) meatCheeseBurger: 取CheeseBlock: released (status=completed)
+[00:33.650] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:33.650] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:33.650] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:33.650] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:33.650] [ASSIGN] Agent#2(AI_Chef) ← salad: 取Cabbage type=FETCH score=48.12 facility=ContainerCounter | d=-0.01 w=0.00 u=43.40 ul=4.69 r=0.04 f=0.00 s=0.00
+[00:33.650] [STATE] AI_Chef: idle → executing FETCH | task=salad: 取Cabbage facility=ContainerCounter item=none
+[00:33.850] ═══ SCHEDULER CYCLE #167 ═══ agents=4 tasks=3 orders=3
+[00:33.850] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:33.850] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:33.850] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:33.883] [STATE] AI_Chef: moving → arrived | at (3.3,-3.0) dist=0.16 time=0.0s
+[00:34.050] ═══ SCHEDULER CYCLE #168 ═══ agents=4 tasks=3 orders=3
+[00:34.050] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:34.050] [Scheduler] SERVE #3 salad: no plate with [TomatoSlices,CabbageSlices]
+[00:34.050] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:34.083] [COMPLETE] Agent#1(AI_Chef) salad: Cabbage→CabbageSlices: completed
+[00:34.116] ═══ SCHEDULER CYCLE #169 ═══ agents=4 tasks=3 orders=3
+[00:34.116] [COMPLETE] Agent#1(AI_Chef) salad: Cabbage→CabbageSlices: released (status=completed)
+[00:34.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:34.116] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:34.116] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:34.116] [ASSIGN] Agent#1(AI_Chef) ← salad: 出餐salad type=SERVE score=66.60 facility=DeliveryCounter item=Plate@(5, 1, -3) | d=0.00 w=0.00 u=44.10 ul=22.50 r=0.00 f=0.00 s=0.00
+[00:34.116] [STATE] AI_Chef: idle → executing SERVE | task=salad: 出餐salad facility=DeliveryCounter item=Plate
+[00:34.250] [STATE] AI_Chef: moving → arrived | at (3.5,-3.0) dist=0.24 time=0.0s
+[00:34.316] ═══ SCHEDULER CYCLE #170 ═══ agents=4 tasks=3 orders=3
+[00:34.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:34.316] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:34.416] [STATE] AI_Chef: GotoItem → counter-pickup | taking Plate from ClearCounter (16)
+[00:34.416] [STATE] AI_Chef: GotoItem → GotoDest | carrying Plate, heading to DeliveryCounter
+[00:34.516] ═══ SCHEDULER CYCLE #171 ═══ agents=4 tasks=3 orders=3
+[00:34.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:34.516] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:34.550] [STATE] AI_Chef: moving → arrived | at (-7.5,-4.8) dist=0.18 time=0.0s
+[00:34.716] ═══ SCHEDULER CYCLE #172 ═══ agents=4 tasks=3 orders=3
+[00:34.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:34.716] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:34.816] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: 取Bread: completed
+[00:34.816] [AI_Chef] CleanupTask: dropping Bread at ClearCounter (7)
+[00:34.850] ═══ SCHEDULER CYCLE #173 ═══ agents=4 tasks=3 orders=3
+[00:34.850] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: 取Bread: released (status=completed)
+[00:34.850] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:34.850] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:34.850] [Scheduler] 1 idle agents, 3 candidate tasks
+[00:34.850] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: 取MeatPattyUncooked type=FETCH score=49.94 facility=ContainerCounter (1) | d=-0.01 w=0.00 u=48.50 ul=1.25 r=0.20 f=0.00 s=0.00
+[00:34.850] [STATE] AI_Chef: idle → executing FETCH | task=meatCheeseBurger: 取MeatPattyUncooked facility=ContainerCounter (1) item=none
+[00:35.050] ═══ SCHEDULER CYCLE #174 ═══ agents=4 tasks=2 orders=3
+[00:35.050] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:35.050] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:35.050] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=CheeseSlices taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:35.050] [STATE] AI_Chef: taking output → CheeseSlices | from CuttingCounter
+[00:35.050] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: completed
+[00:35.050] [AI_Chef] CleanupTask: moving to ClearCounter (10) to drop CheeseSlices (dist=9.2)
+[00:35.250] ═══ SCHEDULER CYCLE #175 ═══ agents=4 tasks=4 orders=3
+[00:35.250] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:35.250] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:35.450] ═══ SCHEDULER CYCLE #176 ═══ agents=4 tasks=4 orders=3
+[00:35.450] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:35.450] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:35.650] ═══ SCHEDULER CYCLE #177 ═══ agents=4 tasks=4 orders=3
+[00:35.650] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:35.650] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:35.850] ═══ SCHEDULER CYCLE #178 ═══ agents=4 tasks=4 orders=3
+[00:35.850] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:35.850] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:36.050] ═══ SCHEDULER CYCLE #179 ═══ agents=4 tasks=4 orders=3
+[00:36.050] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:36.050] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:36.083] [STATE] AI_Chef: moving → arrived | at (3.3,1.5) dist=0.13 time=0.0s
+[00:36.116] [STATE] AI_Chef: moving → arrived | at (1.5,1.8) dist=0.24 time=0.0s
+[00:36.250] ═══ SCHEDULER CYCLE #180 ═══ agents=4 tasks=4 orders=3
+[00:36.250] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:36.250] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:36.383] [COMPLETE] Agent#1(AI_Chef) salad: 出餐salad: completed
+[00:36.383] [Scheduler] Order #3 served — releasing plate
+[00:36.416] ═══ SCHEDULER CYCLE #181 ═══ agents=4 tasks=4 orders=3
+[00:36.416] [COMPLETE] Agent#1(AI_Chef) salad: 出餐salad: released (status=completed)
+[00:36.416] [Scheduler] Order #3 (salad) left queue — cleaned up
+[00:36.416] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:36.416] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:36.416] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:36.416] [ASSIGN] Agent#1(AI_Chef) ← meatCheeseBurger: 取CheeseBlock type=FETCH score=52.54 facility=ContainerCounter | d=0.00 w=0.00 u=48.75 ul=3.75 r=0.04 f=0.00 s=0.00
+[00:36.416] [STATE] AI_Chef: idle → executing FETCH | task=meatCheeseBurger: 取CheeseBlock facility=ContainerCounter item=none
+[00:36.516] [AI_Chef] FindDropTarget(Cabbage) → CuttingCounter CuttingCounter (1)
+[00:36.516] [AI_Chef] FETCH got Cabbage, delivering to CuttingCounter (1)
+[00:36.616] ═══ SCHEDULER CYCLE #182 ═══ agents=4 tasks=3 orders=2
+[00:36.616] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:36.616] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:36.816] ═══ SCHEDULER CYCLE #183 ═══ agents=4 tasks=3 orders=2
+[00:36.816] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:36.816] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:37.016] ═══ SCHEDULER CYCLE #184 ═══ agents=4 tasks=3 orders=2
+[00:37.016] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:37.016] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:37.216] ═══ SCHEDULER CYCLE #185 ═══ agents=4 tasks=3 orders=2
+[00:37.216] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:37.216] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:37.416] ═══ SCHEDULER CYCLE #186 ═══ agents=4 tasks=3 orders=2
+[00:37.416] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:37.416] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:37.450] [STATE] AI_Chef: moving → arrived | at (3.0,1.8) dist=0.15 time=0.0s
+[00:37.516] [STATE] AI_Chef: moving → arrived | at (3.3,0.0) dist=0.17 time=0.0s
+[00:37.616] ═══ SCHEDULER CYCLE #187 ═══ agents=4 tasks=3 orders=2
+[00:37.616] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:37.616] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:37.683] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: completed
+[00:37.716] ═══ SCHEDULER CYCLE #188 ═══ agents=4 tasks=3 orders=2
+[00:37.716] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: CheeseBlock→CheeseSlices: released (status=completed)
+[00:37.716] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:37.716] [ASSIGN] Agent#4(AI_Chef) ← meatCheeseBurger: 出餐meatCheeseBurger type=SERVE score=71.25 facility=DeliveryCounter item=Plate@(5, 1, 0) | d=0.00 w=0.00 u=48.75 ul=22.50 r=0.00 f=0.00 s=0.00
+[00:37.716] [STATE] AI_Chef: idle → executing SERVE | task=meatCheeseBurger: 出餐meatCheeseBurger facility=DeliveryCounter item=Plate
+[00:37.816] [AI_Chef] FindDropTarget(MeatPattyUncooked) → StoveCounter StoveCounter (2)
+[00:37.816] [AI_Chef] FETCH got MeatPattyUncooked, delivering to StoveCounter (2)
+[00:37.916] ═══ SCHEDULER CYCLE #189 ═══ agents=4 tasks=3 orders=2
+[00:37.950] [STATE] AI_Chef: moving → arrived | at (3.5,0.0) dist=0.12 time=0.0s
+[00:37.983] [STATE] AI_Chef: moving → arrived | at (-1.5,1.8) dist=0.18 time=0.0s
+[00:38.116] ═══ SCHEDULER CYCLE #190 ═══ agents=4 tasks=1 orders=2
+[00:38.116] [STATE] AI_Chef: GotoItem → counter-pickup | taking Plate from ClearCounter (10)
+[00:38.116] [STATE] AI_Chef: GotoItem → GotoDest | carrying Plate, heading to DeliveryCounter
+[00:38.316] ═══ SCHEDULER CYCLE #191 ═══ agents=4 tasks=1 orders=2
+[00:38.316] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=16 skippedActive=3 skippedNoStorage=0 skippedNoFacility=0
+[00:38.450] [AI_Chef] FindDropTarget(CheeseBlock) → CuttingCounter CuttingCounter (1)
+[00:38.450] [AI_Chef] FETCH got CheeseBlock, delivering to CuttingCounter (1)
+[00:38.516] ═══ SCHEDULER CYCLE #192 ═══ agents=4 tasks=0 orders=2
+[00:38.516] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=16 skippedActive=3 skippedNoStorage=0 skippedNoFacility=0
+[00:38.550] [STATE] AI_Chef: moving → arrived | at (-4.5,-4.8) dist=0.20 time=0.0s
+[00:38.716] ═══ SCHEDULER CYCLE #193 ═══ agents=4 tasks=0 orders=2
+[00:38.716] [WARN] [Scheduler] 0 tasks for 2 orders! skippedCompleted=16 skippedActive=3 skippedNoStorage=0 skippedNoFacility=0
+[00:38.783] [COMPLETE] Agent#2(AI_Chef) salad: 取Cabbage: completed
+[00:38.816] ═══ SCHEDULER CYCLE #194 ═══ agents=4 tasks=0 orders=2
+[00:38.816] [COMPLETE] Agent#2(AI_Chef) salad: 取Cabbage: released (status=completed)
+[00:38.816] [Scheduler] Order #5 ← meatCheeseBurger (duplicate #3)
+[00:38.816] [Scheduler] SERVE #5 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:38.816] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:38.816] [ASSIGN] Agent#2(AI_Chef) ← meatCheeseBurger: CheeseBlock→CheeseSlices type=PROCESS score=53.74 facility=CuttingCounter | d=-0.01 w=0.00 u=48.75 ul=5.00 r=0.00 f=0.00 s=0.00
+[00:38.816] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: CheeseBlock→CheeseSlices facility=CuttingCounter item=none
+[00:38.816] [AI_Chef] ExecuteProcess: self-fetching CheeseBlock from ClearCounter (5) → CuttingCounter
+[00:38.883] [STATE] AI_Chef: moving → arrived | at (3.3,1.5) dist=0.19 time=0.0s
+[00:39.016] ═══ SCHEDULER CYCLE #195 ═══ agents=4 tasks=3 orders=3
+[00:39.016] [Scheduler] SERVE #5 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:39.183] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: 出餐meatCheeseBurger: completed
+[00:39.183] [Scheduler] Order #2 served — releasing plate
+[00:39.216] ═══ SCHEDULER CYCLE #196 ═══ agents=4 tasks=3 orders=3
+[00:39.216] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: 出餐meatCheeseBurger: released (status=completed)
+[00:39.216] [Scheduler] Order #5 (meatCheeseBurger) left queue — cleaned up
+[00:39.216] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:39.216] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:39.216] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:39.216] [ASSIGN] Agent#4(AI_Chef) ← meatCheeseBurger: 拿盘子 type=FETCH_PLATE score=56.24 facility=PlateCounter | d=-0.01 w=0.00 u=48.75 ul=7.50 r=0.00 f=0.00 s=0.00
+[00:39.216] [STATE] AI_Chef: idle → executing FETCH_PLATE | task=meatCheeseBurger: 拿盘子 facility=PlateCounter item=none
+[00:39.416] ═══ SCHEDULER CYCLE #197 ═══ agents=4 tasks=3 orders=2
+[00:39.416] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:39.416] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:39.616] ═══ SCHEDULER CYCLE #198 ═══ agents=4 tasks=4 orders=2
+[00:39.616] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:39.616] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:39.683] [STATE] AI_Chef: moving → arrived | at (-1.5,-4.8) dist=0.20 time=0.0s
+[00:39.716] [STATE] AI_Chef: moving → arrived | at (-7.5,-4.8) dist=0.19 time=0.0s
+[00:39.816] ═══ SCHEDULER CYCLE #199 ═══ agents=4 tasks=4 orders=2
+[00:39.816] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:39.816] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:39.916] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: 取MeatPattyUncooked: completed
+[00:39.950] ═══ SCHEDULER CYCLE #200 ═══ agents=4 tasks=4 orders=2
+[00:39.950] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: 取MeatPattyUncooked: released (status=completed)
+[00:39.950] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:39.950] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:39.950] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:39.950] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: 取Bread type=FETCH score=55.23 facility=ContainerCounter | d=-0.01 w=0.00 u=48.75 ul=6.25 r=0.24 f=0.00 s=0.00
+[00:39.950] [STATE] AI_Chef: idle → executing FETCH | task=meatCheeseBurger: 取Bread facility=ContainerCounter item=none
+[00:39.983] [STATE] AI_Chef: GotoItem → counter-pickup | taking CheeseBlock from ClearCounter (5)
+[00:39.983] [STATE] AI_Chef: GotoItem → GotoFacility | carrying CheeseBlock, heading to CuttingCounter
+[00:40.150] ═══ SCHEDULER CYCLE #201 ═══ agents=4 tasks=4 orders=2
+[00:40.150] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:40.150] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:40.216] [STATE] AI_Chef: moving → arrived | at (-4.5,-4.8) dist=0.15 time=0.0s
+[00:40.350] ═══ SCHEDULER CYCLE #202 ═══ agents=4 tasks=3 orders=2
+[00:40.350] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:40.350] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:40.416] [COMPLETE] Agent#1(AI_Chef) meatCheeseBurger: 取CheeseBlock: completed
+[00:40.416] [AI_Chef] CleanupTask: moving to ClearCounter (5) to drop CheeseBlock (dist=3.3)
+[00:40.550] ═══ SCHEDULER CYCLE #203 ═══ agents=4 tasks=3 orders=2
+[00:40.550] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:40.550] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:40.750] ═══ SCHEDULER CYCLE #204 ═══ agents=4 tasks=3 orders=2
+[00:40.750] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:40.750] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:40.950] ═══ SCHEDULER CYCLE #205 ═══ agents=4 tasks=3 orders=2
+[00:40.950] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:40.950] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:41.150] ═══ SCHEDULER CYCLE #206 ═══ agents=4 tasks=3 orders=2
+[00:41.150] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:41.150] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:41.183] [STATE] AI_Chef: moving → arrived | at (-3.0,-4.8) dist=0.21 time=0.0s
+[00:41.350] ═══ SCHEDULER CYCLE #207 ═══ agents=4 tasks=3 orders=2
+[00:41.350] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:41.350] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:41.383] [STATE] AI_Chef: moving → arrived | at (-7.5,-4.8) dist=0.13 time=0.0s
+[00:41.550] ═══ SCHEDULER CYCLE #208 ═══ agents=4 tasks=3 orders=2
+[00:41.550] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:41.550] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:41.683] [COMPLETE] Agent#1(AI_Chef) meatCheeseBurger: 取CheeseBlock: completed
+[00:41.716] ═══ SCHEDULER CYCLE #209 ═══ agents=4 tasks=3 orders=2
+[00:41.716] [COMPLETE] Agent#1(AI_Chef) meatCheeseBurger: 取CheeseBlock: released (status=completed)
+[00:41.716] [Scheduler] Order #6 ← tomato (new volatile ID)
+[00:41.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:41.716] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:41.716] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:41.716] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:41.716] [ASSIGN] Agent#1(AI_Chef) ← meatCheeseBurger: 取MeatPattyUncooked type=FETCH score=50.07 facility=ContainerCounter (1) | d=-0.01 w=0.00 u=48.75 ul=1.25 r=0.08 f=0.00 s=0.00
+[00:41.716] [STATE] AI_Chef: idle → executing FETCH | task=meatCheeseBurger: 取MeatPattyUncooked facility=ContainerCounter (1) item=none
+[00:41.750] [STATE] AI_Chef: moving → arrived | at (0.0,1.8) dist=0.15 time=0.0s
+[00:41.916] ═══ SCHEDULER CYCLE #210 ═══ agents=4 tasks=4 orders=3
+[00:41.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:41.916] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:41.916] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:42.050] [STATE] AI_Chef: moving → arrived | at (-4.5,1.8) dist=0.19 time=0.0s
+[00:42.083] [AI_Chef] FindDropTarget(Bread) → ClearCounter ClearCounter (11)
+[00:42.083] [AI_Chef] FETCH got Bread, delivering to ClearCounter (11)
+[00:42.116] ═══ SCHEDULER CYCLE #211 ═══ agents=4 tasks=4 orders=3
+[00:42.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:42.116] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:42.116] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:42.250] [AI_Chef] DropItemAtFacility:  → CuttingCounter
+[00:42.316] ═══ SCHEDULER CYCLE #212 ═══ agents=4 tasks=4 orders=3
+[00:42.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:42.316] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:42.316] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:42.416] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=CheeseBlock taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:42.416] [STATE] AI_Chef: start cutting → CheeseBlock | → CheeseSlices on CuttingCounter
+[00:42.516] ═══ SCHEDULER CYCLE #213 ═══ agents=4 tasks=4 orders=3
+[00:42.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:42.516] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:42.516] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:42.716] ═══ SCHEDULER CYCLE #214 ═══ agents=4 tasks=4 orders=3
+[00:42.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:42.716] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:42.716] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:42.916] ═══ SCHEDULER CYCLE #215 ═══ agents=4 tasks=4 orders=3
+[00:42.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:42.916] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:42.916] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:43.116] ═══ SCHEDULER CYCLE #216 ═══ agents=4 tasks=4 orders=3
+[00:43.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:43.116] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:43.116] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:43.316] ═══ SCHEDULER CYCLE #217 ═══ agents=4 tasks=4 orders=3
+[00:43.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:43.316] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:43.316] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:43.350] [STATE] AI_Chef: moving → arrived | at (3.3,0.0) dist=0.18 time=0.0s
+[00:43.516] ═══ SCHEDULER CYCLE #218 ═══ agents=4 tasks=4 orders=3
+[00:43.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:43.516] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:43.516] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:43.583] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: 拿盘子: completed
+[00:43.616] ═══ SCHEDULER CYCLE #219 ═══ agents=4 tasks=4 orders=3
+[00:43.616] [COMPLETE] Agent#4(AI_Chef) meatCheeseBurger: 拿盘子: released (status=completed)
+[00:43.616] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:43.616] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:43.616] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:43.616] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:43.616] [ASSIGN] Agent#4(AI_Chef) ← meatCheeseBurger: 加Bread到盘子 type=ADD_TO_PLATE score=53.04 facility=ClearCounter (10) item=Bread@(-6, 1, -6) | d=-0.01 w=-1.99 u=48.75 ul=14.25 r=0.04 f=0.00 s=-8.00
+[00:43.616] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=meatCheeseBurger: 加Bread到盘子 facility=ClearCounter (10) item=Bread
+[00:43.616] [AI_Chef] ExecuteAddToPlate: picking up Bread from ClearCounter (7)
+[00:43.816] ═══ SCHEDULER CYCLE #220 ═══ agents=4 tasks=4 orders=3
+[00:43.816] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:43.816] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:43.816] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:44.016] ═══ SCHEDULER CYCLE #221 ═══ agents=4 tasks=4 orders=3
+[00:44.016] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:44.016] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:44.016] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:44.116] [STATE] AI_Chef: moving → arrived | at (-9.3,1.5) dist=0.22 time=0.0s
+[00:44.216] ═══ SCHEDULER CYCLE #222 ═══ agents=4 tasks=4 orders=3
+[00:44.216] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:44.216] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:44.216] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:44.250] [STATE] AI_Chef: moving → arrived | at (3.0,1.8) dist=0.14 time=0.0s
+[00:44.283] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: 取Bread: completed
+[00:44.316] ═══ SCHEDULER CYCLE #223 ═══ agents=4 tasks=4 orders=3
+[00:44.316] [COMPLETE] Agent#3(AI_Chef) meatCheeseBurger: 取Bread: released (status=completed)
+[00:44.316] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:44.316] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:44.316] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:44.316] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:44.316] [ASSIGN] Agent#3(AI_Chef) ← meatCheeseBurger: MeatPattyUncooked→MeatPattyCooked type=PROCESS score=51.25 facility=StoveCounter (2) | d=-0.01 w=-0.24 u=48.75 ul=2.50 r=0.25 f=0.00 s=0.00
+[00:44.316] [STATE] AI_Chef: idle → executing PROCESS | task=meatCheeseBurger: MeatPattyUncooked→MeatPattyCooked facility=StoveCounter (2) item=none
+[00:44.316] [AI_Chef] ExecuteProcess: counter StoveCounter (2) has MeatPattyUncooked, → direct interact
+[00:44.450] [STATE] AI_Chef: working → done | duration=2.0s task=meatCheeseBurger: CheeseBlock→CheeseSlices
+[00:44.450] [AI_Chef] Working done but output not ready (counter has CheeseBlock), entering wait
+[00:44.516] ═══ SCHEDULER CYCLE #224 ═══ agents=4 tasks=3 orders=3
+[00:44.516] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:44.516] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:44.516] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:44.683] [AI_Chef] FindDropTarget(MeatPattyUncooked) → StoveCounter StoveCounter
+[00:44.683] [AI_Chef] FETCH got MeatPattyUncooked, delivering to StoveCounter
+[00:44.716] ═══ SCHEDULER CYCLE #225 ═══ agents=4 tasks=4 orders=3
+[00:44.716] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:44.716] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:44.716] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:44.916] ═══ SCHEDULER CYCLE #226 ═══ agents=4 tasks=4 orders=3
+[00:44.916] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:44.916] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:44.916] [Scheduler] SERVE #6 tomato: no plate with [Tomato]
+[00:45.116] ═══ SCHEDULER CYCLE #227 ═══ agents=4 tasks=4 orders=3
+[00:45.116] [Scheduler] SERVE #2 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:45.116] [Scheduler] SERVE #4 meatCheeseBurger: no plate with [MeatPattyCooked,CheeseSlices,Bread]
+[00:45.116] [Scheduler] SERVE #6 tomato: no plate with [Tomato]

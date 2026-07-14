@@ -6,14 +6,12 @@ namespace Kitchen.AI.Recording
     /// <summary>
     /// Per-chef recording component: first-person camera + input reverse-engineering.
     /// Auto-bound by <see cref="KitchenSessionRecorder"/>.
+    /// Uses the prefab child named <c>AICamera</c> (must have a <see cref="Camera"/>).
     /// </summary>
     [DisallowMultipleComponent]
     public class ChefRecordingAgent : MonoBehaviour
     {
-        [Header("First-Person Camera")]
-        [SerializeField] private float _eyeHeight = 1.6f;
-        [SerializeField] private float _eyeForward = 0.15f;
-        [SerializeField] private float _fpFov = 70f;
+        public const string AiCameraObjectName = "AICamera";
 
         private AIChefController _chef;
         private IAstarAI _ai;
@@ -25,13 +23,17 @@ namespace Kitchen.AI.Recording
         private int _frameHeight;
         private float _recordStartTime;
 
+        private bool _hasPrevView;
+        private float _lastYaw;
+        private float _lastPitch;
+
         public AIChefController Chef => _chef;
 
         private void Awake()
         {
             _chef = GetComponent<AIChefController>();
             _ai = GetComponent<IAstarAI>();
-            SetupFirstPersonCamera();
+            ResolveFirstPersonCamera();
         }
 
         private void OnEnable()
@@ -48,8 +50,6 @@ namespace Kitchen.AI.Recording
 
         private void OnDestroy()
         {
-            if (_fpCamera != null)
-                Destroy(_fpCamera.gameObject);
             if (_renderTexture != null)
                 _renderTexture.Release();
         }
@@ -65,6 +65,8 @@ namespace Kitchen.AI.Recording
             if (_fpCamera != null)
                 _fpCamera.targetTexture = null;
             _lastPosition = transform.position;
+            _hasPrevView = false;
+            SampleViewAngles(out _lastYaw, out _lastPitch);
         }
 
         public void BeginFrame()
@@ -79,12 +81,35 @@ namespace Kitchen.AI.Recording
 
         public ChefRecordingFrame CaptureFrame(int frameIndex, string imageRelativePath)
         {
+            SampleViewAngles(out float yaw, out float pitch);
+            float mouseX = 0f;
+            float mouseY = 0f;
+            if (_hasPrevView)
+            {
+                mouseX = Mathf.DeltaAngle(_lastYaw, yaw);
+                mouseY = Mathf.DeltaAngle(_lastPitch, pitch);
+            }
+            _lastYaw = yaw;
+            _lastPitch = pitch;
+            _hasPrevView = true;
+
             Vector3 velocity = _ai != null ? _ai.velocity : Vector3.zero;
-            var input = KitchenInputEncoder.Encode(velocity, _interactThisFrame);
+            float maxSpeed = _ai != null ? Mathf.Max(_ai.maxSpeed, 0.01f) : 1f;
+
+            var input = KitchenInputEncoder.EncodeFirstPerson(
+                velocity, yaw, maxSpeed, mouseX, mouseY, _interactThisFrame);
+
             if (velocity.sqrMagnitude < 0.01f)
             {
                 float dt = Time.deltaTime > 0f ? Time.deltaTime : 0.016f;
-                input = KitchenInputEncoder.EncodeFromDelta(transform.position - _lastPosition, dt, _interactThisFrame);
+                input = KitchenInputEncoder.EncodeFirstPersonFromDelta(
+                    transform.position - _lastPosition,
+                    dt,
+                    yaw,
+                    maxSpeed,
+                    mouseX,
+                    mouseY,
+                    _interactThisFrame);
             }
             _lastPosition = transform.position;
 
@@ -102,10 +127,13 @@ namespace Kitchen.AI.Recording
                 keyE = input.E,
                 moveX = input.moveX,
                 moveZ = input.moveZ,
+                mouseX = input.mouseX,
+                mouseY = input.mouseY,
                 posX = pos.x,
                 posY = pos.y,
                 posZ = pos.z,
-                rotY = transform.eulerAngles.y,
+                rotX = pitch,
+                rotY = yaw,
                 captureTime = Time.time - _recordStartTime,
                 substate = _chef != null ? _chef.Substate : "unknown",
                 taskType = task != null ? task.type.ToString() : "",
@@ -117,36 +145,64 @@ namespace Kitchen.AI.Recording
         public void CaptureImageAsync(string absolutePath)
         {
             if (_fpCamera == null || _renderTexture == null) return;
-            SyncCameraTransform();
             var pixels = RecordingCameraUtility.CapturePixels(_fpCamera, _renderTexture);
             RecordingCameraUtility.SavePixelsAsync(pixels, _frameWidth, _frameHeight, absolutePath);
         }
 
-        private void SetupFirstPersonCamera()
+        private void SampleViewAngles(out float yaw, out float pitch)
         {
-            var camGo = new GameObject("ChefRecordingCamera");
-            camGo.transform.SetParent(transform, false);
-            camGo.transform.localPosition = new Vector3(0f, _eyeHeight, _eyeForward);
-            camGo.transform.localRotation = Quaternion.identity;
+            if (_fpCamera != null)
+            {
+                yaw = _fpCamera.transform.eulerAngles.y;
+                pitch = KitchenInputEncoder.NormalizePitch(_fpCamera.transform.localEulerAngles.x);
+                return;
+            }
 
-            _fpCamera = camGo.AddComponent<Camera>();
-            _fpCamera.enabled = false;
-            _fpCamera.fieldOfView = _fpFov;
-            _fpCamera.nearClipPlane = 0.1f;
-            _fpCamera.farClipPlane = 80f;
-            _fpCamera.clearFlags = CameraClearFlags.Skybox;
-            _fpCamera.depth = -10;
-
-            var listener = camGo.GetComponent<AudioListener>();
-            if (listener != null)
-                Destroy(listener);
+            yaw = transform.eulerAngles.y;
+            pitch = 0f;
         }
 
-        private void SyncCameraTransform()
+        private void ResolveFirstPersonCamera()
         {
-            if (_fpCamera == null) return;
-            _fpCamera.transform.localPosition = new Vector3(0f, _eyeHeight, _eyeForward);
-            _fpCamera.transform.rotation = transform.rotation;
+            var camTransform = FindChildRecursive(transform, AiCameraObjectName);
+            if (camTransform == null)
+            {
+                Debug.LogError(
+                    $"[{name}] ChefRecordingAgent requires a child GameObject named '{AiCameraObjectName}'.",
+                    this);
+                return;
+            }
+
+            _fpCamera = camTransform.GetComponent<Camera>();
+            if (_fpCamera == null)
+            {
+                Debug.LogError(
+                    $"[{name}] '{AiCameraObjectName}' is missing a Camera component.",
+                    camTransform);
+                return;
+            }
+
+            // Recording only — keep it out of the game view.
+            _fpCamera.enabled = false;
+
+            var listener = _fpCamera.GetComponent<AudioListener>();
+            if (listener != null)
+                listener.enabled = false;
+        }
+
+        private static Transform FindChildRecursive(Transform root, string objectName)
+        {
+            if (root.name == objectName)
+                return root;
+
+            for (int i = 0; i < root.childCount; i++)
+            {
+                var found = FindChildRecursive(root.GetChild(i), objectName);
+                if (found != null)
+                    return found;
+            }
+
+            return null;
         }
     }
 }

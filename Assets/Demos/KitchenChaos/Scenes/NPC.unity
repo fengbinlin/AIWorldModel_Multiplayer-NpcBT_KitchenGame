@@ -14326,12 +14326,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _autoStartWhenPlaying: 1
   _toggleKey: 290
-  _captureFps: 60
-  _frameWidth: 256
-  _frameHeight: 256
+  _captureFps: 30
+  _frameWidth: 128
+  _frameHeight: 128
   _outputRootFolder: KitchenTrainingRecordings
   _maxPendingWrites: 64
-  _globalCamera: {fileID: 0}
+  _globalCamera: {fileID: 601737668}
 --- !u!1 &1672804282
 GameObject:
   m_ObjectHideFlags: 0

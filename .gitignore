@@ -17,6 +17,9 @@
 # Recordings can get excessive in size
 /[Rr]ecordings/
 
+# Kitchen AI session recordings (KitchenSessionRecorder output at project root)
+/KitchenTrainingRecordings/
+
 # Uncomment this line if you wish to ignore the asset store tools plugin
 # /[Aa]ssets/AssetStoreTools*
 

@@ -3,38 +3,72 @@ using UnityEngine;
 namespace Kitchen.AI.Recording
 {
     /// <summary>
-    /// Reverse-engineers PlayerInput-compatible WASD + E from AI movement and interaction events.
-    /// Player move mapping: input (x, y) → world (x, 0, y) — W=+Z, S=-Z, A=-X, D=+X.
+    /// Reverse-engineers first-person controls from AI motion / view change:
+    /// WASD relative to facing yaw, mouse XY as look deltas (yaw/pitch degrees).
     /// </summary>
     public static class KitchenInputEncoder
     {
         private const float MoveThreshold = 0.15f;
 
-        public static ChefKeyboardInput Encode(Vector3 worldVelocity, bool interactPressed)
+        /// <param name="worldVelocity">Horizontal world-space velocity (m/s).</param>
+        /// <param name="viewYawDegrees">First-person yaw used as move basis.</param>
+        /// <param name="maxSpeed">Used to scale analog move axes into [-1, 1].</param>
+        /// <param name="mouseDeltaX">Yaw delta this frame (degrees, + = turn right).</param>
+        /// <param name="mouseDeltaY">Pitch delta this frame (degrees, + = look up).</param>
+        public static ChefKeyboardInput EncodeFirstPerson(
+            Vector3 worldVelocity,
+            float viewYawDegrees,
+            float maxSpeed,
+            float mouseDeltaX,
+            float mouseDeltaY,
+            bool interactPressed)
         {
-            var input = new ChefKeyboardInput { E = interactPressed };
+            var input = new ChefKeyboardInput
+            {
+                E = interactPressed,
+                mouseX = mouseDeltaX,
+                mouseY = mouseDeltaY,
+            };
 
             Vector3 flat = worldVelocity;
             flat.y = 0f;
-            if (flat.sqrMagnitude < MoveThreshold * MoveThreshold)
-                return input;
 
-            Vector3 dir = flat.normalized;
-            input.moveX = Mathf.Clamp(dir.x, -1f, 1f);
-            input.moveZ = Mathf.Clamp(dir.z, -1f, 1f);
+            var yawRot = Quaternion.Euler(0f, viewYawDegrees, 0f);
+            Vector3 forward = yawRot * Vector3.forward;
+            Vector3 right = yawRot * Vector3.right;
 
-            input.W = dir.z > MoveThreshold;
-            input.S = dir.z < -MoveThreshold;
-            input.A = dir.x < -MoveThreshold;
-            input.D = dir.x > MoveThreshold;
+            float localForward = Vector3.Dot(flat, forward);
+            float localRight = Vector3.Dot(flat, right);
+
+            float speedRef = Mathf.Max(maxSpeed, MoveThreshold);
+            input.moveZ = Mathf.Clamp(localForward / speedRef, -1f, 1f);
+            input.moveX = Mathf.Clamp(localRight / speedRef, -1f, 1f);
+
+            input.W = localForward > MoveThreshold;
+            input.S = localForward < -MoveThreshold;
+            input.A = localRight < -MoveThreshold;
+            input.D = localRight > MoveThreshold;
             return input;
         }
 
-        public static ChefKeyboardInput EncodeFromDelta(Vector3 positionDelta, float deltaTime, bool interactPressed)
+        public static ChefKeyboardInput EncodeFirstPersonFromDelta(
+            Vector3 positionDelta,
+            float deltaTime,
+            float viewYawDegrees,
+            float maxSpeed,
+            float mouseDeltaX,
+            float mouseDeltaY,
+            bool interactPressed)
         {
-            if (deltaTime <= 0f)
-                return Encode(Vector3.zero, interactPressed);
-            return Encode(positionDelta / deltaTime, interactPressed);
+            Vector3 velocity = deltaTime > 0f ? positionDelta / deltaTime : Vector3.zero;
+            return EncodeFirstPerson(
+                velocity, viewYawDegrees, maxSpeed, mouseDeltaX, mouseDeltaY, interactPressed);
+        }
+
+        /// <summary>Convert Unity euler X (0..360) to signed pitch degrees (-180..180).</summary>
+        public static float NormalizePitch(float eulerX)
+        {
+            return Mathf.DeltaAngle(0f, eulerX);
         }
     }
 }

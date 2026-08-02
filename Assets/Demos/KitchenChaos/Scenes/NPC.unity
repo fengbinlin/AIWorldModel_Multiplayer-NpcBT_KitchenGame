@@ -14326,7 +14326,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _autoStartWhenPlaying: 1
   _toggleKey: 290
-  _captureFps: 30
+  _captureFps: 60
   _frameWidth: 426
   _frameHeight: 240
   _outputRootFolder: KitchenTrainingRecordings

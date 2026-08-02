@@ -1,6 +1,6 @@
 # Kitchen Session Viewer
 
-离线回放 `KitchenSessionRecorder` 采集的多视角训练数据：全局画面、各 AI 第一人称、WASD/E 输入、任务/子状态与世界快照。
+离线回放 `KitchenSessionRecorder` 采集的多视角训练数据：全局画面、各 Player 第一人称、WASD/E 输入、相机内外参、任务/子状态与世界快照。
 
 ## 环境
 
@@ -32,8 +32,8 @@ python app.py "D:/path/to/KitchenTrainingRecordings/session_yyyyMMdd_HHmmss"
 | ▶ Play / ⏸ Pause / Space | 按采集帧率播放或暂停 |
 | 进度条 | 拖动到任意帧 |
 | Prev / Next、← / → | 逐帧 |
-| 左栏 Global + World State | 全局图与订单/任务/设施/物品 |
-| 右栏各 Chef 卡片（固定 2 列，通常 2×2） | FP 图、WASD/E、本地 move、mouse XY、substate、task、持物、位姿 |
+| 左栏 Global + Session/World | 全局图、manifest（game/task/相机/场景布局）、订单/任务/设施/物品 |
+| 右栏各 Player 卡片（固定 2 列，通常 2×2） | FP 图、WASD/E、本地 move、mouse XY、substate、task、持物、世界系相机外参 |
 
 ### 输入语义（与录制端一致）
 
@@ -47,8 +47,8 @@ Unity 录制输出（相对工程根目录）：
 
 ```
 KitchenTrainingRecordings/session_*/
-  manifest.json
-  frames.jsonl
+  manifest.json          # gameName, totalFrames, playerCount, task_description, captureFps…
+  frames.jsonl           # 每行一帧：camera_info(全局) + scene_3d_info + players[](+各自 camera_info)
   global/frame_XXXXXX.png
   agent_{id}/fp_XXXXXX.png
 ```

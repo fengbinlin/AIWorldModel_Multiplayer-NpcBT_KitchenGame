@@ -22,35 +22,107 @@ namespace Kitchen.AI.Recording
     }
 
     [Serializable]
+    public class CameraIntrinsic
+    {
+        public float fx;
+        public float fy;
+        public float cx;
+        public float cy;
+        public int width;
+        public int height;
+        public float fovY;
+    }
+
+    /// <summary>
+    /// Camera pose in world space (global). matrix = localToWorld, row-major 4x4.
+    /// </summary>
+    [Serializable]
+    public class CameraExtrinsic
+    {
+        public float posX;
+        public float posY;
+        public float posZ;
+        public float rotX;
+        public float rotY;
+        public float rotZ;
+        public float[] matrix;
+    }
+
+    [Serializable]
+    public class CameraInfo
+    {
+        public string name;
+        public CameraIntrinsic @int;
+        public CameraExtrinsic ext;
+    }
+
+    [Serializable]
+    public class SceneFacilityInfo
+    {
+        public string name;
+        public string facilityType;
+        public float posX;
+        public float posY;
+        public float posZ;
+        public float rotY;
+        public float sizeX;
+        public float sizeY;
+        public float sizeZ;
+    }
+
+    [Serializable]
+    public class SceneSpawnPointInfo
+    {
+        public float posX;
+        public float posY;
+        public float posZ;
+    }
+
+    [Serializable]
+    public class Scene3DInfo
+    {
+        public SceneFacilityInfo[] facilities;
+        public SceneSpawnPointInfo[] spawnPoints;
+    }
+
+    [Serializable]
     public class RecordingSessionManifest
     {
         public string sessionId;
-        public string sceneName;
+        public string gameName;
         public float unityTimeStart;
         public int frameWidth;
         public int frameHeight;
         public float captureFps;
-        public int chefCount;
+        public int playerCount;
+        public int totalFrames;
+        public string task_description;
     }
 
+    /// <summary>
+    /// Per-player observation + action on one recorded frame.
+    /// Action fields (keys / move / mouse) are the control applied at this state
+    /// to reach the next frame: state_i + action_i => state_(i+1).
+    /// Last frame has zeroed actions (no successor).
+    /// </summary>
     [Serializable]
-    public class ChefRecordingFrame
+    public class PlayerRecordingFrame
     {
-        public int agentId;
-        public string chefName;
+        public int playerId;
+        public string playerName;
         public string fpImage;
         public bool keyW;
         public bool keyA;
         public bool keyS;
         public bool keyD;
         public bool keyE;
-        /// <summary>Local strafe axis relative to view yaw (-1..1, A/D).</summary>
+        /// <summary>Local strafe at state_i view yaw (-1..1, A/D).</summary>
         public float moveX;
-        /// <summary>Local forward axis relative to view yaw (-1..1, W/S).</summary>
+        /// <summary>Local forward at state_i view yaw (-1..1, W/S).</summary>
         public float moveZ;
-        /// <summary>Look yaw delta this frame (degrees, + = turn right).</summary>
+        /// <summary>Look yaw delta action_i (degrees, + = turn right).</summary>
         public float mouseX;
-        /// <summary>Look pitch delta this frame (degrees, + = look up).</summary>
+        /// <summary>Look pitch delta action_i (degrees, + = look up).</summary>
         public float mouseY;
         public float posX;
         public float posY;
@@ -64,6 +136,8 @@ namespace Kitchen.AI.Recording
         public string taskType;
         public string taskLabel;
         public string heldItem;
+        /// <summary>First-person camera: int + world-space ext (localToWorld).</summary>
+        public CameraInfo camera_info;
     }
 
     [Serializable]
@@ -127,7 +201,11 @@ namespace Kitchen.AI.Recording
         public int frame;
         public float time;
         public string globalImage;
-        public ChefRecordingFrame[] chefs;
+        /// <summary>Global / third-person camera for this frame (world-space ext).</summary>
+        public CameraInfo camera_info;
+        /// <summary>Scene layout snapshot for this frame (facilities + spawn points).</summary>
+        public Scene3DInfo scene_3d_info;
+        public PlayerRecordingFrame[] players;
         public WorldStateSnapshot world;
     }
 }

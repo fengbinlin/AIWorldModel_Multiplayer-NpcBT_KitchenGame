@@ -42,6 +42,13 @@ namespace Kitchen.AI.Recording
         private bool _captureClockActive;
         private float _savedFixedDeltaTime;
         private readonly object _jsonLock = new();
+        private RecordingSessionManifest _manifest;
+        /// <summary>
+        /// Previous state frame held until the next capture computes action_i
+        /// (state_i + action_i => state_(i+1)); action is written back here before flush.
+        /// </summary>
+        private RecordingFrameData _pendingFrame;
+        private bool _hasPendingFrame;
 
         public bool IsRecording => _isRecording;
         public string SessionDirectory => _sessionDir;
@@ -156,6 +163,8 @@ namespace Kitchen.AI.Recording
 
             _framesJsonlPath = Path.Combine(_sessionDir, "frames.jsonl");
             _frameIndex = 0;
+            _pendingFrame = null;
+            _hasPendingFrame = false;
             EnableCaptureClock();
             _recordStartTime = Time.time;
             _isRecording = true;
@@ -167,17 +176,19 @@ namespace Kitchen.AI.Recording
             }
 
             float simDt = GetSimDelta();
-            var manifest = new RecordingSessionManifest
+            _manifest = new RecordingSessionManifest
             {
                 sessionId = $"session_{stamp}",
-                sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name,
+                gameName = KitchenCameraInfoUtility.DefaultGameName,
                 unityTimeStart = _recordStartTime,
                 frameWidth = _frameWidth,
                 frameHeight = _frameHeight,
                 captureFps = 1f / simDt,
-                chefCount = _agents.Count,
+                playerCount = _agents.Count,
+                totalFrames = 0,
+                task_description = KitchenCameraInfoUtility.DefaultTaskDescription,
             };
-            File.WriteAllText(Path.Combine(_sessionDir, "manifest.json"), JsonUtility.ToJson(manifest, true));
+            WriteManifest();
 
             Debug.Log($"[KitchenSessionRecorder] Recording started (simDt={simDt:F4}s, " +
                       $"captureDeltaTime locked) → {_sessionDir}");
@@ -193,8 +204,37 @@ namespace Kitchen.AI.Recording
                 _manualStopRequested = true;
             _isRecording = false;
             DisableCaptureClock();
+
+            // Last state has no outgoing action (no state_(i+1)); flush with zero action fields.
+            FlushPendingFrame();
             FlushPendingWrites(timeoutSeconds: 10f);
+
+            if (_manifest != null)
+            {
+                _manifest.totalFrames = _frameIndex;
+                WriteManifest();
+            }
+
             Debug.Log($"[KitchenSessionRecorder] Recording stopped. {_frameIndex} frames saved to {_sessionDir}");
+        }
+
+        private void FlushPendingFrame()
+        {
+            if (!_hasPendingFrame || _pendingFrame == null) return;
+            lock (_jsonLock)
+            {
+                File.AppendAllText(_framesJsonlPath, JsonUtility.ToJson(_pendingFrame) + "\n");
+            }
+            _pendingFrame = null;
+            _hasPendingFrame = false;
+        }
+
+        private void WriteManifest()
+        {
+            if (_manifest == null || string.IsNullOrEmpty(_sessionDir)) return;
+            File.WriteAllText(
+                Path.Combine(_sessionDir, "manifest.json"),
+                JsonUtility.ToJson(_manifest, true));
         }
 
         private float GetSimDelta()
@@ -263,7 +303,11 @@ namespace Kitchen.AI.Recording
 
         /// <summary>
         /// Capture global + all agent views in this LateUpdate so labels align with the sim step
-        /// that just ran in Update. Does not spread across frames (that would desync under captureDeltaTime).
+        /// that just ran in Update.
+        ///
+        /// Action timing (IDM): transition action computed at state_(i+1) is written back onto
+        /// the pending state_i frame before it is flushed to disk
+        /// (state_i + action_i => state_(i+1)).
         /// </summary>
         private void CaptureSimFrame()
         {
@@ -281,33 +325,46 @@ namespace Kitchen.AI.Recording
                 RecordingCameraUtility.SavePixelsAsync(pixels, _frameWidth, _frameHeight, globalAbs);
             }
 
-            var chefFrames = new ChefRecordingFrame[_agents.Count];
+            var playerFrames = new PlayerRecordingFrame[_agents.Count];
+            var transitionActions = new ChefKeyboardInput[_agents.Count];
             for (int i = 0; i < _agents.Count; i++)
             {
                 var agent = _agents[i];
                 string rel = $"agent_{agent.Chef.agentId}/fp_{frame:D6}.png";
                 string abs = Path.Combine(_sessionDir, rel);
                 agent.CaptureImageAsync(abs);
-                chefFrames[i] = agent.CaptureFrame(frame, rel);
-                // Clear interaction latch after sampling so next Update can set it again.
+                playerFrames[i] = agent.CaptureState(rel);
+                // Action that moved prev→current; belongs on the previous frame.
+                transitionActions[i] = agent.ConsumeTransitionAction();
                 agent.BeginFrame();
             }
 
+            // Write back action_i onto pending state_i, then flush state_i.
+            if (_hasPendingFrame && _pendingFrame?.players != null)
+            {
+                int n = Mathf.Min(_pendingFrame.players.Length, transitionActions.Length);
+                for (int i = 0; i < n; i++)
+                    ChefRecordingAgent.ApplyAction(_pendingFrame.players[i], transitionActions[i]);
+                FlushPendingFrame();
+            }
+
             var bb = KitchenAIManager.Instance?.Blackboard;
+            var spawnPositions = KitchenAIManager.Instance != null
+                ? KitchenAIManager.Instance.GetSpawnPositions()
+                : (IReadOnlyList<Vector3>)System.Array.Empty<Vector3>();
             float frameTime = Time.time - _recordStartTime;
-            var frameData = new RecordingFrameData
+            _pendingFrame = new RecordingFrameData
             {
                 frame = frame,
                 time = frameTime,
                 globalImage = globalRel,
-                chefs = chefFrames,
+                camera_info = KitchenCameraInfoUtility.Capture(
+                    _globalCamera, _frameWidth, _frameHeight, "global"),
+                scene_3d_info = KitchenWorldStateSerializer.CaptureScene3D(bb, spawnPositions),
+                players = playerFrames,
                 world = KitchenWorldStateSerializer.Capture(bb),
             };
-
-            lock (_jsonLock)
-            {
-                File.AppendAllText(_framesJsonlPath, JsonUtility.ToJson(frameData) + "\n");
-            }
+            _hasPendingFrame = true;
 
             _frameIndex++;
         }

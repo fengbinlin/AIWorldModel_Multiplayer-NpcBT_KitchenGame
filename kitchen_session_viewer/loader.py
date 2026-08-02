@@ -11,12 +11,15 @@ from typing import Any
 @dataclass
 class SessionMeta:
     session_id: str
-    scene_name: str
+    game_name: str
     frame_width: int
     frame_height: int
     capture_fps: float
-    chef_count: int
+    player_count: int
+    total_frames: int
+    task_description: str
     path: Path
+    raw_manifest: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -41,6 +44,21 @@ class SessionData:
         return path if path.is_file() else None
 
 
+def frame_players(frame: dict[str, Any]) -> list[dict[str, Any]]:
+    return list(frame.get("players") or [])
+
+
+def player_id(player: dict[str, Any]) -> Any:
+    return player.get("playerId", "?")
+
+
+def player_name(player: dict[str, Any]) -> str:
+    name = player.get("playerName")
+    if name:
+        return str(name)
+    return f"player_{player_id(player)}"
+
+
 def discover_sessions(root: Path) -> list[Path]:
     """Return session directories under root that contain frames.jsonl."""
     if not root.is_dir():
@@ -49,7 +67,6 @@ def discover_sessions(root: Path) -> list[Path]:
     for child in sorted(root.iterdir()):
         if child.is_dir() and (child / "frames.jsonl").is_file():
             sessions.append(child)
-    # Also allow opening root itself if it is already a session folder.
     if (root / "frames.jsonl").is_file() and root not in sessions:
         sessions.insert(0, root)
     return sessions
@@ -77,9 +94,13 @@ def load_session(session_dir: Path) -> SessionData:
             except json.JSONDecodeError as exc:
                 raise ValueError(f"Invalid JSON on line {line_no} of frames.jsonl") from exc
 
-    chef_count = int(raw_manifest.get("chefCount", 0) or 0)
-    if chef_count <= 0 and frames:
-        chef_count = len(frames[0].get("chefs") or [])
+    player_count = int(raw_manifest.get("playerCount", 0) or 0)
+    if player_count <= 0 and frames:
+        player_count = len(frame_players(frames[0]))
+
+    total_frames = int(raw_manifest.get("totalFrames", 0) or 0)
+    if total_frames <= 0:
+        total_frames = len(frames)
 
     fps = float(raw_manifest.get("captureFps", 0) or 0)
     if fps <= 0 and len(frames) >= 2:
@@ -92,12 +113,15 @@ def load_session(session_dir: Path) -> SessionData:
 
     meta = SessionMeta(
         session_id=str(raw_manifest.get("sessionId") or session_dir.name),
-        scene_name=str(raw_manifest.get("sceneName") or ""),
+        game_name=str(raw_manifest.get("gameName") or "Kitchen Chaos"),
         frame_width=int(raw_manifest.get("frameWidth", 256) or 256),
         frame_height=int(raw_manifest.get("frameHeight", 256) or 256),
         capture_fps=fps,
-        chef_count=chef_count,
+        player_count=player_count,
+        total_frames=total_frames,
+        task_description=str(raw_manifest.get("task_description") or ""),
         path=session_dir,
+        raw_manifest=raw_manifest,
     )
     return SessionData(meta=meta, frames=frames)
 

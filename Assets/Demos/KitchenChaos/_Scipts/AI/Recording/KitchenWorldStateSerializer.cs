@@ -22,6 +22,83 @@ namespace Kitchen.AI.Recording
             return snapshot;
         }
 
+        /// <summary>
+        /// Static scene layout for manifest (facility placement / spawn points).
+        /// </summary>
+        public static Scene3DInfo CaptureScene3D(KitchenBlackboard bb, IReadOnlyList<Vector3> spawnPositions)
+        {
+            var scene = new Scene3DInfo
+            {
+                facilities = CaptureSceneFacilities(bb),
+                spawnPoints = CaptureSpawnPoints(spawnPositions),
+            };
+            return scene;
+        }
+
+        private static SceneFacilityInfo[] CaptureSceneFacilities(KitchenBlackboard bb)
+        {
+            var list = new List<SceneFacilityInfo>();
+            if (bb?.facilities == null)
+                return list.ToArray();
+
+            foreach (var f in bb.facilities)
+            {
+                if (f?.counter == null) continue;
+                var t = f.counter.transform;
+                GetBoundsSize(f.counter.gameObject, out float sx, out float sy, out float sz);
+                list.Add(new SceneFacilityInfo
+                {
+                    name = f.counter.name,
+                    facilityType = f.type.ToString(),
+                    posX = t.position.x,
+                    posY = t.position.y,
+                    posZ = t.position.z,
+                    rotY = t.eulerAngles.y,
+                    sizeX = sx,
+                    sizeY = sy,
+                    sizeZ = sz,
+                });
+            }
+            return list.ToArray();
+        }
+
+        private static SceneSpawnPointInfo[] CaptureSpawnPoints(IReadOnlyList<Vector3> spawnPositions)
+        {
+            if (spawnPositions == null || spawnPositions.Count == 0)
+                return new SceneSpawnPointInfo[0];
+
+            var list = new SceneSpawnPointInfo[spawnPositions.Count];
+            for (int i = 0; i < spawnPositions.Count; i++)
+            {
+                var p = spawnPositions[i];
+                list[i] = new SceneSpawnPointInfo { posX = p.x, posY = p.y, posZ = p.z };
+            }
+            return list;
+        }
+
+        private static void GetBoundsSize(GameObject go, out float sx, out float sy, out float sz)
+        {
+            sx = sy = sz = 0f;
+            var col = go.GetComponentInChildren<Collider>();
+            if (col != null)
+            {
+                var b = col.bounds;
+                sx = b.size.x;
+                sy = b.size.y;
+                sz = b.size.z;
+                return;
+            }
+
+            var rend = go.GetComponentInChildren<Renderer>();
+            if (rend != null)
+            {
+                var b = rend.bounds;
+                sx = b.size.x;
+                sy = b.size.y;
+                sz = b.size.z;
+            }
+        }
+
         private static FacilitySnapshot[] CaptureFacilities(KitchenBlackboard bb)
         {
             var list = new List<FacilitySnapshot>();

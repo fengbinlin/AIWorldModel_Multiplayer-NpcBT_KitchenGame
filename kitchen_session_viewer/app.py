@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import time
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -11,9 +12,25 @@ from typing import Any
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
 try:
-    from .loader import SessionData, default_recordings_root, discover_sessions, load_session
+    from .loader import (
+        SessionData,
+        default_recordings_root,
+        discover_sessions,
+        frame_players,
+        load_session,
+        player_id,
+        player_name,
+    )
 except ImportError:  # running as `python app.py` from this folder
-    from loader import SessionData, default_recordings_root, discover_sessions, load_session
+    from loader import (
+        SessionData,
+        default_recordings_root,
+        discover_sessions,
+        frame_players,
+        load_session,
+        player_id,
+        player_name,
+    )
 
 
 # Dark theme colors (readable, not purple-glow AI default)
@@ -178,8 +195,8 @@ class ChefPanel(ttk.Frame):
             ttk.Label(self, textvariable=var, style="Muted.TLabel").pack(anchor="w")
 
     def update_chef(self, chef: dict[str, Any], image_path: Path | None) -> None:
-        name = chef.get("chefName") or f"agent_{chef.get('agentId', '?')}"
-        self.title_var.set(f"{name}  (id={chef.get('agentId', '?')})")
+        name = player_name(chef)
+        self.title_var.set(f"{name}  (id={player_id(chef)})")
         self.keys.set_keys(chef)
         mx = float(chef.get("moveX", 0) or 0)
         mz = float(chef.get("moveZ", 0) or 0)
@@ -193,13 +210,25 @@ class ChefPanel(ttk.Frame):
         task_label = chef.get("taskLabel") or ""
         self.task_var.set(f"task: {task_type} {task_label}".strip() or "task: —")
         self.held_var.set(f"held: {chef.get('heldItem') or '—'}")
-        self.pose_var.set(
-            f"pos: ({float(chef.get('posX', 0) or 0):.1f}, "
-            f"{float(chef.get('posY', 0) or 0):.1f}, "
-            f"{float(chef.get('posZ', 0) or 0):.1f})  "
-            f"yaw={float(chef.get('rotY', 0) or 0):.0f}° "
-            f"pitch={float(chef.get('rotX', 0) or 0):.0f}°"
-        )
+
+        cam = chef.get("camera_info") or {}
+        ext = cam.get("ext") or {}
+        if ext:
+            self.pose_var.set(
+                f"cam(world): ({float(ext.get('posX', 0) or 0):.1f}, "
+                f"{float(ext.get('posY', 0) or 0):.1f}, "
+                f"{float(ext.get('posZ', 0) or 0):.1f})  "
+                f"yaw={float(ext.get('rotY', 0) or 0):.0f}° "
+                f"pitch={float(ext.get('rotX', 0) or 0):.0f}°"
+            )
+        else:
+            self.pose_var.set(
+                f"pos: ({float(chef.get('posX', 0) or 0):.1f}, "
+                f"{float(chef.get('posY', 0) or 0):.1f}, "
+                f"{float(chef.get('posZ', 0) or 0):.1f})  "
+                f"yaw={float(chef.get('rotY', 0) or 0):.0f}° "
+                f"pitch={float(chef.get('rotX', 0) or 0):.0f}°"
+            )
         self._set_image(image_path)
 
     def _set_image(self, path: Path | None) -> None:
@@ -220,6 +249,9 @@ class SessionViewerApp(tk.Tk):
         self._frame_index = 0
         self._playing = False
         self._play_job: str | None = None
+        # Wall-clock playback so slow PNG/UI decode cannot stretch 30fps into slow-mo.
+        self._play_anchor_wall = 0.0
+        self._play_anchor_frame = 0
         self._global_photo: ImageTk.PhotoImage | None = None
         self._chef_panels: list[ChefPanel] = []
         self._recordings_root = default_recordings_root()
@@ -274,7 +306,7 @@ class SessionViewerApp(tk.Tk):
         self.global_canvas = tk.Label(left, bg=BORDER, width=420, height=420)
         self.global_canvas.pack(pady=(6, 8))
 
-        ttk.Label(left, text="World State", style="Header.TLabel").pack(anchor="w")
+        ttk.Label(left, text="Session / World", style="Header.TLabel").pack(anchor="w")
         self.world_text = tk.Text(
             left,
             width=52,
@@ -289,11 +321,11 @@ class SessionViewerApp(tk.Tk):
         self.world_text.pack(fill="both", expand=True, pady=(6, 0))
         self.world_text.configure(state="disabled")
 
-        # Right: 2-column chef grid (typically 2x2 for 4 AIs), vertical scroll if more
+        # Right: 2-column player grid (typically 2x2 for 4 AIs), vertical scroll if more
         right_wrap = ttk.Frame(body, style="TFrame")
         right_wrap.pack(side="left", fill="both", expand=True, padx=(10, 0))
 
-        ttk.Label(right_wrap, text="AI Chefs / Inputs (2 columns)", style="Header.TLabel").pack(
+        ttk.Label(right_wrap, text="Players / Inputs (2 columns)", style="Header.TLabel").pack(
             anchor="w"
         )
 
@@ -366,16 +398,17 @@ class SessionViewerApp(tk.Tk):
             return
 
         self._stop_play()
+        clear_preview_cache()
         self._session = session
         self._frame_index = 0
         self.frame_var.set(0)
         max_idx = max(0, session.frame_count - 1)
         self.scale.configure(to=max_idx)
         self.session_label.configure(
-            text=f"{session.meta.session_id}  |  {session.meta.scene_name}  |  "
+            text=f"{session.meta.session_id}  |  {session.meta.game_name}  |  "
             f"{session.frame_count} frames @ {session.meta.capture_fps:.0f}fps"
         )
-        self._rebuild_chef_panels(session.meta.chef_count or 1)
+        self._rebuild_chef_panels(session.meta.player_count or 1)
         self._render_frame(0)
 
     def _on_chef_inner_configure(self, _event: tk.Event | None = None) -> None:
@@ -402,7 +435,7 @@ class SessionViewerApp(tk.Tk):
 
         for i in range(count):
             row, col = divmod(i, CHEF_GRID_COLUMNS)
-            panel = ChefPanel(self.chef_inner, title=f"Chef {i}", img_size=180)
+            panel = ChefPanel(self.chef_inner, title=f"Player {i}", img_size=180)
             panel.grid(row=row, column=col, sticky="nsew", padx=4, pady=4)
             self._chef_panels.append(panel)
 
@@ -419,10 +452,19 @@ class SessionViewerApp(tk.Tk):
             return
         if self._playing:
             self._stop_play()
-        else:
-            self._playing = True
-            self.play_btn.configure(text="⏸ Pause")
-            self._schedule_next()
+            return
+
+        # Restart from beginning if already on last frame.
+        if self._frame_index >= self._session.frame_count - 1:
+            self._frame_index = 0
+            self.frame_var.set(0)
+            self._render_frame(0)
+
+        self._playing = True
+        self.play_btn.configure(text="⏸ Pause")
+        self._play_anchor_wall = time.perf_counter()
+        self._play_anchor_frame = self._frame_index
+        self._play_tick()
 
     def _stop_play(self) -> None:
         self._playing = False
@@ -431,24 +473,33 @@ class SessionViewerApp(tk.Tk):
             self.after_cancel(self._play_job)
             self._play_job = None
 
-    def _schedule_next(self) -> None:
-        if not self._playing or self._session is None:
-            return
-        fps = max(1.0, self._session.meta.capture_fps)
-        delay_ms = max(1, int(1000.0 / fps))
-        self._play_job = self.after(delay_ms, self._play_tick)
-
     def _play_tick(self) -> None:
         if not self._playing or self._session is None:
             return
-        nxt = self._frame_index + 1
-        if nxt >= self._session.frame_count:
+
+        fps = max(1.0, self._session.meta.capture_fps)
+        elapsed = time.perf_counter() - self._play_anchor_wall
+        target = self._play_anchor_frame + int(elapsed * fps + 1e-9)
+        last = self._session.frame_count - 1
+
+        if target > last:
+            if self._frame_index != last:
+                self._frame_index = last
+                self.frame_var.set(last)
+                self._render_frame(last)
             self._stop_play()
             return
-        self._frame_index = nxt
-        self.frame_var.set(nxt)
-        self._render_frame(nxt)
-        self._schedule_next()
+
+        if target != self._frame_index:
+            self._frame_index = target
+            self.frame_var.set(target)
+            self._render_frame(target)
+
+        # Schedule for the next sim-frame boundary (skip if we fell behind).
+        next_idx = target + 1
+        next_at = self._play_anchor_wall + (next_idx - self._play_anchor_frame) / fps
+        delay_ms = max(1, int(round((next_at - time.perf_counter()) * 1000)))
+        self._play_job = self.after(delay_ms, self._play_tick)
 
     def _prev_frame(self) -> None:
         if self._session is None:
@@ -483,16 +534,16 @@ class SessionViewerApp(tk.Tk):
         self._global_photo = ImageTk.PhotoImage(gimg)
         self.global_canvas.configure(image=self._global_photo, width=420, height=420)
 
-        chefs = list(frame.get("chefs") or [])
-        if len(chefs) > len(self._chef_panels):
-            self._rebuild_chef_panels(len(chefs))
+        players = frame_players(frame)
+        if len(players) > len(self._chef_panels):
+            self._rebuild_chef_panels(len(players))
 
         for i, panel in enumerate(self._chef_panels):
-            if i >= len(chefs):
+            if i >= len(players):
                 panel.update_chef(
                     {
-                        "chefName": f"(empty {i})",
-                        "agentId": "-",
+                        "playerName": f"(empty {i})",
+                        "playerId": "-",
                         "keyW": False,
                         "keyA": False,
                         "keyS": False,
@@ -515,14 +566,78 @@ class SessionViewerApp(tk.Tk):
                     None,
                 )
                 continue
-            chef = chefs[i]
-            img_path = session.resolve_image(chef.get("fpImage"))
-            panel.update_chef(chef, img_path)
+            player = players[i]
+            img_path = session.resolve_image(player.get("fpImage"))
+            panel.update_chef(player, img_path)
 
-        self._fill_world_text(frame.get("world") or {})
+        # World text is heavy; refresh every frame while paused/scrubbing,
+        # but only periodically while playing so decode stays near realtime.
+        if (not self._playing) or (index % 5 == 0) or index == 0:
+            self._fill_world_text(frame, players)
 
-    def _fill_world_text(self, world: dict[str, Any]) -> None:
+    def _fill_world_text(
+        self, frame: dict[str, Any], players: list[dict[str, Any]] | None = None
+    ) -> None:
         lines: list[str] = []
+        meta = self._session.meta if self._session else None
+        world = frame.get("world") or {}
+
+        if meta is not None:
+            lines.append("=== Manifest ===")
+            lines.append(f"  game: {meta.game_name}")
+            lines.append(f"  totalFrames: {meta.total_frames}  players: {meta.player_count}")
+            if meta.task_description:
+                lines.append(f"  task: {meta.task_description}")
+            lines.append("")
+
+        cam = frame.get("camera_info") or {}
+        cin = cam.get("int") or {}
+        cext = cam.get("ext") or {}
+        lines.append("=== Global camera (this frame) ===")
+        if cin or cext:
+            lines.append(
+                f"  int: fx={cin.get('fx', '?')} fy={cin.get('fy', '?')} "
+                f"fovY={cin.get('fovY', '?')} {cin.get('width', '?')}x{cin.get('height', '?')}"
+            )
+            lines.append(
+                f"  ext: ({float(cext.get('posX', 0) or 0):.1f}, "
+                f"{float(cext.get('posY', 0) or 0):.1f}, "
+                f"{float(cext.get('posZ', 0) or 0):.1f})"
+            )
+        else:
+            lines.append("  (missing)")
+        lines.append("")
+
+        scene = frame.get("scene_3d_info") or {}
+        fac = scene.get("facilities") or []
+        spawns = scene.get("spawnPoints") or []
+        lines.append(f"=== Scene 3D ({len(fac)} facilities, {len(spawns)} spawns) ===")
+        for f in fac[:8]:
+            lines.append(
+                f"  {f.get('name')} ({f.get('facilityType')}) "
+                f"@ ({float(f.get('posX', 0) or 0):.1f}, "
+                f"{float(f.get('posY', 0) or 0):.1f}, "
+                f"{float(f.get('posZ', 0) or 0):.1f}) "
+                f"rotY={float(f.get('rotY', 0) or 0):.0f}"
+            )
+        if len(fac) > 8:
+            lines.append(f"  … +{len(fac) - 8} more")
+        lines.append("")
+
+        if players:
+            lines.append(f"=== Player cams this frame ({len(players)}) ===")
+            for p in players:
+                pcam = p.get("camera_info") or {}
+                ext = pcam.get("ext") or {}
+                pin = pcam.get("int") or {}
+                lines.append(
+                    f"  {player_name(p)} id={player_id(p)} "
+                    f"fovY={pin.get('fovY', '—')} "
+                    f"ext=({float(ext.get('posX', 0) or 0):.1f}, "
+                    f"{float(ext.get('posY', 0) or 0):.1f}, "
+                    f"{float(ext.get('posZ', 0) or 0):.1f})"
+                )
+            lines.append("")
 
         orders = world.get("orders") or []
         lines.append(f"=== Orders ({len(orders)}) ===")
@@ -567,15 +682,27 @@ class SessionViewerApp(tk.Tk):
         self.world_text.configure(state="disabled")
 
 
+_preview_cache: dict[tuple[str, int], Image.Image] = {}
+
+
+def clear_preview_cache() -> None:
+    _preview_cache.clear()
+
+
 def _load_preview(path: Path | None, size: int, placeholder: str = "missing") -> Image.Image:
     if path is not None and path.is_file():
+        key = (str(path.resolve()), size)
+        cached = _preview_cache.get(key)
+        if cached is not None:
+            return cached
         try:
             img = Image.open(path).convert("RGB")
-            img.thumbnail((size, size), Image.Resampling.LANCZOS)
+            img.thumbnail((size, size), Image.Resampling.BILINEAR)
             canvas = Image.new("RGB", (size, size), (30, 31, 34))
             ox = (size - img.width) // 2
             oy = (size - img.height) // 2
             canvas.paste(img, (ox, oy))
+            _preview_cache[key] = canvas
             return canvas
         except OSError:
             pass

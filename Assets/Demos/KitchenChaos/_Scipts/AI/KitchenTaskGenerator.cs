@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Kitchen;
 
 namespace Kitchen.AI
 {
@@ -97,15 +98,25 @@ namespace Kitchen.AI
                     if (step.taskType == TaskType.ADD_TO_PLATE)
                     {
                         var plate = bb.FindPlateForOrder(orderId);
-                        if (plate != null && plate.GetIngredients().Contains(step.inputType!.Value))
-                            { skippedCompleted++; continue; } // Already on the plate
+                        // Assembled / finished dish already on plate — skip further adds.
+                        if (plate != null && plate.TryGetDeliverableItem(out var held))
+                        {
+                            if (held == order.requiredItem || held == step.inputType)
+                                { skippedCompleted++; continue; }
+                            // e.g. PizzaUnbaked / TomatoSalad after assembly, before oven/blender
+                            if (PlateAssemblyMatcher.FindAssemblyProducing(held) != null)
+                                { skippedCompleted++; continue; }
+                        }
+                        if (plate != null && step.inputType.HasValue
+                            && plate.GetIngredients().Contains(step.inputType.Value))
+                            { skippedCompleted++; continue; }
                     }
 
                     // === INPUT EXISTENCE CHECK ===
                     if (step.taskType == TaskType.PROCESS && step.inputType.HasValue)
                     {
                         var inputs = bb.FindItemsOfType(step.inputType.Value, excludeReserved: true, forOrderId: orderId);
-                        if (inputs.Count == 0) continue;
+                        if (inputs.Count == 0 && CountOnPlates(bb, step.inputType.Value) == 0) continue;
                     }
                     if (step.taskType == TaskType.ADD_TO_PLATE && step.inputType.HasValue)
                     {
@@ -169,7 +180,9 @@ namespace Kitchen.AI
             if (!step.outputType.HasValue) return;
 
             var ingredient = step.outputType.Value;
-            var storage = bb.FindStorageFor(ingredient);
+            // Prefer exact container; fall back to any storage (AI will spawn the needed type).
+            var storage = bb.FindStorageFor(ingredient)
+                          ?? bb.facilities.FirstOrDefault(f => f.type == FacilityType.Storage);
             if (storage == null) { skippedNoStorage++; return; }
 
             // Count: items anywhere + on plates + active tasks not yet carrying.
@@ -212,14 +225,15 @@ namespace Kitchen.AI
 
             var facilityType = step.requiredFacilityType;
 
-            // Prefer a facility that already has the input item on it (even if occupied)
+            // Prefer a facility that already has the input (KitchenObj or plate ingredient)
             FacilityState facility = null;
             foreach (var f in bb.facilities)
             {
                 if (f.type != facilityType) continue;
-                if (f.counter == null) continue;
-                if (f.counter.HasKitchenObj() &&
-                    f.counter.GetKitchenObj().objEnum == step.inputType.Value)
+                if (f.counter == null || !f.counter.HasKitchenObj()) continue;
+                var onFac = f.counter.GetKitchenObj();
+                if (onFac.objEnum == step.inputType.Value
+                    || (onFac is Plate pl && pl.GetIngredients().Contains(step.inputType.Value)))
                 {
                     facility = f;
                     break;
@@ -236,9 +250,10 @@ namespace Kitchen.AI
                 return;
             }
 
-            // Check if input item exists
+            // Input may be a free KitchenObj or sitting as a plate ingredient (assembled dish).
             var inputItems = bb.FindItemsOfType(step.inputType.Value);
-            if (inputItems.Count == 0) return;
+            int onPlates = CountOnPlates(bb, step.inputType.Value);
+            if (inputItems.Count == 0 && onPlates == 0) return;
 
             // Don't produce more than ALL orders need combined.
             int totalAvail = bb.items.Count(i =>
@@ -264,10 +279,9 @@ namespace Kitchen.AI
             // Also check if any item of this type exists (even if not at facility)
             if (!isBeingCarried && itemAtFac == null)
             {
-                // Generate anyway — the AI may self-fetch
-                // But only if there's a free item available
                 var freeItem = inputItems.FirstOrDefault(i => i.IsAvailable);
-                if (freeItem == null) return;
+                bool plateHasInput = onPlates > 0 || FacilityHoldsPlateWith(bb, facility, step.inputType.Value);
+                if (freeItem == null && !plateHasInput) return;
             }
 
             // Determine duration based on facility type
@@ -374,58 +388,42 @@ namespace Kitchen.AI
             var servingCounter = bb.facilities.FirstOrDefault(f => f.type == FacilityType.ServingCounter);
             if (servingCounter == null) return;
 
-            // Collect required ingredients from step chain
-            var requiredIngredients = new List<KitchenObjEnum>();
-            if (bb.recipeStepChains.TryGetValue(order.recipeName, out var steps))
-            {
-                foreach (var s in steps)
-                {
-                    if (s.taskType == TaskType.ADD_TO_PLATE && s.inputType.HasValue)
-                        requiredIngredients.Add(s.inputType.Value);
-                }
-            }
-            if (requiredIngredients.Count == 0)
-            {
-                requiredIngredients = order.ingredients
-                    .Where(i => i != KitchenObjEnum.Plate).ToList();
-            }
+            // Plate must hold exactly the order's required item (after assembly / final process).
+            var required = order.requiredItem;
 
-            // Find a plate with all required ingredients for this order
             Plate matchingPlate = bb.FindPlateForOrder(orderId);
             if (matchingPlate != null)
             {
-                var plateIngs = matchingPlate.GetIngredients();
-                if (!requiredIngredients.All(ri => plateIngs.Contains(ri)))
-                    matchingPlate = null; // Order's plate doesn't have all ingredients — search globally
+                if (!matchingPlate.TryGetDeliverableItem(out var item) || item != required)
+                    matchingPlate = null;
             }
             if (matchingPlate == null)
             {
-                // Global search: ANY plate with exactly the right ingredients
                 var allPlates = Object.FindObjectsOfType<Plate>();
                 foreach (var p in allPlates)
                 {
                     bool accessible = p.IsFree || p.GetHolder() is BaseCounter;
                     if (!accessible) continue;
-                    var ings = p.GetIngredients();
-                    if (ings.Count == 0) continue;
-                    if (requiredIngredients.All(ri => ings.Contains(ri)))
-                        { matchingPlate = p; bb.AssignPlateToOrder(orderId, matchingPlate); break; }
+                    if (p.TryGetDeliverableItem(out var item) && item == required)
+                    {
+                        matchingPlate = p;
+                        bb.AssignPlateToOrder(orderId, matchingPlate);
+                        break;
+                    }
                 }
             }
             if (matchingPlate == null)
             {
-                AIDebugLogger.Log("Scheduler", $"SERVE #{orderId} {order.recipeName}: no plate with [{string.Join(",", requiredIngredients)}]");
+                AIDebugLogger.Log("Scheduler", $"SERVE #{orderId} {order.recipeName}: no plate with [{required}]");
                 return;
             }
 
-            // Verify the plate is accessible (on a counter or ground, not carried)
             bool onCounter = matchingPlate.GetHolder() is BaseCounter;
             if (!matchingPlate.IsFree && !onCounter) return;
 
             var plateIngredients = matchingPlate.GetIngredients();
             if (plateIngredients.Count == 0) return;
-
-            if (!requiredIngredients.All(ri => plateIngredients.Contains(ri))) return;
+            if (!matchingPlate.TryGetDeliverableItem(out var delivered) || delivered != required) return;
 
             var task = KitchenTask.Create(TaskType.SERVE, $"{order.recipeName}: {step.label}");
             task.stepId = step.id;
@@ -516,7 +514,7 @@ namespace Kitchen.AI
                 if (!fac.counter.HasKitchenObj()) continue;
 
                 var item = fac.counter.GetKitchenObj();
-                bool isBurned = item.objEnum == KitchenObjEnum.MeatPattyBurned;
+                bool isBurned = PlateAssemblyMatcher.IsBurnedWaste(item.objEnum);
                 if (!isBurned) continue;
 
                 // Skip if another agent is already trashing or processing this item
@@ -547,7 +545,7 @@ namespace Kitchen.AI
                     if (!fac.counter.HasKitchenObj()) continue;
 
                     var item = fac.counter.GetKitchenObj();
-                    bool isBurned = item.objEnum == KitchenObjEnum.MeatPattyBurned;
+                    bool isBurned = PlateAssemblyMatcher.IsBurnedWaste(item.objEnum);
                     if (!isBurned) continue;
 
                     bool alreadyTrashing = bb.agents.Any(a =>
@@ -598,6 +596,13 @@ namespace Kitchen.AI
                 wastePlatesFound++;
                 if (wastePlatesFound >= 1) break; // One per cycle
             }
+        }
+
+        private static bool FacilityHoldsPlateWith(KitchenBlackboard bb, FacilityState facility, KitchenObjEnum type)
+        {
+            if (facility?.counter == null || !facility.counter.HasKitchenObj()) return false;
+            return facility.counter.GetKitchenObj() is Plate plate
+                   && plate.GetIngredients().Contains(type);
         }
 
         /// <summary>Count how many of an ingredient sit on plates (KitchenObj is destroyed on add).</summary>

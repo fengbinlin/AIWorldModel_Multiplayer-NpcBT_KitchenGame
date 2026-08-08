@@ -9,24 +9,26 @@ namespace Kitchen
     public class StoveCounterAudio : MonoBehaviour
     {
         [SerializeField] private AudioSource _cookingAudioSource;
-        private StoveCounter _stoveCounter;
+        private ICookingFacility _cooking;
 
         private void Awake()
         {
-            _cookingAudioSource = GetComponent<AudioSource>();
-            _stoveCounter = GetComponentInParent<StoveCounter>();
+            if (_cookingAudioSource == null)
+                _cookingAudioSource = GetComponent<AudioSource>();
+            _cooking = GetComponentInParent<ICookingFacility>();
         }
 
         private void OnEnable()
         {
-            _stoveCounter.OnStartCooking += _StoveCounter_OnStartCooking;
-            _stoveCounter.OnStopCooking += _StoveCounter_OnStopCooking;
-            _stoveCounter.OnCookingStageChange += _OnCookingStageChange;
+            if (_cooking == null)
+                _cooking = GetComponentInParent<ICookingFacility>();
+            if (_cooking == null) return;
+            _cooking.OnStartCooking += _OnStartCooking;
+            _cooking.OnStopCooking += _OnStopCooking;
+            _cooking.OnCookingStageChange += _OnCookingStageChange;
         }
 
-
         private bool _isPlayingWarningSound;
-
         private CancellationTokenSource _playingWarningSoundCts;
         private float _warningSoundInterval = 0.5f;
 
@@ -37,13 +39,11 @@ namespace Kitchen
                 _playingWarningSoundCts?.Cancel();
                 return;
             }
+
             if (KitchenObjOperator.WillBeBurned(obj.Value))
             {
-                //一直播放 直到 烹饪停止
                 if (!_isPlayingWarningSound)
-                {
                     _PlayingWarningTileStop().Forget();
-                }
             }
             else
             {
@@ -57,8 +57,8 @@ namespace Kitchen
             _isPlayingWarningSound = true;
             while (_playingWarningSoundCts.IsCancellationRequested == false)
             {
-                //等待 interval 后继续播放   
-                SoundManager.Instance.PlayWarning(transform.position);
+                if (SoundManager.Instance != null)
+                    SoundManager.Instance.PlayWarning(transform.position);
                 await UniTask.Delay(TimeSpan.FromSeconds(_warningSoundInterval),
                     cancellationToken: _playingWarningSoundCts.Token);
             }
@@ -68,21 +68,23 @@ namespace Kitchen
 
         private void OnDisable()
         {
-            _stoveCounter.OnStartCooking -= _StoveCounter_OnStartCooking;
-            _stoveCounter.OnStopCooking -= _StoveCounter_OnStopCooking;
-            _stoveCounter.OnCookingStageChange -= _OnCookingStageChange;
+            if (_cooking == null) return;
+            _cooking.OnStartCooking -= _OnStartCooking;
+            _cooking.OnStopCooking -= _OnStopCooking;
+            _cooking.OnCookingStageChange -= _OnCookingStageChange;
         }
 
-        private void _StoveCounter_OnStopCooking()
+        private void _OnStopCooking()
         {
-            // _playingWarningSoundCts?.Cancel();
-            _cookingAudioSource.Stop();
+            if (_cookingAudioSource != null)
+                _cookingAudioSource.Stop();
         }
 
-        private void _StoveCounter_OnStartCooking()
+        private void _OnStartCooking()
         {
-            // _playingWarningSoundCts?.Cancel();
-            _cookingAudioSource.Play();
+            if (_cookingAudioSource != null)
+                _cookingAudioSource.Play();
         }
     }
 }
+

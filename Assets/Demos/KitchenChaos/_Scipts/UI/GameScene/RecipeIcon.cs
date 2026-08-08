@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,28 +19,40 @@ namespace Kitchen.UI
 
         public void SetRecipe(RecipeSo recipeData)
         {
+            if (recipeData == null) return;
             _textMeshPro.text = recipeData.recipeName;
-            for (int i = 0; i < recipeData.ingredients.Length; i++)
+
+            // Orders are a single required item now.
+            var items = new[] { recipeData.requiredItem };
+            for (int i = 0; i < items.Length; i++)
             {
-                var objEnum = recipeData.ingredients[i];
-                var so = DataTableManager.Sigleton.GetKitchenObjSo(objEnum);
-                //如果已经有合适的icon 则不再生成
+                var objEnum = items[i];
+                KitchenObjSo so = null;
+                try
+                {
+                    so = DataTableManager.Sigleton.GetKitchenObjSo(objEnum);
+                }
+                catch
+                {
+                    // missing SO
+                }
+
                 if (i < _icons.Count)
                 {
                     _icons[i].gameObject.SetActive(true);
-                    _icons[i].GetComponent<Image>().sprite = so.sprite;
+                    if (so != null)
+                        _icons[i].GetComponent<Image>().sprite = so.sprite;
                     continue;
                 }
-                //不够则生成
+
                 var icon = Instantiate(iconPrefab, iconContainer);
-                icon.GetComponent<Image>().sprite = so.sprite;
+                if (so != null)
+                    icon.GetComponent<Image>().sprite = so.sprite;
                 _icons.Add(icon);
             }
-            //将多余的icon隐藏
-            for (int i = recipeData.ingredients.Length; i < _icons.Count; i++)
-            {
+
+            for (int i = items.Length; i < _icons.Count; i++)
                 _icons[i].gameObject.SetActive(false);
-            }
         }
     }
 }

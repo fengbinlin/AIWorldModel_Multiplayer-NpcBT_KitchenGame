@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Kitchen
 {
-    public class StoveCounter : BaseCounter
+    public class StoveCounter : BaseCounter, ICookingFacility
     {
         private CancellationTokenSource _cookingCts;
         public event Action OnStartCooking;

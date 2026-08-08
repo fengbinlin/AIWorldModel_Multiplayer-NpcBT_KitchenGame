@@ -158,7 +158,7 @@ namespace Kitchen.AI.Recording
                 {
                     orderId = orderId,
                     recipeName = recipe.recipeName,
-                    ingredients = recipe.ingredients?.Select(ing => ing.ToString()).ToArray() ?? new string[0],
+                    ingredients = new[] { recipe.requiredItem.ToString() },
                 });
             }
             return list.ToArray();

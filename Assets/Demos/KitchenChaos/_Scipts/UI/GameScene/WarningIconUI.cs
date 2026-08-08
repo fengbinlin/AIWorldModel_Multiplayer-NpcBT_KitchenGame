@@ -1,47 +1,45 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
+using Kitchen;
 
 namespace Kitchen.UI
 {
     public class WarningIconUI : MonoBehaviour
     {
-        private StoveCounter _stoveCounter;
+        private ICookingFacility _cooking;
         [SerializeField] private GameObject warningIcon;
 
         private void Awake()
         {
-            _stoveCounter = GetComponentInParent<StoveCounter>();
-            warningIcon.SetActive(false);
+            _cooking = GetComponentInParent<ICookingFacility>();
+            if (warningIcon != null)
+                warningIcon.SetActive(false);
         }
-        
 
         private void OnEnable()
         {
-            _stoveCounter.OnCookingStageChange += OnCookingStageChange;
+            if (_cooking == null)
+                _cooking = GetComponentInParent<ICookingFacility>();
+            if (_cooking == null) return;
+            _cooking.OnCookingStageChange += OnCookingStageChange;
         }
 
         private void OnDisable()
         {
-            _stoveCounter.OnCookingStageChange -= OnCookingStageChange;
+            if (_cooking == null) return;
+            _cooking.OnCookingStageChange -= OnCookingStageChange;
         }
 
         private void OnCookingStageChange(KitchenObjEnum? obj)
         {
-            //TODO 如果obj的下一个状态是烤焦 则显示WarningIcon
-            //否则隐藏WarningIcon
+            if (warningIcon == null) return;
             if (obj is null)
             {
                 warningIcon.SetActive(false);
                 return;
             }
-            if(KitchenObjOperator.WillBeBurned(obj.Value))
-            {
-                warningIcon.SetActive(true);
-            }
-            else
-            {
-                warningIcon.SetActive(false);
-            }
+
+            warningIcon.SetActive(KitchenObjOperator.WillBeBurned(obj.Value));
         }
     }
 }
+

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Kitchen;
 
 namespace Kitchen.AI
 {
@@ -12,6 +13,8 @@ namespace Kitchen.AI
         Storage,        // ContainerCounter - spawns raw ingredients
         CuttingBoard,   // CuttingCounter - cuts ingredients
         FryingPan,      // StoveCounter - cooks ingredients
+        Oven,           // OvenCounter - bakes
+        Blender,        // BlenderCounter - blends shakes
         AssemblyTable,  // ClearCounter - used for plate assembly
         PlatesCounter,  // PlatesCounter - spawns plates
         ServingCounter, // DeliveryCounter - completes orders
@@ -214,6 +217,14 @@ namespace Kitchen.AI
                 {
                     fs.type = FacilityType.FryingPan;
                 }
+                else if (c is OvenCounter)
+                {
+                    fs.type = FacilityType.Oven;
+                }
+                else if (c is BlenderCounter)
+                {
+                    fs.type = FacilityType.Blender;
+                }
                 else if (c is ClearCounter)
                 {
                     fs.type = FacilityType.AssemblyTable;
@@ -276,36 +287,45 @@ namespace Kitchen.AI
         }
 
         /// <summary>
-        /// Reconstruct the step-by-step process chain for a recipe.
-        /// For each ingredient, trace back through KitchenProcessSo to find the raw source.
-        /// Then add plate-fetching, per-ingredient ADD_TO_PLATE, and SERVE steps.
+        /// Build steps for an order that requires a single <see cref="RecipeSo.requiredItem"/>.
+        /// Expands plate-assembly inputs and facility process chains as needed.
         /// </summary>
         private List<RecipeStep> BuildRecipeSteps(RecipeSo recipe)
         {
             var steps = new List<RecipeStep>();
-            var ingredientTypes = new List<KitchenObjEnum>();
+            var required = recipe.requiredItem;
 
-            foreach (var ingredient in recipe.ingredients)
+            // Post-assembly facility step (oven / blender) if required item is produced that way.
+            var postProcess = FindProducingProcess(required);
+            KitchenObjEnum plateTarget = required;
+            FacilityEnum? postFacility = null;
+
+            if (postProcess != null
+                && (postProcess.requiredFacility == FacilityEnum.OvenCounter
+                    || postProcess.requiredFacility == FacilityEnum.BlenderCounter))
             {
-                // Skip Plate — we fetch it separately
-                if (ingredient == KitchenObjEnum.Plate) continue;
-
-                // Trace back through processes to find raw source
-                var chain = TraceIngredientChain(ingredient);
-
-                // Determine the FINAL output (processed form) for ADD_TO_PLATE
-                KitchenObjEnum finalForm = ingredient;
-                foreach (var step in chain)
-                {
-                    if (step.taskType == TaskType.PROCESS && step.outputType.HasValue)
-                        finalForm = step.outputType.Value;
-                }
-                ingredientTypes.Add(finalForm);
-
-                steps.AddRange(chain);
+                plateTarget = postProcess.inputEnum;
+                postFacility = postProcess.requiredFacility;
             }
 
-            // FETCH_PLATE: get plate from PlatesCounter, place on ClearCounter
+            var assembly = PlateAssemblyMatcher.FindAssemblyProducing(plateTarget);
+            var toAddOnPlate = new List<KitchenObjEnum>();
+
+            if (assembly != null && assembly.inputs != null)
+            {
+                foreach (var input in assembly.inputs)
+                {
+                    steps.AddRange(TraceIngredientChain(input));
+                    toAddOnPlate.Add(input);
+                }
+            }
+            else
+            {
+                // Direct item on plate (e.g. raw tomato, chopped fish, steak).
+                steps.AddRange(TraceIngredientChain(plateTarget));
+                toAddOnPlate.Add(plateTarget);
+            }
+
             steps.Add(new RecipeStep
             {
                 id = $"fetch_plate_{recipe.recipeName}",
@@ -314,8 +334,7 @@ namespace Kitchen.AI
                 requiredFacilityType = FacilityType.AssemblyTable,
             });
 
-            // ADD_TO_PLATE: one per ingredient (using the PROCESSED form)
-            foreach (var ing in ingredientTypes)
+            foreach (var ing in toAddOnPlate)
             {
                 steps.Add(new RecipeStep
                 {
@@ -327,7 +346,19 @@ namespace Kitchen.AI
                 });
             }
 
-            // SERVE step
+            if (postFacility.HasValue && postProcess != null)
+            {
+                steps.Add(new RecipeStep
+                {
+                    id = $"process_{postProcess.inputEnum}_to_{postProcess.outputEnum}",
+                    label = $"{postProcess.inputEnum}→{postProcess.outputEnum}",
+                    taskType = TaskType.PROCESS,
+                    inputType = postProcess.inputEnum,
+                    outputType = postProcess.outputEnum,
+                    requiredFacilityType = FacilityToType(postFacility.Value),
+                });
+            }
+
             steps.Add(new RecipeStep
             {
                 id = $"serve_{recipe.recipeName}",
@@ -337,6 +368,18 @@ namespace Kitchen.AI
             });
 
             return steps;
+        }
+
+        private static FacilityType FacilityToType(FacilityEnum f)
+        {
+            return f switch
+            {
+                FacilityEnum.CuttingCounter => FacilityType.CuttingBoard,
+                FacilityEnum.StoveCounter => FacilityType.FryingPan,
+                FacilityEnum.OvenCounter => FacilityType.Oven,
+                FacilityEnum.BlenderCounter => FacilityType.Blender,
+                _ => FacilityType.FryingPan,
+            };
         }
 
         /// <summary>
@@ -366,10 +409,7 @@ namespace Kitchen.AI
             // Trace back from the input
             var inputSteps = TraceIngredientChain(producingProcess.inputEnum);
 
-            // Then the PROCESS step
-            FacilityType facType = producingProcess.requiredFacility == FacilityEnum.CuttingCounter
-                ? FacilityType.CuttingBoard
-                : FacilityType.FryingPan;
+            FacilityType facType = FacilityToType(producingProcess.requiredFacility);
 
             steps.AddRange(inputSteps);
             steps.Add(new RecipeStep

@@ -1,43 +1,97 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
+
+
 
 namespace Kitchen
+
 {
+
     public class StoveCounterVisual : MonoBehaviour
+
     {
-        private StoveCounter _stoveCounter;
+
+        private ICookingFacility _cooking;
+
         private GameObject _stoveGameOnObject;
+
         private GameObject _particleObject;
 
+
+
         private void Awake()
+
         {
-            _stoveCounter = GetComponentInParent<StoveCounter>();
-            _stoveGameOnObject = transform.Find("StoveOnVisual").gameObject;
-            _particleObject = transform.Find("SizzlingParticles").gameObject;
+
+            _cooking = GetComponentInParent<ICookingFacility>();
+
+            var onVisual = transform.Find("StoveOnVisual");
+
+            var particles = transform.Find("SizzlingParticles");
+
+            _stoveGameOnObject = onVisual != null ? onVisual.gameObject : null;
+
+            _particleObject = particles != null ? particles.gameObject : null;
+
         }
+
+
 
         private void OnEnable()
+
         {
-            _stoveCounter.OnStartCooking += OnStartCooking;
-            _stoveCounter.OnStopCooking += OnStopCooking;
+
+            if (_cooking == null)
+
+                _cooking = GetComponentInParent<ICookingFacility>();
+
+            if (_cooking == null) return;
+
+            _cooking.OnStartCooking += OnStartCooking;
+
+            _cooking.OnStopCooking += OnStopCooking;
+
         }
+
+
 
         private void OnDisable()
+
         {
-            _stoveCounter.OnStartCooking -= OnStartCooking;
-            _stoveCounter.OnStopCooking -= OnStopCooking;
+
+            if (_cooking == null) return;
+
+            _cooking.OnStartCooking -= OnStartCooking;
+
+            _cooking.OnStopCooking -= OnStopCooking;
+
         }
+
+
 
         private void OnStopCooking()
+
         {
-            _stoveGameOnObject.SetActive(false);
-            _particleObject.SetActive(false);
+
+            if (_stoveGameOnObject != null) _stoveGameOnObject.SetActive(false);
+
+            if (_particleObject != null) _particleObject.SetActive(false);
+
         }
 
+
+
         private void OnStartCooking()
+
         {
-            _stoveGameOnObject.SetActive(true);
-            _particleObject.SetActive(true);
+
+            if (_stoveGameOnObject != null) _stoveGameOnObject.SetActive(true);
+
+            if (_particleObject != null) _particleObject.SetActive(true);
+
         }
+
     }
+
 }
+
+

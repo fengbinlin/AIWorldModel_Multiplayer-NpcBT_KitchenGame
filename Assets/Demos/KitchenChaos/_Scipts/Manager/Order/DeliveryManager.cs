@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Nico.MVC;
@@ -95,8 +94,7 @@ namespace Kitchen
 
         public bool TryDeliverOrder(Vector3 position, HashSet<KitchenObjEnum> ingredients)
         {
-            //检查是否有匹配的订单
-            int target = _CheckIngredients(ingredients);
+            int target = _CheckRequiredItem(ingredients);
             if (target == -1)
             {
                 _FailedOrderServerRpc(position);
@@ -142,25 +140,29 @@ namespace Kitchen
             OnOrderSuccess?.Invoke(this, position);
         }
 
-        private int _CheckIngredients(HashSet<KitchenObjEnum> ingredients)
+        /// <summary>
+        /// Order matches when the plate holds exactly one item equal to <see cref="RecipeSo.requiredItem"/>.
+        /// </summary>
+        private int _CheckRequiredItem(HashSet<KitchenObjEnum> ingredients)
         {
-            int target = -1;
+            if (ingredients == null || ingredients.Count != 1)
+                return -1;
+
+            KitchenObjEnum delivered = default;
+            foreach (var i in ingredients)
+                delivered = i;
+
+            if (PlateAssemblyMatcher.IsBurnedWaste(delivered))
+                return -1;
+
             for (int i = 0; i < _waitingQueue.Count; i++)
             {
                 var order = _waitingQueue[i];
-                if (order.ingredients.Length != ingredients.Count)
-                    continue;
-                Debug.Log($"{string.Join(",", order.ingredients)} VS {string.Join(",", ingredients)}");
-                bool flag = order.ingredients.All(ingredients.Contains);
-
-                //如果有一个不相同则跳过
-                if (!flag) continue;
-                //有符合的订单 -> 跳出检查
-                target = i;
-                break;
+                if (order != null && order.requiredItem == delivered)
+                    return i;
             }
 
-            return target;
+            return -1;
         }
 
         public ICollection<RecipeSo> GetWaitingQueue()

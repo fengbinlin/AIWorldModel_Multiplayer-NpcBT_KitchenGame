@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEngine;
 using Unity.Netcode;
 using Pathfinding;
+using Kitchen;
 
 namespace Kitchen.AI
 {
@@ -1153,6 +1154,28 @@ namespace Kitchen.AI
                     return sc;
                 }
             }
+            if (DataTableManager.Sigleton.CanProcess(ingredient, FacilityEnum.OvenCounter))
+            {
+                var oven = FindObjectsOfType<OvenCounter>()
+                    .FirstOrDefault(c => !c.HasKitchenObj()
+                        && (reservedCounters == null || !reservedCounters.Contains(c)));
+                if (oven != null)
+                {
+                    AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → OvenCounter {oven.name}");
+                    return oven;
+                }
+            }
+            if (DataTableManager.Sigleton.CanProcess(ingredient, FacilityEnum.BlenderCounter))
+            {
+                var blender = FindObjectsOfType<BlenderCounter>()
+                    .FirstOrDefault(c => !c.HasKitchenObj()
+                        && (reservedCounters == null || !reservedCounters.Contains(c)));
+                if (blender != null)
+                {
+                    AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → BlenderCounter {blender.name}");
+                    return blender;
+                }
+            }
             // Non-processable ingredients (like Bread) — try direct-to-plate first
             var plateTarget = FindPlateNeedingIngredient(ingredient);
             if (plateTarget != null)
@@ -1274,32 +1297,48 @@ namespace Kitchen.AI
             }
             else if (counter.HasKitchenObj())
             {
-                string counterItem = counter.GetKitchenObj().objEnum.ToString();
-                AIDebugLogger.Log(chefName, $"ExecuteProcess: counter {counter.name} has {counterItem}, → direct interact");
-                _execPhase = ExecPhase.None;
+                var onCounter = counter.GetKitchenObj();
+                bool ready = onCounter.objEnum == task.itemType
+                             || onCounter.objEnum == task.outputType
+                             || (onCounter is Plate readyPlate
+                                 && (readyPlate.GetIngredients().Contains(task.itemType)
+                                     || readyPlate.GetIngredients().Contains(task.outputType)));
+                if (ready)
+                {
+                    AIDebugLogger.Log(chefName, $"ExecuteProcess: counter {counter.name} has {onCounter.objEnum}, → wait/interact");
+                    _execPhase = ExecPhase.None;
+                    if (!MoveTo(counter.transform.position)) { AbandonTask(); return; }
+                    return;
+                }
+            }
+
+            // Holding a plate that already has the input ingredient (assembled dish → oven/blender)
+            if (_heldItem is Plate heldPlate && heldPlate.GetIngredients().Contains(task.itemType))
+            {
+                AIDebugLogger.Log(chefName, $"ExecuteProcess: holding plate with {task.itemType} → {counter.name}");
+                _execPhase = ExecPhase.GotoFacility;
                 if (!MoveTo(counter.transform.position)) { AbandonTask(); return; }
+                return;
+            }
+
+            // Counter empty / wrong — find KitchenObj or plate with input
+            KitchenObj foundItem = FindItemAnywhere(task.itemType) ?? FindPlateHoldingIngredient(task.itemType);
+            if (foundItem != null)
+            {
+                var holdingCounter = FindCounterHolding(foundItem);
+                Vector3 pickupPos = holdingCounter != null
+                    ? GetApproachPosition(holdingCounter)
+                    : foundItem.transform.position;
+                AIDebugLogger.Log(chefName, $"ExecuteProcess: self-fetching {task.itemType} from {(holdingCounter != null ? holdingCounter.name : "ground")} → {counter.name}");
+                _carryTargetItem = foundItem;
+                _carryDestPos = approachPos;
+                _execPhase = ExecPhase.GotoItem;
+                if (!MoveTo(pickupPos)) { AbandonTask(); return; };
             }
             else
             {
-                // Counter is empty — find the input item elsewhere and bring it here
-                KitchenObj foundItem = FindItemAnywhere(task.itemType);
-                if (foundItem != null)
-                {
-                    var holdingCounter = FindCounterHolding(foundItem);
-                    Vector3 pickupPos = holdingCounter != null
-                        ? GetApproachPosition(holdingCounter)
-                        : foundItem.transform.position;
-                    AIDebugLogger.Log(chefName, $"ExecuteProcess: self-fetching {task.itemType} from {(holdingCounter != null ? holdingCounter.name : "ground")} → {counter.name}");
-                    _carryTargetItem = foundItem;
-                    _carryDestPos = approachPos;
-                    _execPhase = ExecPhase.GotoItem;
-                    if (!MoveTo(pickupPos)) { AbandonTask(); return; };
-                }
-                else
-                {
-                    AIDebugLogger.LogWarning(chefName, $"ExecuteProcess: no {task.itemType} found, abandoning");
-                    AbandonTask();
-                }
+                AIDebugLogger.LogWarning(chefName, $"ExecuteProcess: no {task.itemType} found, abandoning");
+                AbandonTask();
             }
         }
 
@@ -1527,8 +1566,16 @@ namespace Kitchen.AI
             switch (_currentTask?.type)
             {
                 case TaskType.FETCH:
-                    // Interact with ContainerCounter to spawn item into hand
-                    if (_heldItem == null)
+                    // Spawn requested type (container may not match new ingredients).
+                    if (_heldItem == null && _currentTask != null && _currentTask.outputType != 0)
+                    {
+                        var container = _targetCounter as ContainerCounter;
+                        if (container != null && container.objEnum == _currentTask.outputType)
+                            PerformInteract(_targetCounter);
+                        else
+                            KitchenObjOperator.SpawnKitchenObjRpc(_currentTask.outputType, this);
+                    }
+                    else if (_heldItem == null)
                     {
                         PerformInteract(_targetCounter);
                     }
@@ -1702,9 +1749,14 @@ namespace Kitchen.AI
                 $"counterHas={hasItem} counterItem={counterType} " +
                 $"taskInput={_currentTask.itemType} taskOutput={_currentTask.outputType}");
 
-            // === CASE 1: Holding input, counter empty → place item and start ===
-            if (_heldItem != null && _currentTask.itemType != 0 &&
-                _heldItem.objEnum == _currentTask.itemType && !hasItem)
+            bool PlateHas(KitchenObjEnum t) =>
+                counterItem is Plate cp && cp.GetIngredients().Contains(t);
+            bool HeldPlateHas(KitchenObjEnum t) =>
+                _heldItem is Plate hp && hp.GetIngredients().Contains(t);
+
+            // === CASE 1: Holding input (or plate with input), counter empty → place ===
+            if (_heldItem != null && _currentTask.itemType != 0 && !hasItem
+                && (_heldItem.objEnum == _currentTask.itemType || HeldPlateHas(_currentTask.itemType)))
             {
                 AIDebugLogger.LogState(chefName, "placing", _heldItem.objEnum.ToString(), $"→ {counter.name}");
                 PerformInteract(counter);
@@ -1713,29 +1765,34 @@ namespace Kitchen.AI
                 return;
             }
 
-            // === CASE 2: Counter has OUTPUT → take it and complete ===
-            // Also handles edge case: AI holds input but output is already ready (abandoned cook)
-            if (hasItem && counterItem.objEnum == _currentTask.outputType)
+            // === CASE 2: Counter has OUTPUT (KitchenObj or plate ingredient) → take it ===
+            if (hasItem && (_currentTask.outputType != 0)
+                && (counterItem.objEnum == _currentTask.outputType || PlateHas(_currentTask.outputType)))
             {
-                // If holding something else, drop it first
-                if (_heldItem != null && _heldItem.objEnum != _currentTask.outputType)
+                if (_heldItem != null && _heldItem.objEnum != _currentTask.outputType
+                    && !(_heldItem is Plate))
                 {
-                    AIDebugLogger.Log(chefName, $"HandleProcess: dropping held {_heldItem.objEnum} to take ready output {counterItem.objEnum}");
+                    AIDebugLogger.Log(chefName, $"HandleProcess: dropping held {_heldItem.objEnum} to take ready output");
                     var dropSpot = FindNearestFreeCounter(transform.position);
                     if (dropSpot != null) PerformInteract(dropSpot);
                     else { ClearKitchenObj(); }
                 }
-                AIDebugLogger.LogState(chefName, "taking output", counterItem.objEnum.ToString(), $"from {counter.name}");
+                AIDebugLogger.LogState(chefName, "taking output", _currentTask.outputType.ToString(), $"from {counter.name}");
                 PerformInteract(counter);
-                // Tag the output as belonging to this order
                 if (_heldItem != null && _currentTask?.orderId != 0)
-                    _aiManager?.Blackboard?.TagItemForOrder(_heldItem, _currentTask.orderId);
+                {
+                    if (_heldItem is Plate outPlate)
+                        _aiManager?.Blackboard?.AssignPlateToOrder(_currentTask.orderId, outPlate);
+                    else
+                        _aiManager?.Blackboard?.TagItemForOrder(_heldItem, _currentTask.orderId);
+                }
                 CompleteTask();
                 return;
             }
 
             // === CASE 3: Counter has INPUT → start processing ===
-            if (_heldItem == null && hasItem && counterItem.objEnum == _currentTask.itemType)
+            if (_heldItem == null && hasItem
+                && (counterItem.objEnum == _currentTask.itemType || PlateHas(_currentTask.itemType)))
             {
                 if (counter is CuttingCounter cc)
                 {
@@ -1750,7 +1807,6 @@ namespace Kitchen.AI
                     AIDebugLogger.LogState(chefName, "start/subscribe cooking", _currentTask.itemType.ToString(),
                         $"→ {_currentTask.outputType} on {counter.name}");
 
-                    // Check if output is ALREADY ready (cooking happened before we subscribed)
                     if (counter.HasKitchenObj() &&
                         counter.GetKitchenObj().objEnum == _currentTask.outputType)
                     {
@@ -1764,15 +1820,24 @@ namespace Kitchen.AI
                     _substate = "waiting";
                     _waitTimer = 0;
                 }
+                else if (counter is TimedFacilityCounter tfc)
+                {
+                    AIDebugLogger.LogState(chefName, "wait oven/blender", _currentTask.itemType.ToString(),
+                        $"→ {_currentTask.outputType} on {counter.name}");
+                    tfc.OnCookingStageChange += OnStoveStageChanged;
+                    _substate = "waiting";
+                    _waitTimer = 0;
+                }
                 return;
             }
 
             // === CASE 4: Counter has an unrelated item (not input, not output) ===
             if (hasItem && counterItem != null &&
                 counterItem.objEnum != _currentTask.itemType &&
-                counterItem.objEnum != _currentTask.outputType)
+                counterItem.objEnum != _currentTask.outputType &&
+                !PlateHas(_currentTask.itemType) && !PlateHas(_currentTask.outputType))
             {
-                bool isBurned = counterItem.objEnum == KitchenObjEnum.MeatPattyBurned;
+                bool isBurned = PlateAssemblyMatcher.IsBurnedWaste(counterItem.objEnum);
 
                 if (isBurned)
                 {
@@ -1974,9 +2039,11 @@ namespace Kitchen.AI
 
         private void CleanupTask()
         {
-            // Unsubscribe from stove events
+            // Unsubscribe from stove / oven / blender events
             if (_targetCounter is StoveCounter sc)
                 sc.OnCookingStageChange -= OnStoveStageChanged;
+            if (_targetCounter is TimedFacilityCounter tfc)
+                tfc.OnCookingStageChange -= OnStoveStageChanged;
 
             int taskOrderId = _currentTask?.orderId ?? 0;
             TaskType? taskType = _currentTask?.type;
@@ -2113,9 +2180,10 @@ namespace Kitchen.AI
         {
             if (_currentTask == null) return;
 
-            // Unsubscribe from stove events
             if (_targetCounter is StoveCounter sc)
                 sc.OnCookingStageChange -= OnStoveStageChanged;
+            if (_targetCounter is TimedFacilityCounter tfc)
+                tfc.OnCookingStageChange -= OnStoveStageChanged;
 
             // Drop held item so scheduler can find it
             if (_heldItem != null)
@@ -2170,15 +2238,17 @@ namespace Kitchen.AI
                     break;
 
                 case TaskType.PROCESS:
-                    // Check if processing is done (output item on counter)
+                    // Check if processing is done (output KitchenObj or plate ingredient)
                     if (_targetCounter.HasKitchenObj())
                     {
                         var objOnCounter = _targetCounter.GetKitchenObj();
                         debugState = $"wait-chk {objOnCounter.objEnum} vs {_currentTask.outputType}";
                         if (_currentTask.outputType != 0 &&
-                            objOnCounter.objEnum == _currentTask.outputType)
+                            (objOnCounter.objEnum == _currentTask.outputType
+                             || (objOnCounter is Plate outPlate
+                                 && outPlate.GetIngredients().Contains(_currentTask.outputType))))
                         {
-                            Debug.Log($"[{chefName}] PROCESS output ready: {objOnCounter.objEnum} on {_targetCounter.name}");
+                            Debug.Log($"[{chefName}] PROCESS output ready: {_currentTask.outputType} on {_targetCounter.name}");
                             return true;
                         }
                     }
@@ -2210,16 +2280,19 @@ namespace Kitchen.AI
 
             AIDebugLogger.Log(chefName, $"Stove stage changed: {currentStage.Value} (want {_currentTask.outputType})");
 
-            if (currentStage.Value == _currentTask.outputType &&
-                _targetCounter.HasKitchenObj())
+            bool stageReady = currentStage.Value == _currentTask.outputType;
+            bool plateReady = _targetCounter.HasKitchenObj()
+                              && _targetCounter.GetKitchenObj() is Plate readyPlate
+                              && readyPlate.GetIngredients().Contains(_currentTask.outputType);
+            if ((stageReady || plateReady) && _targetCounter.HasKitchenObj())
             {
-                Debug.Log($"[{chefName}] Stove output ready: {currentStage.Value}, grabbing before it burns!");
-                AIDebugLogger.LogState(chefName, "stove grab", currentStage.Value.ToString(),
-                    "output ready, taking before burn");
-                // Unsubscribe immediately
+                Debug.Log($"[{chefName}] Process output ready: {currentStage.Value}, grabbing!");
+                AIDebugLogger.LogState(chefName, "process grab", currentStage.Value.ToString(),
+                    "output ready");
                 if (_targetCounter is StoveCounter sc)
                     sc.OnCookingStageChange -= OnStoveStageChanged;
-                // Take the item
+                if (_targetCounter is TimedFacilityCounter tfc)
+                    tfc.OnCookingStageChange -= OnStoveStageChanged;
                 PerformInteract(_targetCounter);
 
                 // Deliver cooked output — prefer direct-to-plate if possible
@@ -2279,8 +2352,9 @@ namespace Kitchen.AI
                 if (counter == null || !counter.HasKitchenObj()) continue;
                 var item = counter.GetKitchenObj();
                 if (item == null || item.objEnum != itemType) continue;
-                // Skip items on StoveCounter or CuttingCounter (being actively processed)
-                if (counter is StoveCounter || counter is CuttingCounter) continue;
+                // Skip items on active processors
+                if (counter is StoveCounter || counter is CuttingCounter
+                    || counter is OvenCounter || counter is BlenderCounter) continue;
                 // Skip items on PlateCounter, DeliveryCounter, TrashCounter
                 if (counter is PlatesCounter || counter is DeliveryCounter) continue;
                 float d = Vector3.Distance(transform.position, counter.transform.position);
@@ -2288,6 +2362,22 @@ namespace Kitchen.AI
             }
 
             return bestItem;
+        }
+
+        /// <summary>Find a plate whose ingredient set contains the given type.</summary>
+        private KitchenObj FindPlateHoldingIngredient(KitchenObjEnum itemType)
+        {
+            KitchenObj best = null;
+            float bestDist = float.MaxValue;
+            foreach (var plate in FindObjectsOfType<Plate>())
+            {
+                if (plate == null || !plate.GetIngredients().Contains(itemType)) continue;
+                if (!(plate.IsFree || plate.GetHolder() is BaseCounter)) continue;
+                if (plate.GetHolder() is OvenCounter or BlenderCounter) continue;
+                float d = Vector3.Distance(transform.position, plate.transform.position);
+                if (d < bestDist) { bestDist = d; best = plate; }
+            }
+            return best;
         }
 
         #endregion

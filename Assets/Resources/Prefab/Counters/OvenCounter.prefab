@@ -592,7 +592,7 @@ PrefabInstance:
     - target: {fileID: 1489806959936640433, guid: 6308b0d4bd440224ba47e49e8278a701,
         type: 3}
       propertyPath: GlobalObjectIdHash
-      value: 1068876973
+      value: 629364336
       objectReference: {fileID: 0}
     - target: {fileID: 5188662726033067016, guid: 6308b0d4bd440224ba47e49e8278a701,
         type: 3}
@@ -652,7 +652,7 @@ PrefabInstance:
     - target: {fileID: 5188662726033067022, guid: 6308b0d4bd440224ba47e49e8278a701,
         type: 3}
       propertyPath: m_Name
-      value: StoveCounter
+      value: OvenCounter
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

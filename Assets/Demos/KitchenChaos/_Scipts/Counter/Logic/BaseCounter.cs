@@ -1,5 +1,6 @@
 ﻿using System;
 using Kitchen;
+using Kitchen.Skin;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -14,6 +15,8 @@ namespace Kitchen
         protected virtual void Awake()
         {
             topSpawnPoint = transform.Find("TopPoint");
+            // 生成时套皮一次（无 Catalog 条目则保持原 Visual）
+            CounterSkinApplier.ApplyOn(gameObject);
         }
 
         public abstract void Interact(ICanHoldKitchenObj holder);

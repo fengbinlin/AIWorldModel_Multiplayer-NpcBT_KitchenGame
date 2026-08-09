@@ -1,0 +1,412 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1b2c3d4e5f6478890a1b2c3d4e5f602, type: 3}
+  m_Name: SkinCatalog_Default
+  m_EditorClassIdentifier: 
+  defaultSkinId: 0
+  ingredientOverrides: []
+  counterOverrides: []
+  characterOverrides: []
+  ingredients:
+  - kind: 0
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 81e9fe7b3cd084242a088e945f531f38,
+      type: 3}
+    preferMode: 1
+  - kind: 1
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: fb403d1efda6baf4190c507841617408,
+      type: 3}
+    preferMode: 1
+  - kind: 2
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 44325c67017631342b5f02792113e57b,
+      type: 3}
+    preferMode: 1
+  - kind: 3
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: bc49891f572f1164e9938f845ec37ab0,
+      type: 3}
+    preferMode: 1
+  - kind: 4
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 259702638197d9246bfc6f2b0fe88c09,
+      type: 3}
+    preferMode: 1
+  - kind: 5
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 21b2fcdae015b8c4c83ff4b68b31b06f,
+      type: 3}
+    preferMode: 1
+  - kind: 6
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 44b7e90f95929c04c8394768d8bd1d14,
+      type: 3}
+    preferMode: 1
+  - kind: 7
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: e879ff1414d1dd64c9ad7b04bffdfaef,
+      type: 3}
+    preferMode: 1
+  - kind: 8
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 17cb28a1a37fd7f44ae6e1ad2aa9da78,
+      type: 3}
+    preferMode: 1
+  - kind: 9
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 0df961a7e3870b44f9bbce7bdf930613,
+      type: 3}
+    preferMode: 1
+  - kind: 10
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: c0c9afd619b40914a8f625c0535e2284,
+      type: 3}
+    preferMode: 1
+  - kind: 11
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 21b2fcdae015b8c4c83ff4b68b31b06f,
+      type: 3}
+    preferMode: 1
+  - kind: 12
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: e879ff1414d1dd64c9ad7b04bffdfaef,
+      type: 3}
+    preferMode: 1
+  - kind: 13
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 0df961a7e3870b44f9bbce7bdf930613,
+      type: 3}
+    preferMode: 1
+  - kind: 14
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 259702638197d9246bfc6f2b0fe88c09,
+      type: 3}
+    preferMode: 1
+  - kind: 15
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: fb403d1efda6baf4190c507841617408,
+      type: 3}
+    preferMode: 1
+  - kind: 16
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 44325c67017631342b5f02792113e57b,
+      type: 3}
+    preferMode: 1
+  - kind: 17
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 17cb28a1a37fd7f44ae6e1ad2aa9da78,
+      type: 3}
+    preferMode: 1
+  - kind: 18
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: bc49891f572f1164e9938f845ec37ab0,
+      type: 3}
+    preferMode: 1
+  - kind: 19
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 17cb28a1a37fd7f44ae6e1ad2aa9da78,
+      type: 3}
+    preferMode: 1
+  - kind: 20
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 44325c67017631342b5f02792113e57b,
+      type: 3}
+    preferMode: 1
+  - kind: 21
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: bc49891f572f1164e9938f845ec37ab0,
+      type: 3}
+    preferMode: 1
+  - kind: 22
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: bc49891f572f1164e9938f845ec37ab0,
+      type: 3}
+    preferMode: 1
+  - kind: 23
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: bc49891f572f1164e9938f845ec37ab0,
+      type: 3}
+    preferMode: 1
+  - kind: 24
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: bc49891f572f1164e9938f845ec37ab0,
+      type: 3}
+    preferMode: 1
+  - kind: 25
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: bc49891f572f1164e9938f845ec37ab0,
+      type: 3}
+    preferMode: 1
+  - kind: 26
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 44b7e90f95929c04c8394768d8bd1d14,
+      type: 3}
+    preferMode: 1
+  - kind: 27
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 44b7e90f95929c04c8394768d8bd1d14,
+      type: 3}
+    preferMode: 1
+  - kind: 28
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: fb403d1efda6baf4190c507841617408,
+      type: 3}
+    preferMode: 1
+  - kind: 29
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 44b7e90f95929c04c8394768d8bd1d14,
+      type: 3}
+    preferMode: 1
+  - kind: 30
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 44b7e90f95929c04c8394768d8bd1d14,
+      type: 3}
+    preferMode: 1
+  - kind: 31
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 81e9fe7b3cd084242a088e945f531f38,
+      type: 3}
+    preferMode: 1
+  - kind: 32
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 259702638197d9246bfc6f2b0fe88c09,
+      type: 3}
+    preferMode: 1
+  - kind: 33
+    skinId: 0
+    meshMaterial:
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 3812876574508226177, guid: 259702638197d9246bfc6f2b0fe88c09,
+      type: 3}
+    preferMode: 1
+  counters:
+  - kind: 0
+    skinId: 0
+    parts:
+    - slot: 0
+      mesh: {fileID: -4134462517785884784, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+      material: {fileID: 592705374249410987, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+    visualPrefab: {fileID: 4589716710238282922, guid: 0004cb1e11ad014419b943c7da960724,
+      type: 3}
+    preferMode: 1
+  - kind: 1
+    skinId: 0
+    parts:
+    - slot: 0
+      mesh: {fileID: -4134462517785884784, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+      material: {fileID: 592705374249410987, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+    visualPrefab: {fileID: 4589716710238282922, guid: 9a9137fa2b035d34e881701d2c178192,
+      type: 3}
+    preferMode: 1
+  - kind: 2
+    skinId: 0
+    parts:
+    - slot: 0
+      mesh: {fileID: -4134462517785884784, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+      material: {fileID: 592705374249410987, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+    - slot: 1
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    - slot: 2
+      mesh: {fileID: 0}
+      material: {fileID: 0}
+    visualPrefab: {fileID: 4589716710238282922, guid: d72bee846803d074784ffb8f64e993ca,
+      type: 3}
+    preferMode: 1
+  - kind: 3
+    skinId: 0
+    parts:
+    - slot: 0
+      mesh: {fileID: -4134462517785884784, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+      material: {fileID: 592705374249410987, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+    visualPrefab: {fileID: 4589716710238282922, guid: 93af8b85a17635f40a5b76ed82a86c18,
+      type: 3}
+    preferMode: 1
+  - kind: 4
+    skinId: 0
+    parts:
+    - slot: 0
+      mesh: {fileID: -4134462517785884784, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+      material: {fileID: 592705374249410987, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+    visualPrefab: {fileID: 4589716710238282922, guid: 93af8b85a17635f40a5b76ed82a86c18,
+      type: 3}
+    preferMode: 1
+  - kind: 5
+    skinId: 0
+    parts:
+    - slot: 0
+      mesh: {fileID: -4134462517785884784, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+      material: {fileID: 592705374249410987, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+    visualPrefab: {fileID: 4589716710238282922, guid: 0004cb1e11ad014419b943c7da960724,
+      type: 3}
+    preferMode: 1
+  - kind: 6
+    skinId: 0
+    parts:
+    - slot: 0
+      mesh: {fileID: -4134462517785884784, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+      material: {fileID: 592705374249410987, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+    visualPrefab: {fileID: 4589716710238282922, guid: e21b499d164095947b7559f0267f0e63,
+      type: 3}
+    preferMode: 1
+  - kind: 7
+    skinId: 0
+    parts:
+    - slot: 0
+      mesh: {fileID: -4134462517785884784, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+      material: {fileID: 592705374249410987, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+    visualPrefab: {fileID: 4589716710238282922, guid: be1e77e8d4e81bf4292e5b46dc090583,
+      type: 3}
+    preferMode: 1
+  - kind: 8
+    skinId: 0
+    parts: []
+    visualPrefab: {fileID: 4589716710238282922, guid: c4e141bc61e807b4b832b850d92f5fd7,
+      type: 3}
+    preferMode: 1
+  - kind: 9
+    skinId: 0
+    parts:
+    - slot: 0
+      mesh: {fileID: -4134462517785884784, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+      material: {fileID: 592705374249410987, guid: e3d496c6436b0cf4a8eef3d8865e8639,
+        type: 3}
+    visualPrefab: {fileID: 4589716710238282922, guid: 0004cb1e11ad014419b943c7da960724,
+      type: 3}
+    preferMode: 1
+  characters:
+  - kind: 0
+    skinId: 0
+    visualPrefab: {fileID: 3660644359193535525, guid: 267461ac2702bb04e968894cbe0cf6d8,
+      type: 3}
+  - kind: 1
+    skinId: 0
+    visualPrefab: {fileID: 3660644359193535525, guid: 267461ac2702bb04e968894cbe0cf6d8,
+      type: 3}

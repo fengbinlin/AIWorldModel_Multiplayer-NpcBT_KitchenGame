@@ -1,5 +1,6 @@
 ﻿using System;
 using Kitchen;
+using Kitchen.Skin;
 using Nico.Components;
 using Unity.Netcode;
 using Unity.Netcode.Components;
@@ -25,6 +26,9 @@ namespace Kitchen
             follower = GetComponent<TransformFollower>();
             _rigidbody = GetComponent<Rigidbody>();
             _networkTransform = GetComponent<NetworkTransform>();
+
+            // 开局/生成时套皮（无 Catalog 条目则保持原 Visual）
+            KitchenObjSkinApplier.ApplyOn(gameObject);
 
             // Ensure physics components exist. Must be called before NetworkObject.Spawn().
             // If already present (added in Awake), Spawn will pick them up.

@@ -1946,7 +1946,7 @@ GameObject:
   m_Icon: {fileID: 3443629218296621865, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &141509513
 Transform:
   m_ObjectHideFlags: 0
@@ -3818,7 +3818,7 @@ GameObject:
   m_Icon: {fileID: 3443629218296621865, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &367351757
 Transform:
   m_ObjectHideFlags: 0
@@ -4481,37 +4481,6 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 477052947}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &491895888
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 491895889}
-  m_Layer: 0
-  m_Name: Walls
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &491895889
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 491895888}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1259576016}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &519868607
 GameObject:
   m_ObjectHideFlags: 0
@@ -5853,7 +5822,7 @@ GameObject:
   m_Icon: {fileID: 3443629218296621865, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &671155257
 Transform:
   m_ObjectHideFlags: 0
@@ -10605,6 +10574,18 @@ MonoBehaviour:
   useRandomRecipes: 0
   randomRecipeCount: 5
   randomSourceRecipes: []
+  playW: 16
+  playH: 10
+  dilateKernel: 3
+  pathRandomness: 1.4
+  extraEdges: 1
+  cellSize: 1.5
+  layoutSeed: 42
+  randomizeLayoutSeed: 1
+  spawnCount: 4
+  destroyExistingCounters: 1
+  networkSpawnCounters: 1
+  runOnStart: 0
   logRoundPool: 1
 --- !u!1 &1259576015
 GameObject:
@@ -10638,7 +10619,6 @@ Transform:
   - {fileID: 257209836}
   - {fileID: 1964202062}
   - {fileID: 1696317765}
-  - {fileID: 491895889}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1267604749
@@ -14225,7 +14205,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   version: 1073741824
   data:
-    dataString: UEsDBBQAAAgIAABAIey4hsR+bwIAAP0EAAALACQAZ3JhcGgwLmpzb24KACAAAAAAAAEAGAAAgD7V3rGdAQCAPtXesZ0BAIA+1d6xnQF1VE1z2jAQ/SuMz4UxBgdPjwWaHhLoYGaaSaeHRV7bmsgSlWQIyeS/Vyt/4DTtSeO3+/bj6cmvAStBA7Ood5Dx2gSfR+Ek+jQKmJJW1foentdaK004oShEyl/Qp00dcAbxBAeB35AXpXXwEFwKXh361AqeU6GOxJ3OJkmDrLMC71AWtnRwRC0qLndYcCXbPkTFjFul91xgB0bEty3w8AF57JHaIPFoMatrdMgR9R1cUN+rjOecgXW9KPzzVxPco9bA5f9zMl6hNA5xURomWHXAbBW4+AHYU6FVLbO9hhNqAwcuuL1Q6o9WGsrTKPAE0t5qOJZprXNg2JdUG2V3+Lvm2ucyJQQyGiNFa7ksaJrXAdwR/diGKMfyYjgzKUNJEVkL8Rcara648OuCeaK6o+AEoibWeDp6I12haGNeAQ3GOcbpvHT9eUYNe3n72D2a0uuegzDvIq3C/+DsNQ6vyjaJjbkqOK7UWRqojsIJ8NW51vty1spDc+y6Qiu0wAV5ykWVXDY69SPR0rSXVtbfbbP0c+vyS3u+0On3z5VmmH2hOzVLlK7HlTGeTcJ5GM6Tjuk+bxaLMF5Ei7bIeDqJZ+E0nifRh3Kto9ti7mXEfZ143vIXk9jzTKnOtMO2tk4CvApFgY1zwFJJ2fhhKHxHaz12pUkEjcam7mDlVorLw+OAhpKcuoFT5bjL2tvuyi1qnr33SrAIMWIHSPJwHh0gC8dzFrEkCeOE5XF8M4PAb8EltxzEd1df2E5r92MYGEJC5SvukLkbHfkXQp7ONJxv+UulBibhMlcpc8aR26ZGv7ZzAggnb7b2/4/Bywle34K3P1BLAwQUAAAICAAAQCHsX5TWYW4AAAB5AAAACQAkAG1ldGEuanNvbgoAIAAAAAAAAQAYAACAPtXesZ0BAIA+1d6xnQEAgD7V3rGdAatWKkstKs7Mz1OyUjDVM9Ez01FQSi9KLMgoBgoYgjilmSkgdrSSuUGqUXJSokWagYlRUmKKga5JslGyhYWBqUVymqmpmXGiUixQfUllQapfYm4qRE9AYklGWmZeSmZeul5QanJicYk7yHCl2FoAUEsBAi0AFAAACAgAAEAh7LiGxH5vAgAA/QQAAAsAJAAAAAAAAAAAAAAAAAAAAGdyYXBoMC5qc29uCgAgAAAAAAABABgAAIA+1d6xnQEAgD7V3rGdAQCAPtXesZ0BUEsBAi0AFAAACAgAAEAh7F+U1mFuAAAAeQAAAAkAJAAAAAAAAAAAAAAAvAIAAG1ldGEuanNvbgoAIAAAAAAAAQAYAACAPtXesZ0BAIA+1d6xnQEAgD7V3rGdAVBLBQYAAAAAAgACALgAAAB1AwAAAAA=
+    dataString: UEsDBBQAAAgIAABAIexffb9BbQIAAPoEAAALACQAZ3JhcGgwLmpzb24KACAAAAAAAAEAGAAAgD7V3rGdAQCAPtXesZ0BAIA+1d6xnQF1VMtu2zAQ/BVD59qQZSkWeqztpoc8CstAgxQ9rKmVRIQiXZKy4wT593Kph5WmPRGa3dnHcKjXgFWggVnUW8h5Y4LPk3AWfZoETEmrGn0LzxutlSacUBQi4y/o0+YOOIF4gr3Ab8jLyjp4DK4Er/dDag3PmVAH4s4Xs7RFNnmJNyhLWzk4ohY1l1ssuZJdH6Jizq3SOy6wByPi2w54+IA8DkhjkHi0mNUNOuSA+gbOqG9VzgvOwLpeFP75qw3uUGvg8v85Oa9RGoe4KA0TrHtgsQ5cfA/sqdSqkflOwxG1gT0X3J4p9UcnDeVpFHgEaa81HKqs0QUwHEqqO2W3+Lvh2ucyJQQyGiNDa7ksaZrXEdwT/diGKIfqbDgzGUNJEdkI8RcarS+48OuCeaK6k+AIoiHWdD55I12h7GJeAQ3GOcbpvHL9eU4NB3mH2C2ayutegDDvIp3C/+DsNI6vyraJrblqOKzVSRqoD8IJ8NW51vty0clDc2z7Qmu0wAV5ykWVXLU6DSPR0rSXVtbfbbv0c+fyc3e+0On3L5RmmH+hOzUrlK7HhTFdzMI4DOO0Z7rPq+UyTJbRsisync+SRThP4jT6UK5zdFcsiocqSdyx54knmUqdaIH7xrr98aISBe7c9a+UlK0Zxqr3tM5gF5pE0Ghs5g5W3Utxfngc0VCSTe/gWDvuqvGeu3DLhufvjRIsQ4zYHtIijKM95OE0ZhFL0zBJWZEkVwsI/BZccstBfHf1he2Fdn+FkRsk1L7iFpm7zol/HmToXMPpmr/UauQQLguVMecaed/WGNZ2NgDhtM03/ucxejbB61vw9gdQSwMEFAAACAgAAEAh7F+U1mFuAAAAeQAAAAkAJABtZXRhLmpzb24KACAAAAAAAAEAGAAAgD7V3rGdAQCAPtXesZ0BAIA+1d6xnQGrVipLLSrOzM9TslIw1TPRM9NRUEovSizIKAYKGII4pZkpIHa0krlBqlFyUqJFmoGJUVJiioGuSbJRsoWFgalFcpqpqZlxolIsUH1JZUGqX2JuKkRPQGJJRlpmXkpmXrpeUGpyYnGJO8hwpdhaAFBLAQItABQAAAgIAABAIexffb9BbQIAAPoEAAALACQAAAAAAAAAAAAAAAAAAABncmFwaDAuanNvbgoAIAAAAAAAAQAYAACAPtXesZ0BAIA+1d6xnQEAgD7V3rGdAVBLAQItABQAAAgIAABAIexflNZhbgAAAHkAAAAJACQAAAAAAAAAAAAAALoCAABtZXRhLmpzb24KACAAAAAAAAEAGAAAgD7V3rGdAQCAPtXesZ0BAIA+1d6xnQFQSwUGAAAAAAIAAgC4AAAAcwMAAAAA
     file_cachedStartup: {fileID: 0}
     cacheStartup: 0
   showNavGraphs: 1
@@ -14315,11 +14295,7 @@ MonoBehaviour:
   _autoStart: 1
   _aiChefPrefab: {fileID: 3810951076065167919, guid: 59dbb8532a4e8b141962476aa84df7aa,
     type: 3}
-  _spawnPoints:
-  - {fileID: 141509513}
-  - {fileID: 671155257}
-  - {fileID: 2042069038}
-  - {fileID: 367351757}
+  _spawnPoints: []
   _aiMoveSpeed: 6
   _aiInteractionRange: 2.5
   _aiArrivalThreshold: 0.4
@@ -14671,7 +14647,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1696317765
 Transform:
   m_ObjectHideFlags: 0
@@ -17033,7 +17009,7 @@ GameObject:
   m_Icon: {fileID: 3443629218296621865, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2042069038
 Transform:
   m_ObjectHideFlags: 0
@@ -17455,6 +17431,63 @@ NavMeshObstacle:
   m_CarveOnlyStationary: 1
   m_Center: {x: 0, y: 0, z: 0}
   m_TimeToStationary: 0.5
+--- !u!1 &2131000000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2131000001}
+  - component: {fileID: 2131000002}
+  m_Layer: 0
+  m_Name: SkinManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2131000001
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2131000000}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2131000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2131000000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1b2c3d4e5f6478890a1b2c3d4e5f601, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  configSource: 1
+  ingredientIdGranularity: 0
+  counterIdGranularity: 0
+  characterIdGranularity: 0
+  catalogSo: {fileID: 11400000, guid: b7e8c9d0a1f2436587b9c0d1e2f3a4b5, type: 2}
+  inlineIngredients: []
+  inlineCounters: []
+  inlineCharacters: []
+  inlineDefaultSkinId: 0
+  inlineIngredientOverrides: []
+  inlineCounterOverrides: []
+  inlineCharacterOverrides: []
+  fallbackDefaultSkinId: 0
 --- !u!1001 &2019235103180352474
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17598,6 +17631,7 @@ SceneRoots:
   - {fileID: 1217886181}
   - {fileID: 1643637505}
   - {fileID: 440710961}
+  - {fileID: 2131000001}
   - {fileID: 1924096859}
   - {fileID: 1259576016}
   - {fileID: 1432348638}

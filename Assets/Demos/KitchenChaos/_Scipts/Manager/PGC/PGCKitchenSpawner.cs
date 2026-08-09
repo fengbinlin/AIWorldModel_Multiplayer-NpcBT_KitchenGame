@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Kitchen.AI;
+using Kitchen.Skin;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -96,6 +97,9 @@ namespace Kitchen.PGC
                             net.Spawn(true);
                     }
                 }
+
+                // 显式套皮（不依赖 Start 时序）
+                CounterSkinApplier.ApplyOn(go);
             }
 
             Debug.Log(

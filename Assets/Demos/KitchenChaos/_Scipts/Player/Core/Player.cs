@@ -56,6 +56,10 @@ namespace Kitchen.Player
         {
             base.OnNetworkSpawn();
             _Init();
+
+            // 角色皮肤：替换 PlayerVisual/VisualPrefab
+            Kitchen.Skin.CharacterSkinApplier.ApplyOn(gameObject, Kitchen.Skin.SkinCharacterKind.Player);
+
             //TODO 这里会有BUG 
             
             

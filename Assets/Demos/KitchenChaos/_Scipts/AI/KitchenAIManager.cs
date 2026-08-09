@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Kitchen.Player;
+using Kitchen.Skin;
 using Kitchen.Visual;
 using Nico.Network;
 using Unity.Netcode;
@@ -176,6 +177,9 @@ namespace Kitchen.AI
                     var chefObj = Instantiate(_aiChefPrefab, spawnPoint.position, spawnPoint.rotation);
                     chefObj.tag = "Untagged";
                     chefObj.layer = LayerMask.NameToLayer("Default");
+
+                    // 皮肤：替换 PlayerVisual/VisualPrefab（在拆 Player 组件之前）
+                    CharacterSkinApplier.ApplyOn(chefObj, SkinCharacterKind.AIPlayer);
 
                     // 先立刻拆掉 Player 预制体上的 NetworkBehaviour（Destroy 是延迟的，
                     // 若先 Spawn 会立刻跑 PlayerAnimator/Player.OnNetworkSpawn → NRE）。

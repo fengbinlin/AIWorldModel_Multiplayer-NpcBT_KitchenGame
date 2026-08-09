@@ -1,4 +1,5 @@
 using Cysharp.Threading.Tasks;
+using Kitchen.Skin;
 using Unity.Netcode;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
@@ -41,6 +42,9 @@ namespace Kitchen
 
         private async UniTask BootstrapSequence()
         {
+            // 皮肤管理器尽早就绪（优先 Resources/So/Skin/SkinCatalog_Default）
+            EnsureSkinManager();
+
             // ============================================================
             // Step 1: 初始化 Unity Services + 匿名认证
             // GameManager 的客户端连接回调需要 AuthenticationService.PlayerId
@@ -156,6 +160,22 @@ namespace Kitchen
                 Debug.Log("[LocalPlayBootstrap] Auto-ready: triggering ready for local player...");
                 gm.SetPlayerReadyServerRpc();
             }
+        }
+
+        private static void EnsureSkinManager()
+        {
+            if (SkinManager.Instance != null) return;
+
+            var existing = UnityEngine.Object.FindObjectOfType<SkinManager>();
+            if (existing != null) return;
+
+            var go = new GameObject("SkinManager");
+            var mgr = go.AddComponent<SkinManager>();
+            var catalog = Resources.Load<SkinCatalogSo>("So/Skin/SkinCatalog_Default");
+            if (catalog != null)
+                mgr.SetCatalog(catalog);
+            else
+                Debug.LogWarning("[LocalPlayBootstrap] Resources/So/Skin/SkinCatalog_Default missing — SkinManager uses empty catalog.");
         }
     }
 }

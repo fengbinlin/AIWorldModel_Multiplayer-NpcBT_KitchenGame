@@ -202,6 +202,10 @@ namespace Kitchen.AI
 
             foreach (var c in counters)
             {
+                // PGC 墙占位（空柜顶墙）不参与 AI 设施
+                if (c != null && c.name.StartsWith("Wall_"))
+                    continue;
+
                 var fs = new FacilityState { counter = c };
 
                 if (c is ContainerCounter cc)

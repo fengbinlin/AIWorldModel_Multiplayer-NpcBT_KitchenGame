@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -17,8 +17,13 @@ namespace Kitchen.Player
             base.OnNetworkSpawn();
             _player = GetComponentInParent<Player>();
             _animator = GetComponent<Animator>();
+            if (_player == null || _player.data == null || _animator == null)
+                return;
+
             _walking = Animator.StringToHash(_player.data.animWalking);
-            
+            if (_player.MoveController == null)
+                return;
+
             _player.MoveController.OnStartMove += _OnStartMove;
             _player.MoveController.OnStopMove += _OnStopMove;
         }
@@ -26,7 +31,7 @@ namespace Kitchen.Player
         public override void OnNetworkDespawn()
         {
             base.OnNetworkDespawn();
-            
+            if (_player?.MoveController == null) return;
             _player.MoveController.OnStartMove -= _OnStartMove;
             _player.MoveController.OnStopMove -= _OnStopMove;
         }

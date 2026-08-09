@@ -34,9 +34,9 @@ namespace Kitchen.AI
         [SerializeField] private float _aiInteractionRange = 2f;
         [Range(0.1f, 1f)][SerializeField] private float _aiArrivalThreshold = 0.4f;
         [SerializeField] private float _aiStuckTimeout = 8f;
-        [SerializeField] private float _aiAgentRadius = 0.9f;
+        [SerializeField] private float _aiAgentRadius = 0.4f;
         [Range(0f, 1f)][SerializeField] private float _aiRvoBasePriority = 0.5f;
-        [SerializeField] private float _aiApproachOffset = 0.5f;
+        [SerializeField] private float _aiApproachOffset = 1.0f;
         [SerializeField] private List<Color> _aiColors = new()
         {
             Color.red, Color.blue, Color.green, Color.yellow,
@@ -84,8 +84,53 @@ namespace Kitchen.AI
 
         private void Start()
         {
-            if (_autoStart)
+            // 场景里挂了 PGCManager 时，等刷柜后再由 Bootstrap 调 Initialize
+            if (_autoStart && FindObjectOfType<PGCManager>() == null)
                 Initialize();
+        }
+
+        /// <summary>
+        /// 由 PGC 写入世界坐标出生点：整表替换（不再叠加场景里旧的 spawn）。
+        /// </summary>
+        public void SetSpawnWorldPositions(IReadOnlyList<Vector3> positions)
+        {
+            // 整表清空，避免「场景旧点 + PGC 新点」叠出多余厨师
+            _spawnPoints.Clear();
+
+            var holder = transform.Find("PGC_Spawns");
+            if (holder != null)
+            {
+                for (int i = holder.childCount - 1; i >= 0; i--)
+                    Destroy(holder.GetChild(i).gameObject);
+            }
+            else
+            {
+                holder = new GameObject("PGC_Spawns").transform;
+                holder.SetParent(transform, false);
+            }
+
+            if (positions == null || positions.Count == 0)
+            {
+                Debug.LogWarning("[KitchenAIManager] PGC spawn list empty");
+                return;
+            }
+
+            int idx = 0;
+            foreach (var pos in positions)
+            {
+                var go = new GameObject($"PGC_Spawn_{idx++}");
+                go.transform.SetParent(holder, false);
+                go.transform.position = pos;
+                _spawnPoints.Add(go.transform);
+            }
+
+            Debug.Log($"[KitchenAIManager] PGC replaced spawn points → {_spawnPoints.Count}");
+        }
+
+        /// <summary>允许 PGC 刷柜后重新初始化（会清掉旧 AI 实例标记）。</summary>
+        public void ResetInitializationFlag()
+        {
+            _isInitialized = false;
         }
 
         private void Update()
@@ -132,25 +177,21 @@ namespace Kitchen.AI
                     chefObj.tag = "Untagged";
                     chefObj.layer = LayerMask.NameToLayer("Default");
 
-                    // Disable Player and network transform components (AI uses A* Pathfinding Project)
-                    var playerComp = chefObj.GetComponent<Player.Player>();
-                    if (playerComp != null) playerComp.enabled = false;
-                    var cnt = chefObj.GetComponent<ClientNetworkTransform>();
-                    if (cnt != null) cnt.enabled = false;
-
-                    // Strip visual/animation components from PlayerVisual child
-                    var visual = chefObj.transform.Find("PlayerVisual");
-                    if (visual != null)
-                    {
-                        Destroy(visual.GetComponent<Animator>());
-                        Destroy(visual.GetComponent<PlayerVisual>());
-                        Destroy(visual.GetComponent<PlayerAnimator>());
-                        Destroy(visual.GetComponent<ClientNetworkAnimator>());
-                    }
+                    // 先立刻拆掉 Player 预制体上的 NetworkBehaviour（Destroy 是延迟的，
+                    // 若先 Spawn 会立刻跑 PlayerAnimator/Player.OnNetworkSpawn → NRE）。
+                    StripPlayerPrefabForAI(chefObj);
 
                     var chef = chefObj.GetComponent<AIChefController>();
                     if (chef == null)
                         chef = chefObj.AddComponent<AIChefController>();
+
+                    // 必须 Spawn：柜子 Interact → SpawnKitObjServerRpc 依赖 holder 的 NetworkObjectReference
+                    var chefNet = chefObj.GetComponent<NetworkObject>();
+                    if (chefNet == null)
+                        chefNet = chefObj.AddComponent<NetworkObject>();
+                    if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer && !chefNet.IsSpawned)
+                        chefNet.Spawn(true);
+
                     chef.moveSpeed = _aiMoveSpeed;
                     chef.interactionRange = _aiInteractionRange;
                     chef.arrivalThreshold = _aiArrivalThreshold;
@@ -214,6 +255,32 @@ namespace Kitchen.AI
                       $"{_blackboard.allRecipes.Count} recipes");
             AIDebugLogger.Log("Init", $"KitchenAIManager initialized: {_agentStates.Count} chefs, " +
                 $"{_blackboard.facilities.Count} facilities");
+        }
+
+        /// <summary>
+        /// Player 预制体转 AI 壳：必须在 NetworkObject.Spawn 之前 DestroyImmediate 掉
+        /// Player / PlayerAnimator 等，否则 OnNetworkSpawn 会空引用。
+        /// </summary>
+        private static void StripPlayerPrefabForAI(GameObject chefObj)
+        {
+            if (chefObj == null) return;
+
+            // 收集后立刻销毁（含子物体上的 ClientNetworkAnimator / PlayerAnimator）
+            var behaviours = chefObj.GetComponentsInChildren<NetworkBehaviour>(true);
+            foreach (var nb in behaviours)
+            {
+                if (nb == null || nb is AIChefController) continue;
+                DestroyImmediate(nb);
+            }
+
+            var visual = chefObj.transform.Find("PlayerVisual");
+            if (visual != null)
+            {
+                var anim = visual.GetComponent<Animator>();
+                if (anim != null) DestroyImmediate(anim);
+                var pv = visual.GetComponent<PlayerVisual>();
+                if (pv != null) DestroyImmediate(pv);
+            }
         }
 
         #endregion

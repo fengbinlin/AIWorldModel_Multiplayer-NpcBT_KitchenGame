@@ -40,7 +40,7 @@ namespace Kitchen.AI
 
         /// <summary>Distance offset for approach-point candidates (front/back/left/right of target).</summary>
         [Header("Approach")]
-        [SerializeField] private float _approachOffset = 0.5f;
+        [SerializeField] private float _approachOffset = 1.0f;
 
         private IAstarAI _ai;          // A* Pathfinding Project movement component
         private AIPath _aiPath;       // cached AIPath component for settings access
@@ -133,12 +133,18 @@ namespace Kitchen.AI
         /// <summary>Apply A* Pathfinding + RVO params after spawn.</summary>
         public void SetAIParams(float radius, float maxSpeed, float rvoPriority, float approachOffset)
         {
-            if (_aiPath != null) _aiPath.radius = radius;
+            // 过大半径会在 Recast 收窄后的走廊里反复卡死（旧默认 0.9）
+            float r = Mathf.Clamp(radius, 0.25f, 0.55f);
+            if (_aiPath != null) _aiPath.radius = r;
             if (_ai != null) _ai.maxSpeed = maxSpeed;
             _approachOffset = approachOffset;
 
             var rvo = GetComponent<Pathfinding.RVO.RVOController>();
-            if (rvo != null) rvo.priority = rvoPriority;
+            if (rvo != null)
+            {
+                rvo.radius = r;
+                rvo.priority = rvoPriority;
+            }
         }
 
         /// <summary>Force immediate path recalculation (called by scheduler).</summary>
@@ -266,14 +272,20 @@ namespace Kitchen.AI
             if (_aiPath == null) _aiPath = gameObject.AddComponent<AIPath>();
             _ai = _aiPath;
 
-            _aiPath.radius = 0.5f;
+            // Funnel：把三角形折线收成走廊可见路径，拐角才能贴边走
+            if (GetComponent<FunnelModifier>() == null)
+                gameObject.AddComponent<FunnelModifier>();
+
+            _aiPath.radius = 0.4f;
             _aiPath.height = 1.8f;
             _ai.maxSpeed = _moveSpeed;
-            _aiPath.rotationSpeed = 180f;
-            _aiPath.endReachedDistance = 0.3f;
-            _aiPath.slowdownDistance = 3f;
-            _aiPath.pickNextWaypointDist = 8f;
-            _aiPath.whenCloseToDestination = CloseToDestinationMode.ContinueToExactDestination;
+            _aiPath.rotationSpeed = 360f;
+            _aiPath.endReachedDistance = 0.35f;
+            // 旧值 pickNextWaypointDist=8 / slowdown=3：会瞄准 8m 外路径点，直线穿柜子；
+            // 走廊对齐时碰巧通，拐角时就会“明明能绕却硬撞”。默认约 2，厨房用更紧一点。
+            _aiPath.slowdownDistance = 1.0f;
+            _aiPath.pickNextWaypointDist = 1.25f;
+            _aiPath.whenCloseToDestination = CloseToDestinationMode.Stop;
             _aiPath.constrainInsideGraph = true;
             _aiPath.autoRepath.mode = AutoRepathPolicy.Mode.Dynamic;
 
@@ -281,12 +293,12 @@ namespace Kitchen.AI
             var rvo = GetComponent<Pathfinding.RVO.RVOController>();
             if (rvo == null)
                 rvo = gameObject.AddComponent<Pathfinding.RVO.RVOController>();
-            rvo.radius = 0.5f;
+            rvo.radius = 0.4f;
             rvo.height = 1.8f;
-            rvo.agentTimeHorizon = 3f;        // look far ahead to resolve head-on conflicts early
-            rvo.obstacleTimeHorizon = 3f;     // look far ahead for static obstacles
-            rvo.maxNeighbours = 15;           // more neighbours for dense crowd awareness
-            rvo.lockWhenNotMoving = false;    // keep avoiding even when stationary
+            rvo.agentTimeHorizon = 2f;
+            rvo.obstacleTimeHorizon = 1f; // 静态障碍主要靠 Recast；RVO 障碍视野过大易把人“挤”进墙角
+            rvo.maxNeighbours = 10;
+            rvo.lockWhenNotMoving = false;
             rvo.priority = 0.5f; // default, overridden by SetAIParams
         }
 
@@ -397,10 +409,9 @@ namespace Kitchen.AI
                             }
                             else if (!_isYielding && !_isDetouring)
                             {
-                                // Phase 1: force repath with a random offset
-                                Vector3 jitter = Random.insideUnitSphere * 0.5f;
-                                jitter.y = 0;
-                                _ai.destination = _ai.destination + jitter;
+                                // 只重寻路，不要随机改 destination（会偏出 NavMesh，表现成直线撞墙）
+                                if (_hasApproachPoint)
+                                    _ai.destination = _lastApproachPoint;
                                 _ai.SearchPath();
                                 _stuckProgressTimer = 0.8f;
                                 _lastProgressDist = float.MaxValue;
@@ -557,6 +568,22 @@ namespace Kitchen.AI
                     // Check if we can proceed (periodic re-check)
                     if (_waitTimer > 0.3f && CanProceedFromWaiting())
                     {
+                        // 手里有货、等空柜：去新目标柜，不要直接 interacting（会再误触邻柜）
+                        if (_heldItem != null && _execPhase == ExecPhase.GotoDest)
+                        {
+                            if (_targetCounter == null || !CanPlaceHeldItemOn(_targetCounter))
+                            {
+                                var free = FindNearestFreeCounter(transform.position);
+                                if (free != null) _targetCounter = free;
+                            }
+                            if (_targetCounter != null)
+                            {
+                                debugState = $"wait → retarget {_targetCounter.name}";
+                                if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; }
+                                break;
+                            }
+                        }
+
                         _substate = "interacting";
                         _stateTimer = 0;
                         debugState = "retrying interaction";
@@ -775,18 +802,20 @@ namespace Kitchen.AI
 
             if (AstarPath.active != null)
             {
+                // Recast 最近点很少刚好落在候选点上；0.01 过严会导致永远走 fallback（柜子中心/障碍内）。
+                const float onMeshTolerance = 0.55f;
                 foreach (var offset in offsets)
                 {
                     var candidate = originalTarget + offset;
                     var nearest = AstarPath.active.GetNearest(candidate);
-                    // Only accept if the candidate itself is on the NavMesh (within tight tolerance)
-                    if (nearest.node != null && Vector3.Distance(nearest.position, candidate) < 0.01f)
+                    if (nearest.node != null && Vector3.Distance(nearest.position, candidate) < onMeshTolerance)
                     {
-                        float dist = Vector3.Distance(candidate, originalTarget);
+                        // 用实际可走点，而不是理想偏移点
+                        float dist = Vector3.Distance(nearest.position, originalTarget);
                         if (dist < bestDist)
                         {
                             bestDist = dist;
-                            bestPoint = candidate;
+                            bestPoint = nearest.position;
                             found = true;
                         }
                     }
@@ -1011,10 +1040,9 @@ namespace Kitchen.AI
                 }
             }
 
-            // No valid sidestep — try larger jitter as last resort
-            Vector3 jitter = Random.insideUnitSphere * 2f;
-            jitter.y = 0;
-            _ai.destination = _ai.destination + jitter;
+            // No valid sidestep — repath to last known approach point (avoid off-mesh jitter)
+            if (_hasApproachPoint)
+                _ai.destination = _lastApproachPoint;
             _ai.SearchPath();
             _stuckProgressTimer = 0f;
             _lastProgressDist = float.MaxValue;
@@ -1184,7 +1212,8 @@ namespace Kitchen.AI
                 return plateTarget;
             }
             var clear = FindObjectsOfType<ClearCounter>()
-                .FirstOrDefault(c => !c.HasKitchenObj()
+                .FirstOrDefault(c => IsUsableClearCounter(c)
+                    && !c.HasKitchenObj()
                     && (reservedCounters == null || !reservedCounters.Contains(c)));
             if (clear != null)
             {
@@ -1195,14 +1224,18 @@ namespace Kitchen.AI
             return FindNearestFreeCounter(transform.position, reservedCounters);
         }
 
-        private BaseCounter FindNearestFreeCounter(Vector3 near, HashSet<BaseCounter> reserved = null)
+        private BaseCounter FindNearestFreeCounter(
+            Vector3 near,
+            HashSet<BaseCounter> reserved = null,
+            BaseCounter exclude = null)
         {
             var counters = FindObjectsOfType<BaseCounter>();
             BaseCounter best = null;
             float bestDist = float.MaxValue;
             foreach (var c in counters)
             {
-                if (!(c is ClearCounter)) continue;
+                if (!IsUsableClearCounter(c)) continue;
+                if (exclude != null && c == exclude) continue;
                 if (c.HasKitchenObj()) continue;
                 if (reserved != null && reserved.Contains(c)) continue;
                 float d = Vector3.Distance(near, c.transform.position);
@@ -1213,6 +1246,26 @@ namespace Kitchen.AI
                 AIDebugLogger.LogWarning(chefName, "FindNearestFreeCounter: NO free counter found!");
             }
             return best;
+        }
+
+        /// <summary>真正可摆放的空台（排除墙占位）。</summary>
+        private static bool IsUsableClearCounter(BaseCounter c)
+        {
+            if (c == null || !(c is ClearCounter)) return false;
+            if (c.name != null && c.name.StartsWith("Wall_")) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// 手里物品能否放到该柜：空柜，或柜上/手里有盘子可叠放。
+        /// </summary>
+        private bool CanPlaceHeldItemOn(BaseCounter counter)
+        {
+            if (_heldItem == null || counter == null) return false;
+            if (!counter.HasKitchenObj()) return true;
+            if (counter.GetKitchenObj() is Plate) return true;
+            if (_heldItem is Plate) return true;
+            return false;
         }
 
         /// <summary>
@@ -2011,9 +2064,41 @@ namespace Kitchen.AI
         {
             if (_heldItem != null && _targetCounter != null)
             {
-                PerformInteract(_targetCounter);
-                AIDebugLogger.Log(chefName, $"DropItemAtFacility: {_heldItem?.objEnum} → {_targetCounter.name}");
-                Debug.Log($"[{chefName}] Dropped item at {_targetCounter.name}");
+                if (CanPlaceHeldItemOn(_targetCounter))
+                {
+                    PerformInteract(_targetCounter);
+                    AIDebugLogger.Log(chefName, $"DropItemAtFacility: → {_targetCounter.name}, held={_heldItem?.objEnum.ToString() ?? "null"}");
+                    Debug.Log($"[{chefName}] Dropped item at {_targetCounter.name}");
+                }
+                else
+                {
+                    // 加工台被占：改投其他同型空闲台，或暂存到空台
+                    var alt = FindDropTarget(_heldItem.objEnum);
+                    if (alt != null && alt != _targetCounter)
+                    {
+                        AIDebugLogger.Log(chefName,
+                            $"DropItemAtFacility: {_targetCounter.name} busy, retarget → {alt.name}");
+                        _targetCounter = alt;
+                        _execPhase = ExecPhase.GotoFacility;
+                        if (!MoveTo(alt.transform.position)) { AbandonTask(); return; }
+                        return;
+                    }
+
+                    var clear = FindNearestFreeCounter(transform.position);
+                    if (clear != null)
+                    {
+                        AIDebugLogger.Log(chefName,
+                            $"DropItemAtFacility: facility busy, park on {clear.name}");
+                        _targetCounter = clear;
+                        _execPhase = ExecPhase.GotoDest;
+                        if (!MoveTo(clear.transform.position)) { AbandonTask(); return; }
+                        return;
+                    }
+
+                    _substate = "waiting";
+                    _waitTimer = 0;
+                    return;
+                }
             }
 
             // Now start the actual work
@@ -2023,14 +2108,51 @@ namespace Kitchen.AI
 
         private void DropItemAtDestination()
         {
-            if (_heldItem != null && _targetCounter != null)
+            if (_heldItem == null || _targetCounter == null)
             {
-                PerformInteract(_targetCounter);
-                Debug.Log($"[{chefName}] Dropped item at destination {_targetCounter.name}");
+                _execPhase = ExecPhase.None;
+                CompleteTask();
+                return;
             }
 
-            _execPhase = ExecPhase.None;
-            CompleteTask();
+            // 目标可放（空柜 / 可叠盘）才交互
+            if (CanPlaceHeldItemOn(_targetCounter))
+            {
+                var heldBefore = _heldItem;
+                PerformInteract(_targetCounter);
+                // 放成功：手里空了；或手里仍是盘子（从柜上叠了食材）
+                if (_heldItem == null || (heldBefore is Plate && _heldItem is Plate))
+                {
+                    Debug.Log($"[{chefName}] Dropped/stacked at destination {_targetCounter.name}");
+                    _execPhase = ExecPhase.None;
+                    CompleteTask();
+                    return;
+                }
+
+                // 理论上可放却仍拿着 — 短暂等待后重试同一柜，不要误排除
+                AIDebugLogger.LogWarning(chefName,
+                    $"DropItemAtDestination: place on {_targetCounter.name} failed, waiting retry");
+                _substate = "waiting";
+                _waitTimer = 0;
+                return;
+            }
+
+            // 目标已被占用且无法叠放：走到另一张空闲空台，禁止就地丢到邻柜
+            var alt = FindNearestFreeCounter(transform.position, exclude: _targetCounter);
+            if (alt != null)
+            {
+                AIDebugLogger.Log(chefName,
+                    $"DropItemAtDestination: {_targetCounter.name} occupied, moving to free {alt.name}");
+                Debug.Log($"[{chefName}] Target {_targetCounter.name} busy → move to {alt.name}");
+                _targetCounter = alt;
+                _execPhase = ExecPhase.GotoDest;
+                if (!MoveTo(alt.transform.position)) { AbandonTask(); return; }
+                return;
+            }
+
+            AIDebugLogger.LogWarning(chefName, "DropItemAtDestination: no free counter, waiting");
+            _substate = "waiting";
+            _waitTimer = 0;
         }
 
         #endregion
@@ -2097,23 +2219,22 @@ namespace Kitchen.AI
                 if (dropCounter != null)
                 {
                     float dist = Vector3.Distance(transform.position, dropCounter.transform.position);
-                    if (dist < interactionRange)
+                    // 只允许在「本来要去的那张柜」上就近放下；邻柜即使在 interactionRange 内也必须走过去
+                    bool isIntendedTarget = dropCounter == _targetCounter;
+                    if (isIntendedTarget && dist < interactionRange && CanPlaceHeldItemOn(dropCounter))
                     {
-                        // Close enough — drop now, then mark complete
                         AIDebugLogger.Log(chefName, $"CleanupTask: dropping {_heldItem.objEnum} at {dropCounter.name}");
                         PerformInteract(dropCounter);
                     }
                     else
                     {
-                        // Too far — move there first. Keep task marked as not-done
-                        // so the scheduler doesn't assign a new task prematurely.
+                        // Walk to the free counter first (never dump onto a neighbor in-range).
                         if (_currentTask != null) _currentTask.status = "executing";
                         AIDebugLogger.Log(chefName, $"CleanupTask: moving to {dropCounter.name} to drop {_heldItem.objEnum} (dist={dist:F1})");
                         _targetCounter = dropCounter;
                         _execPhase = ExecPhase.GotoDest;
                         if (!MoveTo(dropCounter.transform.position))
                         {
-                            // Can't approach — drop on ground instead
                             AIDebugLogger.Log(chefName, $"CleanupTask: can't approach {dropCounter.name}, dropping on ground");
                             KitchenObjFactory.Instance.DropObjServerRpc(
                                 _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
@@ -2185,19 +2306,26 @@ namespace Kitchen.AI
             if (_targetCounter is TimedFacilityCounter tfc)
                 tfc.OnCookingStageChange -= OnStoveStageChanged;
 
-            // Drop held item so scheduler can find it
+            // Drop held item so scheduler can find it — must walk to free counter, no neighbor dump
             if (_heldItem != null)
             {
                 var dropCounter = FindNearestFreeCounter(transform.position);
                 if (dropCounter != null)
-                    PerformInteract(dropCounter);
-                else
                 {
-                    KitchenObjFactory.Instance.DropObjServerRpc(
-                        _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
-                        Vector3.down, 0f, default);
-                    ClearKitchenObj();
+                    _currentTask = null;
+                    _targetCounter = dropCounter;
+                    _execPhase = ExecPhase.GotoDest;
+                    if (MoveTo(dropCounter.transform.position))
+                    {
+                        debugState = $"force-abandon drop → {dropCounter.name}";
+                        return;
+                    }
                 }
+
+                KitchenObjFactory.Instance.DropObjServerRpc(
+                    _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                    Vector3.down, 0f, default);
+                ClearKitchenObj();
             }
 
             _currentTask = null;
@@ -2219,6 +2347,15 @@ namespace Kitchen.AI
         /// </summary>
         private bool CanProceedFromWaiting()
         {
+            // 等空柜摆放：目标可放，或出现别的空闲空台
+            if (_heldItem != null && _execPhase == ExecPhase.GotoDest)
+            {
+                if (_targetCounter != null && CanPlaceHeldItemOn(_targetCounter))
+                    return true;
+                if (FindNearestFreeCounter(transform.position) != null)
+                    return true;
+            }
+
             if (_currentTask == null || _targetCounter == null) return false;
 
             switch (_currentTask.type)
@@ -2539,7 +2676,7 @@ namespace Kitchen.AI
                     if (AstarPath.active != null)
                     {
                         var nearest = AstarPath.active.GetNearest(candidate);
-                        onNavMesh = nearest.node != null && Vector3.Distance(nearest.position, candidate) < 0.01f;
+                        onNavMesh = nearest.node != null && Vector3.Distance(nearest.position, candidate) < 0.55f;
                     }
                     Gizmos.color = onNavMesh ? Color.green : Color.red;
                     Gizmos.DrawWireSphere(candidate, 0.15f);

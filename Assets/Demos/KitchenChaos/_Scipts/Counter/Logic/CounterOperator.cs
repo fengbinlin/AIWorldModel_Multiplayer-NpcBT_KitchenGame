@@ -25,7 +25,8 @@
                     return true;
                 }
 
-                return true;
+                // 双方都有物体且都不是盘子：不能叠放
+                return false;
             }
 
             return false;

@@ -86,6 +86,19 @@ namespace Kitchen
             }
 
             // ============================================================
+            // Step 2.5: PGC 管线（菜谱→设施→布局→刷柜→出生点）
+            // 必须在 AI Initialize / 进 Ready 之前完成
+            // ============================================================
+            if (PGCManager.Instance != null)
+            {
+                Debug.Log("[LocalPlayBootstrap] Running PGC full pipeline...");
+                PGCManager.Instance.RunFullPipeline();
+                // 等一帧让新柜子碰撞体稳定；A* Scan 已在 pipeline 内同步完成
+                await UniTask.NextFrame();
+                Physics.SyncTransforms();
+            }
+
+            // ============================================================
             // Step 3: 模拟 OnLoadSceneCompleted 的逻辑
             // 正常流程：EnterGame() → NGO LoadScene → OnLoadSceneCompleted
             // 我们现在已经在 GameScene 中，所以直接执行关键步骤：
@@ -115,6 +128,7 @@ namespace Kitchen
                 var aiManager = FindObjectOfType<AI.KitchenAIManager>();
                 if (aiManager != null)
                 {
+                    aiManager.ResetInitializationFlag();
                     aiManager.Initialize();
                     Debug.Log("[LocalPlayBootstrap] AI 模式已激活 — KitchenAIManager 启动");
                 }

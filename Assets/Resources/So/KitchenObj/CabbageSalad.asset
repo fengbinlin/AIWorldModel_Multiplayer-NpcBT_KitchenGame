@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 790a2a2d6379a964aa1c70f10f9e5a12, type: 3}
   m_Name: CabbageSalad
   m_EditorClassIdentifier: 
-  prefab: {fileID: 7347640811211430993, guid: 9f157b8fe44e4604fadbec419d45007f, type: 3}
+  prefab: {fileID: 7347640811211430993, guid: e45f8b2e12804f6f9a77a1f8d350a82f, type: 3}
   sprite: {fileID: 21300000, guid: 91e8fe3de9249fc44b7bdd8050062896, type: 3}
   kitchenObjEnum: 29

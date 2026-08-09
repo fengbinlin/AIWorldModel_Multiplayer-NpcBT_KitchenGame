@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
@@ -46,7 +46,8 @@ namespace Kitchen
             if (!IsServer) return; //只有服务器端才会生成订单
             if (arg2 is ReadyToStartState)
             {
-                //当切换到ReadyToStartState时，开始生成订单
+                // 若 PGC 已跑过管线则复用池；否则在此建池
+                PGCManager.Instance?.BuildRoundPool(force: false);
                 _GenerateOrder().Forget();
             }
         }
@@ -76,8 +77,14 @@ namespace Kitchen
                     cancellationToken: _orderGenerateCts.Token);
                 if (_waitingQueue.Count < maxOrderCount)
                 {
-                    var randomIndex = UnityEngine.Random.Range(0, _allRecipes.Count);
-                    SpawnOrderClientRpc(randomIndex);
+                    int recipeIndex = _PickRoundRecipeIndex();
+                    if (recipeIndex < 0)
+                    {
+                        Debug.LogWarning("[DeliveryManager] No recipe available to spawn.");
+                        continue;
+                    }
+
+                    SpawnOrderClientRpc(recipeIndex);
                     //如果在这里添加订单,则只会生成服务端的订单 客户端的订单需要通过网络同步来实现
                     //如果在Rpc中添加 则会在所有客户端上生成订单
                 }
@@ -168,6 +175,59 @@ namespace Kitchen
         public ICollection<RecipeSo> GetWaitingQueue()
         {
             return _waitingQueue;
+        }
+
+        /// <summary>
+        /// 从本轮菜谱池选一道，并映射为 <see cref="_allRecipes"/> 下标（供 ClientRpc）。
+        /// 无 PGCManager 时回退为全集随机。
+        /// </summary>
+        private int _PickRoundRecipeIndex()
+        {
+            if (_allRecipes == null || _allRecipes.Count == 0)
+                return -1;
+
+            RecipeSo picked = null;
+            var pgc = PGCManager.Instance;
+            if (pgc != null)
+                picked = pgc.PickRandomFromRound();
+
+            if (picked == null)
+                return UnityEngine.Random.Range(0, _allRecipes.Count);
+
+            int index = _FindRecipeIndex(picked);
+            if (index >= 0)
+                return index;
+
+            Debug.LogWarning(
+                $"[DeliveryManager] Round recipe '{picked.recipeName}' is not in Resources/{_recipeSoDir}; " +
+                "falling back to full recipe list.");
+            return UnityEngine.Random.Range(0, _allRecipes.Count);
+        }
+
+        private int _FindRecipeIndex(RecipeSo recipe)
+        {
+            if (recipe == null)
+                return -1;
+
+            int direct = _allRecipes.IndexOf(recipe);
+            if (direct >= 0)
+                return direct;
+
+            for (int i = 0; i < _allRecipes.Count; i++)
+            {
+                var candidate = _allRecipes[i];
+                if (candidate == null)
+                    continue;
+                if (candidate == recipe)
+                    return i;
+                if (!string.IsNullOrEmpty(recipe.recipeName) &&
+                    candidate.recipeName == recipe.recipeName)
+                    return i;
+                if (candidate.requiredItem == recipe.requiredItem)
+                    return i;
+            }
+
+            return -1;
         }
 
         #region 脚本 激活 取消激活

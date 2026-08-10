@@ -17,6 +17,10 @@ namespace Kitchen
 
         public EventHandler<KitchenObjEnum> onIngredientAdded;
         private readonly HashSet<KitchenObjEnum> _ingredients = new();
+        // Dedicated servers do not execute ClientRpc bodies. Keep an
+        // authoritative server-side set so duplicate ADD_TO_PLATE RPCs cannot
+        // be accepted before the clients receive the visual update.
+        private readonly HashSet<KitchenObjEnum> _serverIngredients = new();
 
         [Header("Debug (Play Mode)")]
         [Tooltip("Read-only mirror of plate contents for the Inspector.")]
@@ -24,20 +28,44 @@ namespace Kitchen
 
         public bool TryAddIngredient(KitchenObj obj)
         {
+            return TryAddIngredient(obj, 0);
+        }
+
+        public bool TryAddIngredient(KitchenObj obj, int orderId)
+        {
             if (obj == null) return false;
+            if (BoundOrderId != orderId)
+                return false;
             if (_cannotPlace.Contains(obj.objEnum) || PlateAssemblyMatcher.IsBurnedWaste(obj.objEnum))
                 return false;
 
             if (_ingredients.Contains(obj.objEnum))
                 return false;
 
-            AddIngredientServerRpc(obj.objEnum);
+            AddIngredientServerRpc(obj.objEnum, orderId);
             return true;
         }
 
         [ServerRpc(RequireOwnership = false)]
-        private void AddIngredientServerRpc(KitchenObjEnum objEnum)
+        private void AddIngredientServerRpc(KitchenObjEnum objEnum, int orderId)
         {
+            if (BoundOrderId != orderId)
+                return;
+            // The caller-side check is not sufficient when two agents reach the
+            // same plate in the same network update. Keep the plate authoritative.
+            if (_ingredients.Contains(objEnum))
+                return;
+            if (_cannotPlace.Contains(objEnum) || PlateAssemblyMatcher.IsBurnedWaste(objEnum))
+                return;
+            if (!_serverIngredients.Add(objEnum))
+                return;
+
+            if (PlateAssemblyMatcher.TryMatch(
+                    _serverIngredients, out var assembledOutput, out _))
+            {
+                _serverIngredients.Clear();
+                _serverIngredients.Add(assembledOutput);
+            }
             AddIngredientClientRpc(objEnum);
         }
 

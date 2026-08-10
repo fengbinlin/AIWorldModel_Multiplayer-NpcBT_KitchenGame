@@ -25,12 +25,16 @@ namespace Kitchen.AI.Recording
         /// <summary>
         /// Static scene layout for manifest (facility placement / spawn points).
         /// </summary>
-        public static Scene3DInfo CaptureScene3D(KitchenBlackboard bb, IReadOnlyList<Vector3> spawnPositions)
+        public static Scene3DInfo CaptureScene3D(
+            KitchenBlackboard bb,
+            IReadOnlyList<Vector3> spawnPositions,
+            IReadOnlyList<Vector3> groundDropPositions = null)
         {
             var scene = new Scene3DInfo
             {
                 facilities = CaptureSceneFacilities(bb),
                 spawnPoints = CaptureSpawnPoints(spawnPositions),
+                groundDropPoints = CaptureSpawnPoints(groundDropPositions),
             };
             return scene;
         }
@@ -134,6 +138,7 @@ namespace Kitchen.AI.Recording
                 list.Add(new ItemSnapshot
                 {
                     id = i.id,
+                    objectId = i.objectId.ToString(),
                     itemType = i.itemType.ToString(),
                     stage = i.stage.ToString(),
                     posX = pos.x,
@@ -157,6 +162,9 @@ namespace Kitchen.AI.Recording
                 list.Add(new OrderSnapshot
                 {
                     orderId = orderId,
+                    orderCode = bb.orderCodeById.TryGetValue(orderId, out var code)
+                        ? code
+                        : $"ORDER_{orderId:D6}",
                     recipeName = recipe.recipeName,
                     ingredients = new[] { recipe.requiredItem.ToString() },
                 });
@@ -173,11 +181,19 @@ namespace Kitchen.AI.Recording
                 list.Add(new TaskSnapshot
                 {
                     taskId = t.id,
+                    actionType = t.actionType.ToString(),
+                    objectAId = t.objectAId.ToString(),
+                    objectBId = t.objectBId.ToString(),
                     taskType = t.type.ToString(),
                     label = t.label,
                     status = t.status,
                     assignedAgentId = t.assignedAgentId,
                     orderId = t.orderId,
+                    dependencyTaskIds = t.dependencyTaskIds?.ToArray() ?? System.Array.Empty<int>(),
+                    preconditions = t.preconditions?.Select(c => c.type.ToString()).ToArray()
+                        ?? System.Array.Empty<string>(),
+                    postconditions = t.postconditions?.Select(c => c.type.ToString()).ToArray()
+                        ?? System.Array.Empty<string>(),
                 });
             }
             return list.ToArray();

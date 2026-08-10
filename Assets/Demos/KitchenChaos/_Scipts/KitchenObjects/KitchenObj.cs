@@ -11,6 +11,33 @@ namespace Kitchen
     public class KitchenObj : NetworkBehaviour
     {
         public KitchenObjEnum objEnum;
+        private readonly NetworkVariable<int> _boundOrderId =
+            new NetworkVariable<int>(
+                0,
+                NetworkVariableReadPermission.Everyone,
+                NetworkVariableWritePermission.Server);
+
+        /// <summary>
+        /// Network-stable runtime identity used by the AI planner to bind
+        /// objects to orders and actions. It is valid after NetworkObject.Spawn.
+        /// </summary>
+        public ulong RuntimeObjectId => NetworkObject != null ? NetworkObject.NetworkObjectId : 0UL;
+        public int BoundOrderId => _boundOrderId.Value;
+
+        public bool BindToOrder(int orderId)
+        {
+            if (!IsServer || orderId == 0) return false;
+            if (_boundOrderId.Value != 0 && _boundOrderId.Value != orderId)
+                return false;
+            _boundOrderId.Value = orderId;
+            return true;
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        public void BindToOrderServerRpc(int orderId)
+        {
+            BindToOrder(orderId);
+        }
 
         protected ICanHoldKitchenObj holder;
 

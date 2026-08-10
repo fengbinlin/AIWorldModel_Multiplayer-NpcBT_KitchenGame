@@ -34,6 +34,10 @@ namespace Kitchen
         /// </summary>
         public KitchenProcessSo GetProcess(KitchenObjEnum input, FacilityEnum facility)
         {
+            if (input == KitchenObjEnum.MeatPattyCooked
+                && facility == FacilityEnum.StoveCounter)
+                return null;
+
             _processDict.TryGetValue((input, facility), out var process);
             return process;
         }
@@ -43,6 +47,10 @@ namespace Kitchen
         /// </summary>
         public bool CanProcess(KitchenObjEnum input, FacilityEnum facility)
         {
+            if (input == KitchenObjEnum.MeatPattyCooked
+                && facility == FacilityEnum.StoveCounter)
+                return false;
+
             return _processDict.ContainsKey((input, facility));
         }
 

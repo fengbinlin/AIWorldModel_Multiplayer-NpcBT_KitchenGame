@@ -26,6 +26,23 @@ namespace Kitchen
             _SetHolderClientRpc(holderRef, netObj);
         }
 
+        [ServerRpc(RequireOwnership = false)]
+        public void SpawnKitObjForOrderServerRpc(
+            KitchenObjEnum kitchenObjEnum,
+            NetworkObjectReference holderRef,
+            int orderId)
+        {
+            if (orderId == 0) return;
+
+            var so = DataTableManager.Sigleton.GetKitchenObjSo(kitchenObjEnum);
+            var obj = Instantiate(so.prefab).GetComponent<KitchenObj>();
+            obj.EnsurePhysicsComponents();
+            var netObj = obj.GetComponent<NetworkObject>();
+            netObj.Spawn(true);
+            obj.BindToOrder(orderId);
+            _SetHolderClientRpc(holderRef, netObj);
+        }
+
         [ClientRpc]
         private void _SetHolderClientRpc(NetworkObjectReference holderRef, NetworkObjectReference objReference)
         {

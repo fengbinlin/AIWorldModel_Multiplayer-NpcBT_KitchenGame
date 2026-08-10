@@ -352,6 +352,8 @@ namespace Kitchen.AI.Recording
             var spawnPositions = KitchenAIManager.Instance != null
                 ? KitchenAIManager.Instance.GetSpawnPositions()
                 : (IReadOnlyList<Vector3>)System.Array.Empty<Vector3>();
+            var groundDropPositions = KitchenAIManager.Instance?.Blackboard?.groundDropPositions
+                ?? (IReadOnlyList<Vector3>)System.Array.Empty<Vector3>();
             float frameTime = Time.time - _recordStartTime;
             _pendingFrame = new RecordingFrameData
             {
@@ -360,7 +362,8 @@ namespace Kitchen.AI.Recording
                 globalImage = globalRel,
                 camera_info = KitchenCameraInfoUtility.Capture(
                     _globalCamera, _frameWidth, _frameHeight, "global"),
-                scene_3d_info = KitchenWorldStateSerializer.CaptureScene3D(bb, spawnPositions),
+                scene_3d_info = KitchenWorldStateSerializer.CaptureScene3D(
+                    bb, spawnPositions, groundDropPositions),
                 players = playerFrames,
                 world = KitchenWorldStateSerializer.Capture(bb),
             };

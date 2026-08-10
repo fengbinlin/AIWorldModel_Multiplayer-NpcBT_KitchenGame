@@ -13,16 +13,14 @@
                 if (playerHoldObj is Plate plate1) //如果是盘子
                 {
                     //则将当前游戏物体放入盘子
-                    KitchenObjOperator.PutToPlate(kitchenObj, plate1);
-                    return true;
+                    return KitchenObjOperator.PutToPlate(kitchenObj, plate1);
                 }
 
                 //柜台上的物体是盘子
                 if (kitchenObj is Plate plate2)
                 {
                     //将玩家手里的物体放入盘子
-                    KitchenObjOperator.PutToPlate(playerHoldObj, plate2);
-                    return true;
+                    return KitchenObjOperator.PutToPlate(playerHoldObj, plate2);
                 }
 
                 // 双方都有物体且都不是盘子：不能叠放

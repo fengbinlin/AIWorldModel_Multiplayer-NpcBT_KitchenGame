@@ -10,6 +10,17 @@ namespace Kitchen
             KitchenObjFactory.Instance.SpawnKitObjServerRpc(objEnum, holder.GetNetworkObject());
         }
 
+        public static void SpawnKitchenObjForOrderRpc(
+            KitchenObjEnum objEnum,
+            ICanHoldKitchenObj holder,
+            int orderId)
+        {
+            KitchenObjFactory.Instance.SpawnKitObjForOrderServerRpc(
+                objEnum,
+                holder.GetNetworkObject(),
+                orderId);
+        }
+
         public static void ExchangeKitchenObj(ICanHoldKitchenObj holder1, ICanHoldKitchenObj holder2)
         {
             bool h1 = holder1.HasKitchenObj();
@@ -57,16 +68,23 @@ namespace Kitchen
         {
             var process = DataTableManager.Sigleton.GetProcess(oldObj.objEnum, facility);
             if (process == null) return;
+            int orderId = oldObj.BoundOrderId;
             DestroyKitchenObj(oldObj);
-            SpawnKitchenObjRpc(process.outputEnum, holder);
+            if (orderId != 0)
+                SpawnKitchenObjForOrderRpc(process.outputEnum, holder, orderId);
+            else
+                SpawnKitchenObjRpc(process.outputEnum, holder);
         }
 
-        public static void PutToPlate(KitchenObj kitchenObj, Plate plate)
+        public static bool PutToPlate(KitchenObj kitchenObj, Plate plate, int orderId = 0)
         {
-            if (plate.TryAddIngredient(kitchenObj))
+            if (plate.TryAddIngredient(kitchenObj, orderId))
             {
                 DestroyKitchenObj(kitchenObj);
+                return true;
             }
+
+            return false;
         }
 
         /// <summary>

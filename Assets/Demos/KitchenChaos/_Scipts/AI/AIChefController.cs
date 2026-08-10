@@ -522,17 +522,8 @@ namespace Kitchen.AI
 
                                 if (_heldItem != null)
                                 {
-                                    // Try to deliver directly to a plate that needs this ingredient
-                                    var plateTarget = FindPlateNeedingIngredient(_heldItem.objEnum);
-                                    if (plateTarget != null)
-                                    {
-                                        AIDebugLogger.Log(chefName, $"Delivering {_heldItem.objEnum} directly to plate at {plateTarget.name}");
-                                        _execPhase = ExecPhase.GotoDest;
-                                        _targetCounter = plateTarget;
-                                        if (!MoveTo(plateTarget.transform.position)) { AbandonTask(); return; };
-                                        break;
-                                    }
-                                    // Fallback: drop on nearest free counter
+                                    // PROCESS output is staged on a clear counter. The explicit
+                                    // ADD_TO_PLATE task is the only path allowed to modify a plate.
                                     var dropTarget = FindNearestFreeCounter(transform.position);
                                     if (dropTarget != null)
                                     {
@@ -689,7 +680,9 @@ namespace Kitchen.AI
                     if (_carryTargetItem == null && _currentTask?.itemType != 0)
                     {
                         AIDebugLogger.Log(chefName, $"GotoItem: original item gone, searching for {_currentTask.itemType}");
-                        _carryTargetItem = FindItemAnywhere(_currentTask.itemType);
+                        _carryTargetItem = FindItemAnywhere(
+                            _currentTask.itemType,
+                            _currentTask.orderId);
                         if (_carryTargetItem != null)
                         {
                             // Re-target to the new item's position
@@ -1114,7 +1107,10 @@ namespace Kitchen.AI
             }
 
             // If we're already holding the right item (by type), skip to phase 2
-            if (_heldItem != null && task.outputType != 0 && _heldItem.objEnum == task.outputType)
+            if (_heldItem != null
+                && task.outputType != 0
+                && _heldItem.objEnum == task.outputType
+                && _heldItem.BoundOrderId == task.orderId)
             {
                 AIDebugLogger.Log(chefName, $"ExecuteFetch: already holding {_heldItem.objEnum}, finding drop target");
                 // Find destination facility for this ingredient
@@ -1142,9 +1138,9 @@ namespace Kitchen.AI
         }
 
         /// <summary>
-        /// Find the best facility to drop a raw ingredient at.
-        /// Cuttable → CuttingCounter, Cookable → StoveCounter, Other → ClearCounter.
-        /// Now checks blackboard reservations to avoid conflicts.
+        /// Finds a temporary clear counter for an item produced by FETCH or PROCESS.
+        /// Processing and plating are separate, explicit tasks; this method must never
+        /// shortcut an item into a facility or onto a plate.
         /// </summary>
         private BaseCounter FindDropTarget(KitchenObjEnum ingredient)
         {
@@ -1158,59 +1154,6 @@ namespace Kitchen.AI
                         .Select(f => f.counter));
             }
 
-            // Raw ingredients that can be cut → CuttingCounter
-            if (DataTableManager.Sigleton.CanProcess(ingredient, FacilityEnum.CuttingCounter))
-            {
-                var cc = FindObjectsOfType<CuttingCounter>()
-                    .FirstOrDefault(c => !c.HasKitchenObj()
-                        && (reservedCounters == null || !reservedCounters.Contains(c)));
-                if (cc != null)
-                {
-                    AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → CuttingCounter {cc.name}");
-                    return cc;
-                }
-            }
-            // Raw ingredients that can be cooked → StoveCounter
-            if (DataTableManager.Sigleton.CanProcess(ingredient, FacilityEnum.StoveCounter))
-            {
-                var sc = FindObjectsOfType<StoveCounter>()
-                    .FirstOrDefault(c => !c.HasKitchenObj()
-                        && (reservedCounters == null || !reservedCounters.Contains(c)));
-                if (sc != null)
-                {
-                    AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → StoveCounter {sc.name}");
-                    return sc;
-                }
-            }
-            if (DataTableManager.Sigleton.CanProcess(ingredient, FacilityEnum.OvenCounter))
-            {
-                var oven = FindObjectsOfType<OvenCounter>()
-                    .FirstOrDefault(c => !c.HasKitchenObj()
-                        && (reservedCounters == null || !reservedCounters.Contains(c)));
-                if (oven != null)
-                {
-                    AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → OvenCounter {oven.name}");
-                    return oven;
-                }
-            }
-            if (DataTableManager.Sigleton.CanProcess(ingredient, FacilityEnum.BlenderCounter))
-            {
-                var blender = FindObjectsOfType<BlenderCounter>()
-                    .FirstOrDefault(c => !c.HasKitchenObj()
-                        && (reservedCounters == null || !reservedCounters.Contains(c)));
-                if (blender != null)
-                {
-                    AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → BlenderCounter {blender.name}");
-                    return blender;
-                }
-            }
-            // Non-processable ingredients (like Bread) — try direct-to-plate first
-            var plateTarget = FindPlateNeedingIngredient(ingredient);
-            if (plateTarget != null)
-            {
-                AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → plate at {plateTarget.name}");
-                return plateTarget;
-            }
             var clear = FindObjectsOfType<ClearCounter>()
                 .FirstOrDefault(c => IsUsableClearCounter(c)
                     && !c.HasKitchenObj()
@@ -1248,6 +1191,14 @@ namespace Kitchen.AI
             return best;
         }
 
+        private Vector3 GetGroundDropPosition(Vector3 fallback)
+        {
+            var bb = _aiManager?.Blackboard;
+            if (bb != null && bb.TryGetNearestGroundDropPosition(transform.position, out var position))
+                return position + Vector3.up * 0.35f;
+            return fallback;
+        }
+
         /// <summary>真正可摆放的空台（排除墙占位）。</summary>
         private static bool IsUsableClearCounter(BaseCounter c)
         {
@@ -1266,44 +1217,6 @@ namespace Kitchen.AI
             if (counter.GetKitchenObj() is Plate) return true;
             if (_heldItem is Plate) return true;
             return false;
-        }
-
-        /// <summary>
-        /// Find a counter holding a plate that still needs the given ingredient.
-        /// Returns null if no matching plate exists — caller falls back to a free counter.
-        /// </summary>
-        private BaseCounter FindPlateNeedingIngredient(KitchenObjEnum ingredient)
-        {
-            var bb = _aiManager?.Blackboard;
-            if (bb == null) return null;
-
-            BaseCounter best = null;
-            float bestDist = float.MaxValue;
-
-            foreach (var kv in bb.orderPlate)
-            {
-                int orderId = kv.Key;
-                var plate = kv.Value;
-                if (plate == null || plate.gameObject == null) continue;
-                if (plate.GetIngredients().Contains(ingredient)) continue;
-
-                // Find the order associated with this plate and check it needs this ingredient
-                int orderIdx = bb.activeOrderIds.IndexOf(orderId);
-                if (orderIdx < 0 || orderIdx >= bb.activeOrders.Count) continue;
-                var order = bb.activeOrders[orderIdx];
-                if (!bb.recipeStepChains.TryGetValue(order.recipeName, out var steps)) continue;
-                if (!steps.Any(s => s.taskType == TaskType.ADD_TO_PLATE && s.inputType == ingredient))
-                    continue;
-
-                var holder = plate.GetHolder();
-                BaseCounter plateCounter = holder as BaseCounter;
-                if (plateCounter == null) continue;
-
-                float d = Vector3.Distance(transform.position, plateCounter.transform.position);
-                if (d < bestDist) { bestDist = d; best = plateCounter; }
-            }
-
-            return best;
         }
 
         private void ExecuteProcess(KitchenTask task)
@@ -1333,7 +1246,8 @@ namespace Kitchen.AI
                 {
                     // Drop on ground
                     KitchenObjFactory.Instance.DropObjServerRpc(
-                        _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                        _heldItem.NetworkObject, GetGroundDropPosition(
+                            transform.position + transform.forward * 0.5f),
                         Vector3.down, 0f, default);
                     ClearKitchenObj();
                 }
@@ -1341,7 +1255,10 @@ namespace Kitchen.AI
 
             Vector3 approachPos = GetApproachPosition(counter);
 
-            if (_heldItem != null && task.itemType != 0 && _heldItem.objEnum == task.itemType)
+            if (_heldItem != null
+                && task.itemType != 0
+                && _heldItem.objEnum == task.itemType
+                && _heldItem.BoundOrderId == task.orderId)
             {
                 // Holding the right input — go drop it and start processing
                 AIDebugLogger.Log(chefName, $"ExecuteProcess: holding {_heldItem.objEnum}, → GotoFacility {counter.name}");
@@ -1375,7 +1292,8 @@ namespace Kitchen.AI
             }
 
             // Counter empty / wrong — find KitchenObj or plate with input
-            KitchenObj foundItem = FindItemAnywhere(task.itemType) ?? FindPlateHoldingIngredient(task.itemType);
+            KitchenObj foundItem = FindItemAnywhere(task.itemType, task.orderId)
+                ?? FindPlateHoldingIngredient(task.itemType, task.orderId);
             if (foundItem != null)
             {
                 var holdingCounter = FindCounterHolding(foundItem);
@@ -1465,7 +1383,7 @@ namespace Kitchen.AI
             // Re-find the ingredient fresh (don't trust stale reference)
             if (ingredient == null || ingredient.gameObject == null)
             {
-                ingredient = FindItemAnywhere(task.itemType);
+                ingredient = FindItemAnywhere(task.itemType, task.orderId);
                 if (ingredient != null) task.targetItem = ingredient;
             }
 
@@ -1504,10 +1422,27 @@ namespace Kitchen.AI
             // Find the finished dish
             if (task.targetItem != null)
             {
+                if (task.targetItem is Plate targetPlate
+                    && targetPlate.BoundOrderId != 0
+                    && targetPlate.BoundOrderId != task.orderId)
+                {
+                    AIDebugLogger.LogWarning(
+                        chefName,
+                        $"SERVE rejected plate bound to order {targetPlate.BoundOrderId}, task order {task.orderId}");
+                    AbandonTask();
+                    return;
+                }
                 _carryTargetItem = task.targetItem;
                 _carryDestPos = GetApproachPosition(counter);
                 _execPhase = ExecPhase.GotoItem;
-                if (!MoveTo(task.targetItem.transform.position)) { AbandonTask(); return; };
+                // A plate is normally sitting on a counter. Move to the
+                // counter's interaction point instead of the plate mesh pivot,
+                // which can be inside the counter and unreachable by NavMesh.
+                var holdingCounter = FindCounterHolding(task.targetItem);
+                var pickupPos = holdingCounter != null
+                    ? GetApproachPosition(holdingCounter)
+                    : task.targetItem.transform.position;
+                if (!MoveTo(pickupPos)) { AbandonTask(); return; };
             }
             else
             {
@@ -1538,7 +1473,11 @@ namespace Kitchen.AI
                     _carryTargetItem = bestPlate;
                     _carryDestPos = GetApproachPosition(counter);
                     _execPhase = ExecPhase.GotoItem;
-                    if (!MoveTo(bestPlate.transform.position)) { AbandonTask(); return; };
+                    var holdingCounter = FindCounterHolding(bestPlate);
+                    var pickupPos = holdingCounter != null
+                        ? GetApproachPosition(holdingCounter)
+                        : bestPlate.transform.position;
+                    if (!MoveTo(pickupPos)) { AbandonTask(); return; };
                 }
                 else
                 {
@@ -1593,7 +1532,17 @@ namespace Kitchen.AI
         private void PerformInteract(BaseCounter counter)
         {
             if (counter == null) return;
+            if (_currentTask != null)
+            {
+                _currentTask.objectBId = counter.NetworkObject != null
+                    ? counter.NetworkObject.NetworkObjectId
+                    : 0UL;
+                if (_heldItem != null)
+                    _currentTask.objectAId = _heldItem.RuntimeObjectId;
+            }
             counter.Interact(this);
+            if (_currentTask != null && _heldItem != null)
+                _currentTask.objectAId = _heldItem.RuntimeObjectId;
             OnInteractionPerformed?.Invoke();
         }
 
@@ -1624,9 +1573,15 @@ namespace Kitchen.AI
                     {
                         var container = _targetCounter as ContainerCounter;
                         if (container != null && container.objEnum == _currentTask.outputType)
-                            PerformInteract(_targetCounter);
+                            KitchenObjOperator.SpawnKitchenObjForOrderRpc(
+                                _currentTask.outputType,
+                                this,
+                                _currentTask.orderId);
                         else
-                            KitchenObjOperator.SpawnKitchenObjRpc(_currentTask.outputType, this);
+                            KitchenObjOperator.SpawnKitchenObjForOrderRpc(
+                                _currentTask.outputType,
+                                this,
+                                _currentTask.orderId);
                     }
                     else if (_heldItem == null)
                     {
@@ -1668,7 +1623,8 @@ namespace Kitchen.AI
                                 AIDebugLogger.LogWarning(chefName, $"FETCH: no drop target for {_heldItem.objEnum}, dropping on ground");
                                 KitchenObjFactory.Instance.DropObjServerRpc(
                                     _heldItem.NetworkObject,
-                                    transform.position + transform.forward * 0.5f,
+                                    GetGroundDropPosition(
+                                        transform.position + transform.forward * 0.5f),
                                     Vector3.down,
                                     0f,
                                     default);
@@ -1692,7 +1648,23 @@ namespace Kitchen.AI
                 case TaskType.FETCH_PLATE:
                     // Get plate from PlatesCounter
                     if (_heldItem == null)
-                        PerformInteract(_targetCounter);
+                    {
+                        if (_targetCounter is PlatesCounter platesCounter
+                            && platesCounter.plateCount > 0
+                            && _currentTask?.orderId != 0)
+                        {
+                            KitchenObjOperator.SpawnKitchenObjForOrderRpc(
+                                KitchenObjEnum.Plate,
+                                this,
+                                _currentTask.orderId);
+                            platesCounter.RemovePlateServerRpc();
+                            OnInteractionPerformed?.Invoke();
+                        }
+                        else
+                        {
+                            PerformInteract(_targetCounter);
+                        }
+                    }
                     if (_heldItem != null && _heldItem.objEnum == KitchenObjEnum.Plate)
                     {
                         // Got plate — record it for this order, then deliver to any free ClearCounter
@@ -1717,22 +1689,39 @@ namespace Kitchen.AI
                     if (_heldItem != null && _targetCounter != null && _targetCounter.HasKitchenObj())
                     {
                         var onCounter = _targetCounter.GetKitchenObj();
-                        if (onCounter is Plate)
+                        if (onCounter is Plate plate)
                         {
-                            Debug.Log($"[{chefName}] Adding {_heldItem.objEnum} to plate");
-                            PerformInteract(_targetCounter);
-                            CompleteTask();
+                            int orderId = _currentTask?.orderId ?? 0;
+                            var blackboard = _aiManager?.Blackboard;
+                            bool plateOwned = plate.BoundOrderId == orderId;
+                            bool itemOwned = blackboard == null
+                                || blackboard.TryClaimItemForOrder(_heldItem, orderId);
+
+                            if (!plateOwned || !itemOwned)
+                            {
+                                AIDebugLogger.LogWarning(
+                                    chefName,
+                                    $"ADD_TO_PLATE rejected: plateOrder={plate.BoundOrderId}, taskOrder={orderId}, item={_heldItem.objEnum}");
+                                AbandonTask();
+                                break;
+                            }
+
+                            Debug.Log($"[{chefName}] Adding {_heldItem.objEnum} to plate #{orderId}");
+                            if (KitchenObjOperator.PutToPlate(_heldItem, plate, orderId))
+                                CompleteTask();
+                            else
+                                AbandonTask();
                         }
                         else
                         {
                             Debug.LogWarning($"[{chefName}] ADD_TO_PLATE: no Plate on {_targetCounter.name}");
-                            CompleteTask();
+                            AbandonTask();
                         }
                     }
                     else
                     {
                         Debug.LogWarning($"[{chefName}] ADD_TO_PLATE: missing held item or plate");
-                        CompleteTask();
+                        AbandonTask();
                     }
                     break;
 
@@ -1759,7 +1748,8 @@ namespace Kitchen.AI
                     }
                     else
                     {
-                        CompleteTask();
+                        AIDebugLogger.LogWarning(chefName, "SERVE: plate was not held at delivery");
+                        AbandonTask();
                     }
                     break;
 
@@ -1905,7 +1895,8 @@ namespace Kitchen.AI
                         else
                         {
                             KitchenObjFactory.Instance.DropObjServerRpc(
-                                _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                                _heldItem.NetworkObject, GetGroundDropPosition(
+                                    transform.position + transform.forward * 0.5f),
                                 Vector3.down, 0f, default);
                             ClearKitchenObj();
                         }
@@ -1922,7 +1913,8 @@ namespace Kitchen.AI
                         else
                         {
                             KitchenObjFactory.Instance.DropObjServerRpc(
-                                _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
+                                _heldItem.NetworkObject, GetGroundDropPosition(
+                                    transform.position + transform.forward * 0.5f),
                                 Vector3.down, 0f, default);
                             ClearKitchenObj();
                         }
@@ -2057,7 +2049,26 @@ namespace Kitchen.AI
             }
 
             AIDebugLogger.Log(chefName, $"PickupItem: successfully picked up {_heldItem.objEnum}");
+            if (_currentTask != null)
+                _currentTask.objectAId = _heldItem.RuntimeObjectId;
             _carryTargetItem = null;
+        }
+
+        private bool TryPutHeldItemOnOrderPlate(Plate plate)
+        {
+            if (plate == null || _heldItem == null || _currentTask == null)
+                return false;
+
+            int orderId = _currentTask.orderId;
+            if (orderId == 0 || plate.BoundOrderId != orderId)
+                return false;
+
+            var blackboard = _aiManager?.Blackboard;
+            if (blackboard != null
+                && !blackboard.TryClaimItemForOrder(_heldItem, orderId))
+                return false;
+
+            return KitchenObjOperator.PutToPlate(_heldItem, plate, orderId);
         }
 
         private void DropItemAtFacility()
@@ -2066,7 +2077,20 @@ namespace Kitchen.AI
             {
                 if (CanPlaceHeldItemOn(_targetCounter))
                 {
-                    PerformInteract(_targetCounter);
+                    if (_targetCounter.GetKitchenObj() is Plate plate
+                        && _heldItem is not Plate
+                        && _currentTask?.orderId != 0)
+                    {
+                        if (!TryPutHeldItemOnOrderPlate(plate))
+                        {
+                            AbandonTask();
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        PerformInteract(_targetCounter);
+                    }
                     AIDebugLogger.Log(chefName, $"DropItemAtFacility: → {_targetCounter.name}, held={_heldItem?.objEnum.ToString() ?? "null"}");
                     Debug.Log($"[{chefName}] Dropped item at {_targetCounter.name}");
                 }
@@ -2119,7 +2143,20 @@ namespace Kitchen.AI
             if (CanPlaceHeldItemOn(_targetCounter))
             {
                 var heldBefore = _heldItem;
-                PerformInteract(_targetCounter);
+                if (_targetCounter.GetKitchenObj() is Plate plate
+                    && _heldItem is not Plate
+                    && _currentTask?.orderId != 0)
+                {
+                    if (!TryPutHeldItemOnOrderPlate(plate))
+                    {
+                        AbandonTask();
+                        return;
+                    }
+                }
+                else
+                {
+                    PerformInteract(_targetCounter);
+                }
                 // 放成功：手里空了；或手里仍是盘子（从柜上叠了食材）
                 if (_heldItem == null || (heldBefore is Plate && _heldItem is Plate))
                 {
@@ -2196,11 +2233,6 @@ namespace Kitchen.AI
                     }
                 }
 
-                // Prefer direct-to-plate delivery for processed ingredients
-                if (dropCounter == null && _heldItem != null)
-                {
-                    dropCounter = FindPlateNeedingIngredient(_heldItem.objEnum);
-                }
                 // Fallback to nearest free counter, or any counter if all occupied
                 if (dropCounter == null)
                 {
@@ -2432,15 +2464,14 @@ namespace Kitchen.AI
                     tfc.OnCookingStageChange -= OnStoveStageChanged;
                 PerformInteract(_targetCounter);
 
-                // Deliver cooked output — prefer direct-to-plate if possible
+                // Deliver cooked output to staging. Plating is handled exclusively
+                // by the order's ADD_TO_PLATE task.
                 if (_heldItem != null)
                 {
-                    var plateTarget = FindPlateNeedingIngredient(_heldItem.objEnum);
-                    var dropTarget = plateTarget ?? FindNearestFreeCounter(transform.position);
+                    var dropTarget = FindNearestFreeCounter(transform.position);
                     if (dropTarget != null)
                     {
-                        AIDebugLogger.Log(chefName, $"Delivering cooked {_heldItem.objEnum} to {dropTarget.name}" +
-                            (plateTarget != null ? " (direct-to-plate)" : ""));
+                        AIDebugLogger.Log(chefName, $"Delivering cooked {_heldItem.objEnum} to {dropTarget.name}");
                         _execPhase = ExecPhase.GotoDest;
                         _targetCounter = dropTarget;
                         if (!MoveTo(dropTarget.transform.position)) { CompleteTask(); return; }
@@ -2468,7 +2499,7 @@ namespace Kitchen.AI
         /// Find an item of the given type anywhere: on ground or on any counter.
         /// Only returns items that are actually free to pick up (not being processed).
         /// </summary>
-        private KitchenObj FindItemAnywhere(KitchenObjEnum itemType)
+        private KitchenObj FindItemAnywhere(KitchenObjEnum itemType, int orderId)
         {
             KitchenObj bestItem = null;
             float bestDist = float.MaxValue;
@@ -2478,6 +2509,9 @@ namespace Kitchen.AI
             {
                 if (item == null || item.objEnum != itemType) continue;
                 if (!item.IsFree) continue;
+                if (_aiManager?.Blackboard != null
+                    && !_aiManager.Blackboard.CanUseItemForOrder(item, orderId))
+                    continue;
                 float d = Vector3.Distance(transform.position, item.transform.position);
                 if (d < bestDist) { bestDist = d; bestItem = item; }
             }
@@ -2489,6 +2523,9 @@ namespace Kitchen.AI
                 if (counter == null || !counter.HasKitchenObj()) continue;
                 var item = counter.GetKitchenObj();
                 if (item == null || item.objEnum != itemType) continue;
+                if (_aiManager?.Blackboard != null
+                    && !_aiManager.Blackboard.CanUseItemForOrder(item, orderId))
+                    continue;
                 // Skip items on active processors
                 if (counter is StoveCounter || counter is CuttingCounter
                     || counter is OvenCounter || counter is BlenderCounter) continue;
@@ -2502,13 +2539,14 @@ namespace Kitchen.AI
         }
 
         /// <summary>Find a plate whose ingredient set contains the given type.</summary>
-        private KitchenObj FindPlateHoldingIngredient(KitchenObjEnum itemType)
+        private KitchenObj FindPlateHoldingIngredient(KitchenObjEnum itemType, int orderId)
         {
             KitchenObj best = null;
             float bestDist = float.MaxValue;
             foreach (var plate in FindObjectsOfType<Plate>())
             {
                 if (plate == null || !plate.GetIngredients().Contains(itemType)) continue;
+                if (plate.BoundOrderId != 0 && plate.BoundOrderId != orderId) continue;
                 if (!(plate.IsFree || plate.GetHolder() is BaseCounter)) continue;
                 if (plate.GetHolder() is OvenCounter or BlenderCounter) continue;
                 float d = Vector3.Distance(transform.position, plate.transform.position);

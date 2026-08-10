@@ -16,7 +16,11 @@ namespace Kitchen
 
             //ToDO 其次检查盘子里的东西是否合格
             var ingredients = plate.GetIngredients();
-            if (DeliveryManager.Instance.TryDeliverOrder(transform.position,ingredients))
+            int orderId = plate.BoundOrderId;
+            if (DeliveryManager.Instance.TryDeliverOrder(
+                transform.position,
+                ingredients,
+                orderId))
             {
                 //如果合格则销毁盘子 并且销毁玩家手上的物体
                 KitchenObjOperator.DestroyKitchenObj(playerKitchenObj);

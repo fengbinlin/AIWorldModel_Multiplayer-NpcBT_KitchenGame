@@ -63,6 +63,7 @@ namespace Kitchen.AI
     public class ItemState
     {
         public int id;
+        public ulong objectId;
         public KitchenObj kitchenObj;
         public KitchenObjEnum itemType;
         public ItemStage stage;
@@ -93,8 +94,6 @@ namespace Kitchen.AI
         public Vector3 position;
         public float waitTimer;
 
-        // Role specialization tracking
-        public Dictionary<TaskType, int> roleCounts = new();
         public float stuckTimer; // For deadlock detection
 
         public bool IsIdle => currentTask == null
@@ -114,6 +113,7 @@ namespace Kitchen.AI
         public KitchenObjEnum? inputType;
         public KitchenObjEnum? outputType;
         public FacilityType requiredFacilityType;
+        public List<string> dependsOnStepIds = new();
     }
 
     /// <summary>
@@ -131,12 +131,17 @@ namespace Kitchen.AI
         // ===== Agents =====
         public List<AgentState> agents = new();
 
+        // PGC-derived walkable positions that are legal fallback locations
+        // when all usable counters are occupied.
+        public List<Vector3> groundDropPositions = new();
+
         // ===== Task Pool =====
         public List<KitchenTask> taskPool = new();
 
         // ===== Recipes =====
         public List<RecipeSo> allRecipes = new();
         public List<RecipeSo> activeOrders = new();
+        public List<string> activeOrderCodes = new();
 
         // ===== Recipe Steps (pre-built) =====
         // recipeName → ordered list of steps
@@ -157,18 +162,12 @@ namespace Kitchen.AI
         // to activeOrders, with one unique ID per queue position.
         // recipe → list of active order IDs, one per occurrence. Must stay stable
         // across cycles regardless of queue ordering.
-        public Dictionary<RecipeSo, List<int>> recipeOrderIdLists = new();
-        public List<int> activeOrderIds = new(); // parallel to activeOrders, one per order
-        public int nextOrderId = 1;
+        public List<int> activeOrderIds = new();
 
         // Track when each order entered the queue for time-based urgency
-        public Dictionary<int, float> orderEntryTimes = new();
+        public Dictionary<int, string> orderCodeById = new();
 
         /// <summary>Get the volatile order ID for a recipe at a given index in activeOrders.</summary>
-        public int GetOrderId(int activeOrderIndex) =>
-            activeOrderIndex >= 0 && activeOrderIndex < activeOrderIds.Count
-                ? activeOrderIds[activeOrderIndex]
-                : 0;
 
         // ===== Order → Plate mapping =====
         // Track which Plate belongs to which order. The plate can be on
@@ -176,19 +175,10 @@ namespace Kitchen.AI
         // Much simpler than the old "assembly counter" concept.
         public Dictionary<int, Plate> orderPlate = new();
 
-        // ===== Config =====
-        public const int MAX_OPEN_ITEMS = 2; // Max open items of each type
-
-        // ===== Scoring Weights (from HTML simulation) =====
-        public const float WEIGHT_DISTANCE = -0.08f;     // per 1 unit (≈ 8 per 100 units)
-        public const float WEIGHT_FACILITY_WAIT = -0.4f; // per second
-        public const float WEIGHT_ORDER_URGENCY = 1.5f;  // multiplier
-        public const float WEIGHT_UNLOCK_VALUE = 2.5f;
-        public const float WEIGHT_ROLE_BONUS = 0.04f;
-        public const float WEIGHT_STOCK_BASE = 0.70f;
-        public const float WEIGHT_FRESH_PICK = 3.0f;
-        public const float WEIGHT_STALE_PICK = -8.0f;
-        public const float WEIGHT_STALE_WORKSTATION_MULT = 4.0f;
+        // Per-order explicit plan state. The legacy recipeStepChains remains
+        // available while the planner migration is incremental.
+        public Dictionary<int, KitchenPlan> orderPlans = new();
+        public Dictionary<int, Dictionary<string, string>> orderStepStates = new();
 
         #region Initialization
 
@@ -263,6 +253,43 @@ namespace Kitchen.AI
                       $"Serving={CountType(FacilityType.ServingCounter)}");
         }
 
+        public void SetGroundDropPositions(IEnumerable<Vector3> positions)
+        {
+            groundDropPositions.Clear();
+            if (positions == null) return;
+            foreach (var position in positions)
+            {
+                var p = position;
+                p.y = 0f;
+                groundDropPositions.Add(p);
+            }
+        }
+
+        public bool TryGetNearestGroundDropPosition(Vector3 from, out Vector3 position)
+        {
+            position = Vector3.zero;
+            if (groundDropPositions.Count == 0) return false;
+
+            float bestDistance = float.MaxValue;
+            foreach (var candidate in groundDropPositions)
+            {
+                bool occupied = items.Any(i =>
+                    i?.kitchenObj != null &&
+                    i.carriedByAgent < 0 &&
+                    Vector3.Distance(i.Position, candidate) < 0.45f);
+                if (occupied) continue;
+
+                float distance = Vector3.Distance(from, candidate);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    position = candidate;
+                }
+            }
+
+            return bestDistance < float.MaxValue;
+        }
+
         private int CountType(FacilityType t) => facilities.Count(f => f.type == t);
 
         /// <summary>
@@ -284,10 +311,80 @@ namespace Kitchen.AI
 
             foreach (var recipe in allRecipes)
             {
-                recipeStepChains[recipe.recipeName] = BuildRecipeSteps(recipe);
+                var chain = BuildRecipeSteps(recipe);
+                AttachStepDependencies(chain);
+                recipeStepChains[recipe.recipeName] = chain;
             }
 
             Debug.Log($"[Blackboard] Loaded {allRecipes.Count} recipes, {_outputToProcess.Count} process chains");
+        }
+
+        /// <summary>
+        /// Adds explicit Item-to-Item dependencies to the legacy recipe chain.
+        /// The chain is still generated by the existing reverse lookup, but
+        /// execution is now gated by these dependencies.
+        /// </summary>
+        private static void AttachStepDependencies(List<RecipeStep> steps)
+        {
+            if (steps == null || steps.Count == 0) return;
+
+            var fetchPlate = steps.FirstOrDefault(s => s.taskType == TaskType.FETCH_PLATE);
+            var addSteps = steps.Where(s => s.taskType == TaskType.ADD_TO_PLATE).ToList();
+            var postProcess = steps.LastOrDefault(s =>
+                s.taskType == TaskType.PROCESS &&
+                (s.requiredFacilityType == FacilityType.Oven ||
+                 s.requiredFacilityType == FacilityType.Blender));
+
+            for (int i = 0; i < steps.Count; i++)
+            {
+                var step = steps[i];
+                if (step == null) continue;
+                step.dependsOnStepIds ??= new List<string>();
+
+                if (step.taskType == TaskType.PROCESS && step.inputType.HasValue)
+                {
+                    var inputProducer = steps
+                        .Take(i)
+                        .LastOrDefault(s => s.outputType == step.inputType);
+                    if (inputProducer != null && !step.dependsOnStepIds.Contains(inputProducer.id))
+                        step.dependsOnStepIds.Add(inputProducer.id);
+                }
+
+                if (step.taskType == TaskType.ADD_TO_PLATE)
+                {
+                    if (fetchPlate != null && !step.dependsOnStepIds.Contains(fetchPlate.id))
+                        step.dependsOnStepIds.Add(fetchPlate.id);
+
+                    var ingredientProducer = steps
+                        .Take(i)
+                        .LastOrDefault(s => s.outputType == step.inputType);
+                    if (ingredientProducer != null && !step.dependsOnStepIds.Contains(ingredientProducer.id))
+                        step.dependsOnStepIds.Add(ingredientProducer.id);
+                }
+            }
+
+            if (postProcess != null)
+            {
+                foreach (var add in addSteps)
+                    if (!postProcess.dependsOnStepIds.Contains(add.id))
+                        postProcess.dependsOnStepIds.Add(add.id);
+            }
+
+            var serve = steps.LastOrDefault(s => s.taskType == TaskType.SERVE);
+            if (serve != null)
+            {
+                if (postProcess != null)
+                {
+                    if (!serve.dependsOnStepIds.Contains(postProcess.id))
+                        serve.dependsOnStepIds.Add(postProcess.id);
+                }
+                else
+                {
+                    foreach (var add in addSteps)
+                        if (!serve.dependsOnStepIds.Contains(add.id))
+                            serve.dependsOnStepIds.Add(add.id);
+                }
+            }
         }
 
         /// <summary>
@@ -501,12 +598,13 @@ namespace Kitchen.AI
             var item = new ItemState
             {
                 id = ko.NetworkObjectId.GetHashCode(), // stable-ish ID
+                objectId = ko.RuntimeObjectId,
                 kitchenObj = ko,
                 itemType = ko.objEnum,
                 stage = DetermineStage(ko.objEnum),
                 carriedByAgent = -1,
                 reservedByTask = -1,
-                orderId = 0,
+                orderId = ko.BoundOrderId,
             };
             return item;
         }
@@ -515,7 +613,9 @@ namespace Kitchen.AI
         {
             if (item.kitchenObj == null) return;
             item.itemType = item.kitchenObj.objEnum;
+            item.objectId = item.kitchenObj.RuntimeObjectId;
             item.stage = DetermineStage(item.kitchenObj.objEnum);
+            item.orderId = item.kitchenObj.BoundOrderId;
         }
 
         /// <summary>
@@ -621,7 +721,7 @@ namespace Kitchen.AI
                 i.itemType == type &&
                 (!excludeReserved || i.reservedByTask < 0) &&
                 i.kitchenObj != null &&
-                (!forOrderId.HasValue || i.orderId == 0 || i.orderId == forOrderId.Value));
+                (!forOrderId.HasValue || i.orderId == forOrderId.Value));
         }
 
         /// <summary>
@@ -630,40 +730,224 @@ namespace Kitchen.AI
         public void TagItemForOrder(KitchenObj obj, int orderId)
         {
             var item = items.Find(i => i.kitchenObj == obj);
-            if (item != null && item.orderId == 0)
+            if (item != null
+                && item.orderId == orderId
+                && obj != null
+                && obj.BoundOrderId == orderId)
+                return;
+
+            if (obj != null && obj.IsServer && obj.BindToOrder(orderId))
             {
-                item.orderId = orderId;
+                if (item != null)
+                    item.orderId = orderId;
             }
         }
 
-        /// <summary>
-        /// Count how many active orders need a specific ingredient as input.
-        /// </summary>
-        public int CountOrdersNeeding(KitchenObjEnum ingredientType)
+        public bool CanUseItemForOrder(KitchenObj obj, int orderId)
         {
-            int count = 0;
-            foreach (var recipe in activeOrders)
+            if (obj == null) return false;
+            if (orderId == 0) return false;
+            var item = items.Find(i => i.kitchenObj == obj);
+            return item != null && item.orderId == orderId
+                && obj.BoundOrderId == orderId;
+        }
+
+        public bool TryClaimItemForOrder(KitchenObj obj, int orderId)
+        {
+            if (!CanUseItemForOrder(obj, orderId)) return false;
+            TagItemForOrder(obj, orderId);
+            return true;
+        }
+
+        public ItemState FindItemByObjectId(ulong objectId)
+        {
+            if (objectId == 0UL) return null;
+            return items.Find(i => i != null && i.objectId == objectId);
+        }
+
+        public void EnsureOrderPlan(int orderId, RecipeSo recipe)
+        {
+            if (orderId == 0 || recipe == null) return;
+            if (!orderPlans.ContainsKey(orderId))
             {
-                if (recipeStepChains.TryGetValue(recipe.recipeName, out var steps))
-                {
-                    bool needs = steps.Any(s =>
-                        s.inputType == ingredientType ||
-                        (s.taskType == TaskType.FETCH && s.outputType == ingredientType));
-                    if (needs) count++;
-                }
+                orderPlans[orderId] = KitchenPlanner.BuildPlan(this, orderId, recipe);
             }
-            return count;
+
+            if (!orderStepStates.ContainsKey(orderId))
+                orderStepStates[orderId] = new Dictionary<string, string>();
+        }
+
+        public KitchenPlan GetOrderPlan(int orderId)
+        {
+            orderPlans.TryGetValue(orderId, out var plan);
+            return plan;
+        }
+
+        public string GetStepState(int orderId, string stepId)
+        {
+            if (orderStepStates.TryGetValue(orderId, out var states)
+                && states.TryGetValue(stepId, out var state))
+                return state;
+            return "pending";
+        }
+
+        public void SetStepState(int orderId, string stepId, string state)
+        {
+            if (orderId == 0 || string.IsNullOrEmpty(stepId)) return;
+            if (!orderStepStates.TryGetValue(orderId, out var states))
+            {
+                states = new Dictionary<string, string>();
+                orderStepStates[orderId] = states;
+            }
+            states[stepId] = state;
+        }
+
+        public bool AreStepDependenciesSatisfied(int orderId, RecipeStep step)
+        {
+            if (step == null) return false;
+
+            foreach (var dependencyId in step.dependsOnStepIds ?? new List<string>())
+            {
+                if (GetStepState(orderId, dependencyId) == "completed")
+                    continue;
+
+                var plan = GetOrderPlan(orderId);
+                var node = plan?.nodes?.Find(n => n.stepId == dependencyId);
+                if (node != null && IsPlanNodeSatisfied(orderId, node))
+                {
+                    SetStepState(orderId, dependencyId, "completed");
+                    continue;
+                }
+
+                return false;
+            }
+
+            var currentPlan = GetOrderPlan(orderId);
+            var currentNode = currentPlan?.nodes?.Find(n => n.stepId == step.id);
+            if (currentNode?.preconditions == null) return true;
+
+            return currentNode.preconditions.All(condition =>
+                EvaluateCondition(orderId, condition));
+        }
+
+        public bool EvaluateCondition(int orderId, KitchenConditionSpec condition)
+        {
+            if (condition == null) return true;
+
+            bool result;
+            switch (condition.type)
+            {
+                case KitchenConditionType.DependencyTasksCompleted:
+                {
+                    var plan = GetOrderPlan(orderId);
+                    var dependency = plan?.nodes?.Find(n => n.taskId == condition.referencedTaskId);
+                    result = dependency != null &&
+                             (dependency.status == "completed" ||
+                              IsPlanNodeSatisfied(orderId, dependency));
+                    break;
+                }
+                case KitchenConditionType.ObjectExists:
+                    result = FindItemsOfType(condition.itemType, excludeReserved: false)
+                        .Any(i => i.orderId == orderId)
+                        || (orderPlate.TryGetValue(orderId, out var objectPlate)
+                            && objectPlate != null
+                            && objectPlate.GetIngredients().Contains(condition.itemType));
+                    break;
+                case KitchenConditionType.ObjectBelongsToOrder:
+                    result = FindItemByObjectId(condition.objectId)?.orderId == orderId;
+                    break;
+                case KitchenConditionType.FacilityHasCapacity:
+                    result = facilities.Any(f => f.type == condition.facilityType &&
+                        (f.counter is ClearCounter && !f.counter.HasKitchenObj()
+                         || f.type == FacilityType.PlatesCounter
+                         || f.type == FacilityType.Storage));
+                    break;
+                case KitchenConditionType.FacilityContainsItem:
+                    result = facilities.Any(f => f.type == condition.facilityType
+                        && f.counter != null
+                        && f.counter.HasKitchenObj()
+                        && f.counter.GetKitchenObj().objEnum == condition.itemType);
+                    break;
+                case KitchenConditionType.PlateContainsItem:
+                    result = orderPlate.TryGetValue(orderId, out var plate)
+                        && plate != null
+                        && plate.GetIngredients().Contains(condition.itemType);
+                    break;
+                case KitchenConditionType.PlateMatchesOrder:
+                    result = orderPlate.TryGetValue(orderId, out var matchingPlate)
+                        && matchingPlate != null
+                        && matchingPlate.TryGetDeliverableItem(out var delivered)
+                        && delivered == condition.itemType;
+                    break;
+                case KitchenConditionType.ProcessOutputReady:
+                    result = FindItemsOfType(condition.itemType, excludeReserved: false)
+                        .Any(i => i.orderId == orderId)
+                        || (orderPlate.TryGetValue(orderId, out var processedPlate)
+                            && processedPlate != null
+                            && processedPlate.GetIngredients().Contains(condition.itemType));
+                    break;
+                case KitchenConditionType.GroundDropAvailable:
+                    result = TryGetNearestGroundDropPosition(Vector3.zero, out _);
+                    break;
+                default:
+                    result = false;
+                    break;
+            }
+
+            return condition.negate ? !result : result;
+        }
+
+        private bool IsPlanNodeSatisfied(int orderId, KitchenPlanNode node)
+        {
+            if (node == null) return false;
+
+            if (node.legacyTaskType == TaskType.FETCH_PLATE)
+                return FindPlateForOrder(orderId) != null;
+
+            if (node.legacyTaskType == TaskType.ADD_TO_PLATE)
+            {
+                var plate = FindPlateForOrder(orderId);
+                return plate != null && node.action.itemType != 0
+                    && plate.GetIngredients().Contains(node.action.itemType);
+            }
+
+            var expectedType = node.action.outputType != 0
+                ? node.action.outputType
+                : node.action.itemType;
+
+            if (expectedType != 0 && node.action.type == KitchenActionType.Process)
+            {
+                if (FindItemsOfType(expectedType, excludeReserved: false)
+                    .Any(i => i.orderId == orderId))
+                    return true;
+
+                return orderPlate.TryGetValue(orderId, out var processedPlate)
+                    && processedPlate != null
+                    && processedPlate.GetIngredients().Contains(expectedType);
+            }
+
+            if (expectedType != 0)
+            {
+                return FindItemsOfType(expectedType, excludeReserved: false)
+                    .Any(i => i.orderId == orderId);
+            }
+
+            return GetStepState(orderId, node.stepId) == "completed";
         }
 
         /// <summary>
         /// Find an item of a given type near a facility.
         /// </summary>
-        public ItemState FindItemAtFacility(KitchenObjEnum type, FacilityState facility)
+        public ItemState FindItemAtFacility(
+            KitchenObjEnum type,
+            FacilityState facility,
+            int? forOrderId = null)
         {
             return items.Find(i =>
                 i.itemType == type &&
                 i.kitchenObj != null &&
                 !i.IsCarried &&
+                (!forOrderId.HasValue || i.orderId == forOrderId.Value) &&
                 Vector3.Distance(i.Position, facility.Center) < 3f);
         }
 
@@ -693,7 +977,13 @@ namespace Kitchen.AI
         /// </summary>
         public void AssignPlateToOrder(int orderId, Plate plate)
         {
+            if (plate == null || orderId == 0) return;
+            if (plate.BoundOrderId != 0 && plate.BoundOrderId != orderId)
+                return;
+            if (plate.IsServer)
+                plate.BindToOrder(orderId);
             orderPlate[orderId] = plate;
+            TagItemForOrder(plate, orderId);
         }
 
         /// <summary>
@@ -712,7 +1002,12 @@ namespace Kitchen.AI
             orderPlate.TryGetValue(orderId, out var plate);
             if (plate == null) return null;
             // Verify the plate still exists (not destroyed)
-            if (plate.gameObject == null) { orderPlate.Remove(orderId); return null; }
+            if (plate.gameObject == null
+                || (plate.BoundOrderId != 0 && plate.BoundOrderId != orderId))
+            {
+                orderPlate.Remove(orderId);
+                return null;
+            }
             return plate;
         }
 

@@ -58,6 +58,7 @@ namespace Kitchen.PGC
         public List<PGCFacilityNode> facilities = new();
         public List<PGCMissionEdge> edges = new();
         public List<Vector3> spawnPoints = new();
+        public List<Vector3> groundDropPoints = new();
         public int clearCount;
         public int wallCount;
         /// <summary>地图中心世界坐标（用于朝向 / A*）。</summary>

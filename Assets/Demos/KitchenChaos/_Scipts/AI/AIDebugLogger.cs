@@ -111,23 +111,18 @@ namespace Kitchen.AI
         }
 
         /// <summary>
-        /// Log a task assignment with full score breakdown.
+        /// Log a deterministic task-panel assignment.
         /// </summary>
         public static void LogAssignment(int agentId, string agentName, KitchenTask task)
         {
             EnsureInit();
             var sb = new StringBuilder();
             sb.Append($"[{FormatTime()}] [ASSIGN] Agent#{agentId}({agentName}) ← {task.label}");
-            sb.Append($" type={task.type} score={task.score:F2}");
+            sb.Append($" type={task.type} order={task.orderId}");
             if (task.targetFacility != null)
                 sb.Append($" facility={task.targetFacility.name}");
             if (task.targetItem != null)
                 sb.Append($" item={task.targetItem.objEnum}@{task.targetItem.transform.position:F0}");
-            if (task.scoreDetail != null)
-            {
-                var d = task.scoreDetail;
-                sb.Append($" | d={d.distance:F2} w={d.facilityWait:F2} u={d.orderUrgency:F2} ul={d.unlockValue:F2} r={d.roleBonus:F2} f={d.freshPickBonus:F2} s={d.stalePickPenalty:F2}");
-            }
             AppendLine(sb.ToString());
         }
 

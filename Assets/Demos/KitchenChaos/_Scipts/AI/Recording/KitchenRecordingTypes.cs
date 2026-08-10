@@ -83,6 +83,7 @@ namespace Kitchen.AI.Recording
     {
         public SceneFacilityInfo[] facilities;
         public SceneSpawnPointInfo[] spawnPoints;
+        public SceneSpawnPointInfo[] groundDropPoints;
     }
 
     [Serializable]
@@ -158,6 +159,7 @@ namespace Kitchen.AI.Recording
     public class ItemSnapshot
     {
         public int id;
+        public string objectId;
         public string itemType;
         public string stage;
         public float posX;
@@ -171,6 +173,7 @@ namespace Kitchen.AI.Recording
     public class OrderSnapshot
     {
         public int orderId;
+        public string orderCode;
         public string recipeName;
         public string[] ingredients;
     }
@@ -179,11 +182,17 @@ namespace Kitchen.AI.Recording
     public class TaskSnapshot
     {
         public int taskId;
+        public string actionType;
+        public string objectAId;
+        public string objectBId;
         public string taskType;
         public string label;
         public string status;
         public int assignedAgentId;
         public int orderId;
+        public int[] dependencyTaskIds;
+        public string[] preconditions;
+        public string[] postconditions;
     }
 
     [Serializable]

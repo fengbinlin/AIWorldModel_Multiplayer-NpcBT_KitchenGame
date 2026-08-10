@@ -182,8 +182,15 @@ namespace Kitchen
             if (_cuttingProgress >= maxTime)
             {
                 Debug.Log("[CuttingCounter] Cutting complete, transforming ingredient.");
+                int orderId = kitchenObj.BoundOrderId;
                 KitchenObjOperator.DestroyKitchenObj(kitchenObj);
-                KitchenObjOperator.SpawnKitchenObjRpc(process.outputEnum, this);
+                if (orderId != 0)
+                    KitchenObjOperator.SpawnKitchenObjForOrderRpc(
+                        process.outputEnum,
+                        this,
+                        orderId);
+                else
+                    KitchenObjOperator.SpawnKitchenObjRpc(process.outputEnum, this);
                 _OnCutCompleteClientRpc(transform.position);
                 _ClearCuttingStateClientRpc();
             }

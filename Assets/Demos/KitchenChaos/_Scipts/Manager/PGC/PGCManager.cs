@@ -68,6 +68,8 @@ namespace Kitchen
         public PGCLayoutResult LastLayout => _lastLayout;
         public IReadOnlyList<Vector3> SpawnPoints =>
             _lastLayout != null ? _lastLayout.spawnPoints : System.Array.Empty<Vector3>();
+        public IReadOnlyList<Vector3> GroundDropPoints =>
+            _lastLayout != null ? _lastLayout.groundDropPoints : System.Array.Empty<Vector3>();
 
         private void Awake()
         {
@@ -199,6 +201,7 @@ namespace Kitchen
             var ai = FindObjectOfType<KitchenAIManager>();
             if (ai == null || _lastLayout == null) return;
             ai.SetSpawnWorldPositions(_lastLayout.spawnPoints);
+            ai.SetGroundDropWorldPositions(_lastLayout.groundDropPoints);
         }
 
         /// <summary>

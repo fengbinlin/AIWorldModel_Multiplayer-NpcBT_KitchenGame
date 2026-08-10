@@ -2688,7 +2688,7 @@ PrefabInstance:
     - target: {fileID: 2092279793133000685, guid: ef292091548c47d6becd8d5fd6546f3b,
         type: 3}
       propertyPath: InScenePlacedSourceGlobalObjectIdHash
-      value: 1068876973
+      value: 831424628
       objectReference: {fileID: 0}
     - target: {fileID: 2108936314938973294, guid: ef292091548c47d6becd8d5fd6546f3b,
         type: 3}
@@ -3731,7 +3731,7 @@ PrefabInstance:
     - target: {fileID: 2092279793133000685, guid: 8b2a88578fad47c6a2f4d9722cf353dd,
         type: 3}
       propertyPath: InScenePlacedSourceGlobalObjectIdHash
-      value: 1068876973
+      value: 4180170195
       objectReference: {fileID: 0}
     - target: {fileID: 2108936314938973294, guid: 8b2a88578fad47c6a2f4d9722cf353dd,
         type: 3}
@@ -10576,7 +10576,7 @@ MonoBehaviour:
   randomSourceRecipes: []
   playW: 16
   playH: 10
-  dilateKernel: 3
+  dilateKernel: 0
   pathRandomness: 1.4
   extraEdges: 1
   cellSize: 1.5

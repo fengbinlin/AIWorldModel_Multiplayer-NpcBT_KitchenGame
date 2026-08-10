@@ -6,7 +6,7 @@ using Kitchen;
 namespace Kitchen.AI
 {
     /// <summary>
-    /// Generates candidate tasks, scores them, and performs greedy assignment.
+    /// Generates exact order-bound tasks and assigns them in task-panel order.
     /// Pure logic — no MonoBehaviour. Called by KitchenAIManager each scheduling tick.
     ///
     /// This is a C# translation of the HTML simulation's core scheduling algorithm:
@@ -48,6 +48,14 @@ namespace Kitchen.AI
                 // The todolist is global — every cycle re-evaluates from scratch.
                 foreach (var step in steps)
                 {
+                    bb.EnsureOrderPlan(orderId, order);
+                    if (bb.GetStepState(orderId, step.id) == "completed")
+                    {
+                        skippedCompleted++;
+                        continue;
+                    }
+                    if (!bb.AreStepDependenciesSatisfied(orderId, step))
+                        continue;
                     // Don't duplicate an active task for this step+order
                     bool alreadyActive = bb.agents.Any(a =>
                         a.currentTask != null &&
@@ -56,32 +64,15 @@ namespace Kitchen.AI
                         a.currentTask.status != "completed");
                     if (alreadyActive) { skippedActive++; continue; }
 
-                    // === OUTPUT-EXISTS CHECK: count ALL items regardless of orderId ===
-                    // (processed items are public stock once produced, not tied to their original order)
+                    // Output checks are exact-order only.
                     if (step.taskType == TaskType.FETCH && step.outputType.HasValue)
                     {
-                        bool fetchNeeded = true;
-                        int rawAvailable = bb.FindItemsOfType(step.outputType.Value, excludeReserved: true)
-                            .Count(i => !i.IsCarried && (i.kitchenObj.IsFree || i.kitchenObj.GetHolder() is BaseCounter))
-                            + CountOnPlates(bb, step.outputType.Value);
-                        int rawNeeded = CountOrdersNeeding(bb, step.outputType.Value);
-                        if (rawNeeded > 0 && rawAvailable >= rawNeeded) { fetchNeeded = false; }
-                        else
-                        {
-                            foreach (var s in steps)
-                            {
-                                if (s.taskType == TaskType.PROCESS && s.inputType == step.outputType && s.outputType.HasValue)
-                                {
-                                    int processedAvail = bb.FindItemsOfType(s.outputType.Value, excludeReserved: true)
-                                        .Count(i => !i.IsCarried && (i.kitchenObj.IsFree || i.kitchenObj.GetHolder() is BaseCounter))
-                                        + CountOnPlates(bb, s.outputType.Value);
-                                    int processedNeeded = CountOrdersNeeding(bb, s.outputType.Value);
-                                    if (processedNeeded > 0 && processedAvail >= processedNeeded)
-                                        { fetchNeeded = false; break; }
-                                }
-                            }
-                        }
-                        if (!fetchNeeded) { skippedCompleted++; continue; }
+                        bool existsForOrder = bb.FindItemsOfType(
+                                step.outputType.Value,
+                                excludeReserved: false,
+                                forOrderId: orderId)
+                            .Any();
+                        if (existsForOrder) { skippedCompleted++; continue; }
                     }
                     if (step.taskType == TaskType.FETCH_PLATE)
                     {
@@ -89,11 +80,13 @@ namespace Kitchen.AI
                     }
                     if (step.taskType == TaskType.PROCESS && step.outputType.HasValue)
                     {
-                        int available = bb.FindItemsOfType(step.outputType.Value, excludeReserved: true)
-                            .Count(i => !i.IsCarried && (i.kitchenObj.IsFree || i.kitchenObj.GetHolder() is BaseCounter))
-                            + CountOnPlates(bb, step.outputType.Value);
-                        int needed = CountOrdersNeeding(bb, step.outputType.Value);
-                        if (needed > 0 && available >= needed) { skippedCompleted++; continue; }
+                        bool outputExists = bb.FindItemsOfType(
+                                step.outputType.Value,
+                                excludeReserved: false,
+                                forOrderId: orderId)
+                            .Any()
+                            || OrderPlateContains(bb, orderId, step.outputType.Value);
+                        if (outputExists) { skippedCompleted++; continue; }
                     }
                     if (step.taskType == TaskType.ADD_TO_PLATE)
                     {
@@ -116,12 +109,17 @@ namespace Kitchen.AI
                     if (step.taskType == TaskType.PROCESS && step.inputType.HasValue)
                     {
                         var inputs = bb.FindItemsOfType(step.inputType.Value, excludeReserved: true, forOrderId: orderId);
-                        if (inputs.Count == 0 && CountOnPlates(bb, step.inputType.Value) == 0) continue;
+                        if (inputs.Count == 0
+                            && !OrderPlateContains(bb, orderId, step.inputType.Value))
+                            continue;
                     }
                     if (step.taskType == TaskType.ADD_TO_PLATE && step.inputType.HasValue)
                     {
                         // Assembly uses ANY available ingredient — plates are shared, don't lock by orderId
-                        var inputs = bb.FindItemsOfType(step.inputType.Value, excludeReserved: true);
+                        var inputs = bb.FindItemsOfType(
+                            step.inputType.Value,
+                            excludeReserved: true,
+                            forOrderId: orderId);
                         if (inputs.Count == 0) continue;
                     }
 
@@ -146,13 +144,11 @@ namespace Kitchen.AI
                 }
             }
 
-            // === Open preparation (stock) tasks ===
-            // DISABLED: stock tasks flood the system and cause deadlocks.
-            // TODO: re-enable with proper rate-limiting and step tracking.
-            // GenerateStockTasks(tasks, bb);
-
             // === Cleanup tasks: clear burned/waste items blocking facilities ===
             GenerateTrashTasks(tasks, bb);
+
+            foreach (var task in tasks)
+                ApplyPlanMetadata(task, bb);
 
             // Remove duplicates
             tasks = tasks
@@ -170,6 +166,36 @@ namespace Kitchen.AI
             return tasks;
         }
 
+        private static void ApplyPlanMetadata(KitchenTask task, KitchenBlackboard bb)
+        {
+            if (task == null || bb == null || task.orderId == 0) return;
+            var plan = bb.GetOrderPlan(task.orderId);
+            var node = plan?.nodes?.Find(n => n.stepId == task.stepId);
+            if (node == null) return;
+
+            task.actionType = node.action.type;
+            task.objectAId = node.action.objectAId;
+            task.objectBId = node.action.objectBId;
+            task.targetIsGround = node.action.targetIsGround;
+            task.groundPosition = node.action.groundPosition;
+            task.dependencyTaskIds = new List<int>(node.dependencyTaskIds);
+            task.preconditions = node.preconditions
+                .Select(c => c.Clone())
+                .ToList();
+            task.postconditions = node.postconditions
+                .Select(c => c.Clone())
+                .ToList();
+
+            // Bind concrete runtime objects to the transfer action whenever
+            // the legacy generator has already resolved them.
+            if (task.targetItem != null)
+                task.objectAId = task.targetItem.RuntimeObjectId;
+            if (task.targetFacility != null)
+                task.objectBId = task.targetFacility.NetworkObject != null
+                    ? task.targetFacility.NetworkObject.NetworkObjectId
+                    : 0UL;
+        }
+
         #endregion
 
         #region Per-Task-Type Generators
@@ -185,19 +211,12 @@ namespace Kitchen.AI
                           ?? bb.facilities.FirstOrDefault(f => f.type == FacilityType.Storage);
             if (storage == null) { skippedNoStorage++; return; }
 
-            // Count: items anywhere + on plates + active tasks not yet carrying.
-            // Avoid double-counting when agent is both carrying AND has active task.
-            int totalAvail = bb.items.Count(i =>
-                i.itemType == ingredient && i.kitchenObj != null)
-                + CountOnPlates(bb, ingredient);
-            int activeWithoutItem = bb.agents.Count(a =>
-                a.currentTask != null &&
-                a.currentTask.outputType == ingredient &&
-                (a.currentTask.type == TaskType.FETCH || a.currentTask.type == TaskType.PROCESS) &&
-                a.currentTask.status != "completed" && a.currentTask.status != "abandoned" &&
-                a.carryingItemId < 0);
-            int totalNeeded = CountOrdersNeeding(bb, ingredient);
-            if (totalNeeded > 0 && totalAvail + activeWithoutItem >= totalNeeded) return;
+            if (bb.FindItemsOfType(
+                    ingredient,
+                    excludeReserved: false,
+                    forOrderId: orderId)
+                .Any())
+                return;
 
             // Check this order doesn't already have a FETCH in progress for this ingredient.
             // We check orderId so different orders CAN fetch the same ingredient simultaneously
@@ -232,8 +251,11 @@ namespace Kitchen.AI
                 if (f.type != facilityType) continue;
                 if (f.counter == null || !f.counter.HasKitchenObj()) continue;
                 var onFac = f.counter.GetKitchenObj();
-                if (onFac.objEnum == step.inputType.Value
-                    || (onFac is Plate pl && pl.GetIngredients().Contains(step.inputType.Value)))
+                if ((onFac.objEnum == step.inputType.Value
+                        && onFac.BoundOrderId == orderId)
+                    || (onFac is Plate pl
+                        && pl.BoundOrderId == orderId
+                        && pl.GetIngredients().Contains(step.inputType.Value)))
                 {
                     facility = f;
                     break;
@@ -251,25 +273,26 @@ namespace Kitchen.AI
             }
 
             // Input may be a free KitchenObj or sitting as a plate ingredient (assembled dish).
-            var inputItems = bb.FindItemsOfType(step.inputType.Value);
-            int onPlates = CountOnPlates(bb, step.inputType.Value);
-            if (inputItems.Count == 0 && onPlates == 0) return;
+            var inputItems = bb.FindItemsOfType(
+                step.inputType.Value,
+                excludeReserved: true,
+                forOrderId: orderId);
+            bool onOrderPlate = OrderPlateContains(bb, orderId, step.inputType.Value);
+            if (inputItems.Count == 0 && !onOrderPlate) return;
 
-            // Don't produce more than ALL orders need combined.
-            int totalAvail = bb.items.Count(i =>
-                i.itemType == step.outputType.Value && i.kitchenObj != null)
-                + CountOnPlates(bb, step.outputType.Value);
-            int activeWithoutItem = bb.agents.Count(a =>
-                a.currentTask != null &&
-                a.currentTask.outputType == step.outputType.Value &&
-                (a.currentTask.type == TaskType.FETCH || a.currentTask.type == TaskType.PROCESS) &&
-                a.currentTask.status != "completed" && a.currentTask.status != "abandoned" &&
-                a.carryingItemId < 0);
-            int totalNeeded = CountOrdersNeeding(bb, step.outputType.Value);
-            if (totalNeeded > 0 && totalAvail + activeWithoutItem >= totalNeeded) return;
+            if (bb.FindItemsOfType(
+                    step.outputType.Value,
+                    excludeReserved: false,
+                    forOrderId: orderId)
+                .Any()
+                || OrderPlateContains(bb, orderId, step.outputType.Value))
+                return;
 
             // For PROCESS, the item needs to be at the facility or being carried there
-            var itemAtFac = bb.FindItemAtFacility(step.inputType.Value, facility);
+            var itemAtFac = bb.FindItemAtFacility(
+                step.inputType.Value,
+                facility,
+                orderId);
             bool isBeingCarried = bb.agents.Any(a =>
                 a.currentTask != null &&
                 a.currentTask.type == TaskType.ADD_TO_PLATE &&
@@ -280,7 +303,12 @@ namespace Kitchen.AI
             if (!isBeingCarried && itemAtFac == null)
             {
                 var freeItem = inputItems.FirstOrDefault(i => i.IsAvailable);
-                bool plateHasInput = onPlates > 0 || FacilityHoldsPlateWith(bb, facility, step.inputType.Value);
+                bool plateHasInput = onOrderPlate
+                    || FacilityHoldsOrderPlateWith(
+                        bb,
+                        facility,
+                        step.inputType.Value,
+                        orderId);
                 if (freeItem == null && !plateHasInput) return;
             }
 
@@ -362,8 +390,12 @@ namespace Kitchen.AI
             if (plateOnCounter == null) return;
 
             // Assembly uses ANY available ingredient — don't filter by orderId
-            var ingredient = bb.FindItemsOfType(step.inputType.Value, excludeReserved: true)
-                .FirstOrDefault(i => i.IsAvailable && !i.IsCarried);
+            var ingredient = bb.FindItemsOfType(
+                    step.inputType.Value,
+                    excludeReserved: true,
+                    forOrderId: orderId)
+                .FirstOrDefault(i => i.IsAvailable && !i.IsCarried
+                    && i.orderId == orderId);
             if (ingredient == null) return;
 
             // Find which counter holds this order's plate
@@ -402,6 +434,8 @@ namespace Kitchen.AI
                 var allPlates = Object.FindObjectsOfType<Plate>();
                 foreach (var p in allPlates)
                 {
+                    if (p.BoundOrderId != 0 && p.BoundOrderId != orderId)
+                        continue;
                     bool accessible = p.IsFree || p.GetHolder() is BaseCounter;
                     if (!accessible) continue;
                     if (p.TryGetDeliverableItem(out var item) && item == required)
@@ -435,6 +469,7 @@ namespace Kitchen.AI
             tasks.Add(task);
         }
 
+        #if false
         private static void GenerateStockTasks(List<KitchenTask> tasks, KitchenBlackboard bb)
         {
             // Open prep: pre-make intermediate ingredients when idle
@@ -494,6 +529,7 @@ namespace Kitchen.AI
                 }
             }
         }
+        #endif
 
         /// <summary>
         /// Generate TRASH tasks: take burned/waste items blocking facilities to the TrashCounter.
@@ -528,7 +564,7 @@ namespace Kitchen.AI
                 task.itemType = item.objEnum;
                 task.targetFacility = trashCounter.counter;
                 task.duration = 0.5f;
-                task.isStockTask = true;
+                task.isCleanupTask = true;
                 tasks.Add(task);
                 return; // One per cycle to avoid flooding
             }
@@ -559,7 +595,7 @@ namespace Kitchen.AI
                     task.itemType = item.objEnum;
                     task.targetFacility = trashCounter.counter;
                     task.duration = 0.5f;
-                    task.isStockTask = true;
+                    task.isCleanupTask = true;
                     tasks.Add(task);
                     return;
                 }
@@ -591,58 +627,39 @@ namespace Kitchen.AI
                 task.itemType = KitchenObjEnum.Plate;
                 task.targetFacility = trashCounter.counter;
                 task.duration = 0.5f;
-                task.isStockTask = true;
+                task.isCleanupTask = true;
                 tasks.Add(task);
                 wastePlatesFound++;
                 if (wastePlatesFound >= 1) break; // One per cycle
             }
         }
 
-        private static bool FacilityHoldsPlateWith(KitchenBlackboard bb, FacilityState facility, KitchenObjEnum type)
+        private static bool FacilityHoldsOrderPlateWith(
+            KitchenBlackboard bb,
+            FacilityState facility,
+            KitchenObjEnum type,
+            int orderId)
         {
-            if (facility?.counter == null || !facility.counter.HasKitchenObj()) return false;
+            if (facility?.counter == null || !facility.counter.HasKitchenObj())
+                return false;
             return facility.counter.GetKitchenObj() is Plate plate
+                   && plate.BoundOrderId == orderId
                    && plate.GetIngredients().Contains(type);
         }
 
-        /// <summary>Count how many of an ingredient sit on plates (KitchenObj is destroyed on add).</summary>
-        private static int CountOnPlates(KitchenBlackboard bb, KitchenObjEnum type)
+        private static bool OrderPlateContains(
+            KitchenBlackboard bb,
+            int orderId,
+            KitchenObjEnum type)
         {
-            int count = 0;
-            foreach (var kv in bb.orderPlate)
-            {
-                var plate = kv.Value;
-                if (plate != null && plate.gameObject != null && plate.GetIngredients().Contains(type))
-                    count++;
-            }
-            var allPlates = Object.FindObjectsOfType<Plate>();
-            foreach (var p in allPlates)
-            {
-                if (p != null && p.gameObject != null && p.GetIngredients().Contains(type)
-                    && !bb.orderPlate.Values.Any(op => op == p))
-                    count++;
-            }
-            return count;
-        }
-
-        /// <summary>Count how many active orders need a given output type (any step).</summary>
-        private static int CountOrdersNeeding(KitchenBlackboard bb, KitchenObjEnum outputType)
-        {
-            int count = 0;
-            foreach (var order in bb.activeOrders)
-            {
-                if (bb.recipeStepChains.TryGetValue(order.recipeName, out var steps))
-                {
-                    if (steps.Any(s => s.outputType == outputType))
-                        count++;
-                }
-            }
-            return count;
+            var plate = bb.FindPlateForOrder(orderId);
+            return plate != null && plate.GetIngredients().Contains(type);
         }
 
         #endregion
 
-        #region Scoring
+        #if false
+        #region Removed Utility Scoring
 
         /// <summary>
         /// Score a (agent, task) pair across all dimensions.
@@ -775,8 +792,9 @@ namespace Kitchen.AI
         }
 
         #endregion
+        #endif
 
-        #region Greedy Assignment
+        #region Task Panel Assignment
 
         /// <summary>
         /// Assign the best (agent, task) pairs using greedy matching.
@@ -786,9 +804,104 @@ namespace Kitchen.AI
         {
             public AgentState agent;
             public KitchenTask task;
-            public ScoreDetail scoreDetail;
         }
 
+        /// <summary>
+        /// Deterministic assignment in task-panel order. No utility score,
+        /// distance ranking, urgency ranking, role bonus, or force-serve path.
+        /// </summary>
+        public static List<Assignment> AssignInPanelOrder(
+            List<AgentState> idleAgents,
+            List<KitchenTask> taskPool,
+            KitchenBlackboard bb)
+        {
+            var assignments = new List<Assignment>();
+            if (idleAgents.Count == 0 || taskPool.Count == 0)
+                return assignments;
+
+            var activeTaskIds = new HashSet<int>(
+                bb.agents
+                    .Where(a => a.currentTask != null
+                        && a.currentTask.status != "completed"
+                        && a.currentTask.status != "abandoned")
+                    .Select(a => a.currentTask.id));
+
+            var availableTasks = taskPool
+                .Where(t => !activeTaskIds.Contains(t.id))
+                .ToList();
+            var remainingAgents = new Queue<AgentState>(idleAgents);
+            var assignedTaskIds = new HashSet<int>();
+
+            foreach (var task in availableTasks)
+            {
+                if (remainingAgents.Count == 0)
+                    break;
+
+                if (task.targetItem != null)
+                {
+                    var itemState = bb.items.Find(i => i.kitchenObj == task.targetItem);
+                    if (itemState == null
+                        || itemState.orderId != task.orderId
+                        || (itemState.reservedByTask >= 0
+                            && itemState.reservedByTask != task.id))
+                        break;
+                }
+
+                var agent = remainingAgents.Peek();
+
+                bool skipFacilityReserve = task.type == TaskType.FETCH_PLATE
+                    || task.type == TaskType.ADD_TO_PLATE
+                    || task.type == TaskType.TRASH;
+                if (task.targetFacility != null && !skipFacilityReserve)
+                {
+                    var facility = bb.facilities.Find(
+                        f => f.counter == task.targetFacility);
+                    if (facility != null
+                        && facility.state == "reserved"
+                        && facility.reservedByAgent != agent.agentId
+                        && facility.reservedByAgent != -1)
+                    {
+                        break;
+                    }
+
+                    if (facility != null)
+                    {
+                        facility.state = "reserved";
+                        facility.reservedByAgent = agent.agentId;
+                    }
+                }
+
+                if (task.targetItem != null)
+                {
+                    var itemState = bb.items.Find(i => i.kitchenObj == task.targetItem);
+                    if (itemState != null)
+                    {
+                        itemState.reservedByTask = task.id;
+                        task.reservedItemIds.Add(itemState.id);
+                    }
+                }
+
+                task.status = "assigned";
+                task.assignedAgentId = agent.agentId;
+                remainingAgents.Dequeue();
+                agent.currentTask = task;
+                agent.substate = "moving";
+
+                assignedTaskIds.Add(task.id);
+                assignments.Add(new Assignment
+                {
+                    agent = agent,
+                    task = task,
+                });
+            }
+
+            bb.taskPool = availableTasks
+                .Where(t => !assignedTaskIds.Contains(t.id))
+                .ToList();
+            return assignments;
+        }
+
+        #if false
         public static List<Assignment> GreedyAssign(List<AgentState> idleAgents,
             List<KitchenTask> taskPool, KitchenBlackboard bb)
         {
@@ -990,6 +1103,7 @@ namespace Kitchen.AI
 
             return assignments;
         }
+        #endif
 
         /// <summary>
         /// Release all reservations held by a task.

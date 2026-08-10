@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Kitchen.AI;
 using Nico.MVC;
 using Nico.Network;
 using Unity.Netcode;
@@ -16,7 +17,9 @@ namespace Kitchen
 
         private List<RecipeSo> _allRecipes;
         private readonly List<RecipeSo> _waitingQueue = new();
+        private readonly List<string> _waitingOrderCodes = new();
         private CancellationTokenSource _orderGenerateCts;
+        private long _nextOrderSequence;
 
         public float spawnTime = 5f;
         public float spawnTimeRange = 2f;
@@ -58,10 +61,11 @@ namespace Kitchen
         /// </summary>
         /// <param name="recipeDataIdx"></param>
         [ClientRpc]
-        private void SpawnOrderClientRpc(int recipeIdx)
+        private void SpawnOrderClientRpc(int recipeIdx, string orderCode)
         {
             var recipe = _allRecipes[recipeIdx];
             _waitingQueue.Add(recipe);
+            _waitingOrderCodes.Add(orderCode);
             OnOrderAdded?.Invoke(this, recipe);
         }
 
@@ -84,7 +88,7 @@ namespace Kitchen
                         continue;
                     }
 
-                    SpawnOrderClientRpc(recipeIndex);
+                    SpawnOrderClientRpc(recipeIndex, CreateOrderCode());
                     //如果在这里添加订单,则只会生成服务端的订单 客户端的订单需要通过网络同步来实现
                     //如果在Rpc中添加 则会在所有客户端上生成订单
                 }
@@ -99,9 +103,12 @@ namespace Kitchen
             _isGeneratingOrder = false;
         }
 
-        public bool TryDeliverOrder(Vector3 position, HashSet<KitchenObjEnum> ingredients)
+        public bool TryDeliverOrder(
+            Vector3 position,
+            HashSet<KitchenObjEnum> ingredients,
+            int orderId = 0)
         {
-            int target = _CheckRequiredItem(ingredients);
+            int target = _CheckRequiredItem(ingredients, orderId);
             if (target == -1)
             {
                 _FailedOrderServerRpc(position);
@@ -144,13 +151,17 @@ namespace Kitchen
             ++ModelManager.Get<CompletedOrderModel>().orderCount;
 
             _waitingQueue.RemoveAt(recipeDataIdx);
+            if (recipeDataIdx >= 0 && recipeDataIdx < _waitingOrderCodes.Count)
+                _waitingOrderCodes.RemoveAt(recipeDataIdx);
             OnOrderSuccess?.Invoke(this, position);
         }
 
         /// <summary>
         /// Order matches when the plate holds exactly one item equal to <see cref="RecipeSo.requiredItem"/>.
         /// </summary>
-        private int _CheckRequiredItem(HashSet<KitchenObjEnum> ingredients)
+        private int _CheckRequiredItem(
+            HashSet<KitchenObjEnum> ingredients,
+            int orderId)
         {
             if (ingredients == null || ingredients.Count != 1)
                 return -1;
@@ -165,7 +176,10 @@ namespace Kitchen
             for (int i = 0; i < _waitingQueue.Count; i++)
             {
                 var order = _waitingQueue[i];
-                if (order != null && order.requiredItem == delivered)
+                bool matchesIdentity = orderId == 0
+                    || (i < _waitingOrderCodes.Count
+                        && KitchenOrderIdentity.ToRuntimeId(_waitingOrderCodes[i]) == orderId);
+                if (matchesIdentity && order != null && order.requiredItem == delivered)
                     return i;
             }
 
@@ -175,6 +189,20 @@ namespace Kitchen
         public ICollection<RecipeSo> GetWaitingQueue()
         {
             return _waitingQueue;
+        }
+
+        public IReadOnlyList<string> GetWaitingOrderCodes()
+        {
+            return _waitingOrderCodes;
+        }
+
+        private string CreateOrderCode()
+        {
+            // Order identity is independent of recipe type and queue sorting.
+            // It is generated once by the server and replicated with the order.
+            var ticks = DateTime.UtcNow.Ticks;
+            var sequence = ++_nextOrderSequence;
+            return $"ORDER-{ticks:X16}-{sequence:X8}";
         }
 
         /// <summary>

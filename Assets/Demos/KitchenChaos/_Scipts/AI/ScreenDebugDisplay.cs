@@ -52,7 +52,7 @@ namespace Kitchen.AI
             // Only capture AI-related logs
             if (!logString.StartsWith("[") && !logString.Contains("AI_Chef") &&
                 !logString.Contains("Scheduler") && !logString.Contains("GenTasks") &&
-                !logString.Contains("Blackboard") && !logString.Contains("GreedyAssign") &&
+                !logString.Contains("Blackboard") &&
                 !logString.Contains("Assign") && !logString.Contains("ABANDON"))
                 return;
 
@@ -142,9 +142,10 @@ namespace Kitchen.AI
 
             // === RIGHT PANEL: Active Orders ===
             var orderLines = new List<string>();
-            foreach (var order in bb.activeOrders)
+            for (int orderIndex = 0; orderIndex < bb.activeOrders.Count; orderIndex++)
             {
-                int orderId = bb.activeOrderIds[bb.activeOrders.IndexOf(order)];
+                var order = bb.activeOrders[orderIndex];
+                int orderId = bb.activeOrderIds[orderIndex];
                 if (bb.recipeStepChains.TryGetValue(order.recipeName, out var steps))
                 {
                     // Count completed steps (output exists)
@@ -162,7 +163,10 @@ namespace Kitchen.AI
                         }
                         else if (step.outputType.HasValue)
                         {
-                            int avail = bb.FindItemsOfType(step.outputType.Value, excludeReserved: true)
+                            int avail = bb.FindItemsOfType(
+                                    step.outputType.Value,
+                                    excludeReserved: true,
+                                    forOrderId: orderId)
                                 .Count(i => !i.IsCarried && i.kitchenObj != null &&
                                     (i.kitchenObj.IsFree || i.kitchenObj.GetHolder() is BaseCounter));
                             if (avail > 0) done++;

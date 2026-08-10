@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Kitchen.PGC
@@ -75,6 +76,8 @@ namespace Kitchen.PGC
 
             var spawns = PickSpawnPoints(
                 grid, totalW, playW, playH, facilities, p.spawnCount, origin, cell);
+            var groundDropPoints = PickGroundDropPoints(
+                grid, totalW, playW, playH, facilities, origin, cell);
 
             return new PGCLayoutResult
             {
@@ -89,6 +92,7 @@ namespace Kitchen.PGC
                 facilities = facilities,
                 edges = edges,
                 spawnPoints = spawns,
+                groundDropPoints = groundDropPoints,
                 clearCount = clearCount,
                 wallCount = wallCount,
             };
@@ -548,6 +552,45 @@ namespace Kitchen.PGC
             }
 
             return made;
+        }
+
+        private List<Vector3> PickGroundDropPoints(
+            short[] grid,
+            int tw,
+            int playW,
+            int playH,
+            List<PGCFacilityNode> facilities,
+            Vector3 origin,
+            float cell)
+        {
+            var pathCells = new List<(int x, int y)>();
+            for (int y = 1; y <= playH; y++)
+            for (int x = 1; x <= playW; x++)
+            {
+                if (grid[Idx(x, y, tw)] != (short)PGCCell.Path) continue;
+                if (OccupiedByFacility(x, y, facilities)) continue;
+
+                // Prefer cells away from the outer border and from the
+                // central traffic axis, leaving navigable drop locations.
+                int edgeDistance = Mathf.Min(Mathf.Min(x - 1, playW - x),
+                    Mathf.Min(y - 1, playH - y));
+                if (edgeDistance < 1) continue;
+                pathCells.Add((x, y));
+            }
+
+            Shuffle(pathCells);
+            var result = new List<Vector3>();
+            foreach (var cellCoord in pathCells)
+            {
+                var world = GridToWorld(cellCoord.x, cellCoord.y, origin, cell);
+                if (result.Any(p => Vector3.Distance(p, world) < cell * 1.5f))
+                    continue;
+                result.Add(world);
+                if (result.Count >= 16)
+                    break;
+            }
+
+            return result;
         }
 
         private List<Vector3> PickSpawnPoints(

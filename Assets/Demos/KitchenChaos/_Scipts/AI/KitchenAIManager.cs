@@ -134,6 +134,15 @@ namespace Kitchen.AI
             _isInitialized = false;
         }
 
+        /// <summary>
+        /// Receives PGC path cells that may be used as legal ground fallback
+        /// locations when all usable counters are occupied.
+        /// </summary>
+        public void SetGroundDropWorldPositions(IReadOnlyList<Vector3> positions)
+        {
+            _blackboard?.SetGroundDropPositions(positions);
+        }
+
         private void Update()
         {
             // Flush debug log periodically
@@ -417,8 +426,12 @@ namespace Kitchen.AI
                 AIDebugLogger.Log("Scheduler", $"{idleAgents.Count} idle agents, {allTasks.Count} candidate tasks");
             }
 
-            // Score and assign
-            var assignments = KitchenTaskGenerator.GreedyAssign(idleAgents, allTasks, _blackboard);
+            // Assign strictly in task-panel order. No utility scoring or
+            // priority sorting is involved.
+            var assignments = KitchenTaskGenerator.AssignInPanelOrder(
+                idleAgents,
+                allTasks,
+                _blackboard);
 
             // Dispatch tasks to AI controllers
             foreach (var assignment in assignments)
@@ -437,8 +450,59 @@ namespace Kitchen.AI
 
             _blackboard.activeOrders.Clear();
             _blackboard.activeOrderIds.Clear();
+            _blackboard.activeOrderCodes.Clear();
+
+            var waitingQueue = deliveryManager.GetWaitingQueue();
+            var waitingOrderCodes = deliveryManager.GetWaitingOrderCodes();
+            var activeOrderIdSet = new HashSet<int>();
+
+            if (waitingOrderCodes == null || waitingOrderCodes.Count != waitingQueue.Count)
+            {
+                AIDebugLogger.LogWarning(
+                    "Scheduler",
+                    $"Order identity sync incomplete: recipes={waitingQueue.Count}, codes={waitingOrderCodes?.Count ?? 0}");
+                CleanupStaleOrderPlans(activeOrderIdSet);
+                return;
+            }
+
+            SyncActiveOrdersByCode(
+                waitingQueue.ToList(),
+                waitingOrderCodes,
+                activeOrderIdSet);
+            CleanupStaleOrderPlans(activeOrderIdSet);
+        }
+
+        #if false
+        private void SyncActiveOrdersLegacy()
+        {
+            var deliveryManager = DeliveryManager.Instance;
+            if (deliveryManager == null) return;
+
+            _blackboard.activeOrders.Clear();
+            _blackboard.activeOrderIds.Clear();
+            _blackboard.activeOrderCodes.Clear();
             var waitingQueue = deliveryManager.GetWaitingQueue();
             var activeOrderIdSet = new HashSet<int>();
+            var waitingOrderCodes = deliveryManager.GetWaitingOrderCodes();
+
+            if (waitingOrderCodes == null || waitingOrderCodes.Count != waitingQueue.Count)
+            {
+                AIDebugLogger.LogWarning(
+                    "Scheduler",
+                    $"Order identity sync incomplete: recipes={waitingQueue.Count}, codes={waitingOrderCodes?.Count ?? 0}");
+                CleanupStaleOrderPlans(activeOrderIdSet);
+                return;
+            }
+
+            if (waitingOrderCodes.Count == waitingQueue.Count)
+            {
+                SyncActiveOrdersByCode(
+                    waitingQueue.ToList(),
+                    waitingOrderCodes,
+                    activeOrderIdSet);
+                CleanupStaleOrderPlans(activeOrderIdSet);
+                return;
+            }
 
             // Count current occurrences per recipe
             var currentCounts = new Dictionary<RecipeSo, int>();
@@ -510,8 +574,52 @@ namespace Kitchen.AI
                 int orderId = idx < idList.Count ? idList[idx] : 0;
                 _blackboard.activeOrderIds.Add(orderId);
                 activeOrderIdSet.Add(orderId);
+                _blackboard.EnsureOrderPlan(orderId, recipe);
             }
 
+            foreach (var stalePlanId in _blackboard.orderPlans.Keys
+                .Where(id => !activeOrderIdSet.Contains(id))
+                .ToList())
+            {
+                _blackboard.orderPlans.Remove(stalePlanId);
+                _blackboard.orderStepStates.Remove(stalePlanId);
+            }
+
+        }
+
+        #endif
+
+        private void SyncActiveOrdersByCode(
+            IList<RecipeSo> waitingQueue,
+            IReadOnlyList<string> orderCodes,
+            HashSet<int> activeOrderIdSet)
+        {
+            for (int i = 0; i < waitingQueue.Count; i++)
+            {
+                var recipe = waitingQueue[i];
+                var code = orderCodes[i];
+                int orderId = KitchenOrderIdentity.ToRuntimeId(code);
+
+                _blackboard.activeOrders.Add(recipe);
+                _blackboard.activeOrderIds.Add(orderId);
+                _blackboard.activeOrderCodes.Add(code);
+                activeOrderIdSet.Add(orderId);
+                _blackboard.orderCodeById[orderId] = code;
+                _blackboard.EnsureOrderPlan(orderId, recipe);
+            }
+        }
+
+        private void CleanupStaleOrderPlans(HashSet<int> activeOrderIdSet)
+        {
+            foreach (var stalePlanId in _blackboard.orderPlans.Keys
+                .Where(id => !activeOrderIdSet.Contains(id))
+                .ToList())
+            {
+                _blackboard.orderPlans.Remove(stalePlanId);
+                _blackboard.orderStepStates.Remove(stalePlanId);
+                _blackboard.orderCodeById.Remove(stalePlanId);
+                _blackboard.ReleaseOrderPlate(stalePlanId);
+            }
         }
 
         private void SyncFacilityStates()
@@ -651,20 +759,19 @@ namespace Kitchen.AI
         {
             KitchenTaskGenerator.ReleaseReservations(task, _blackboard);
 
+            if (task != null && task.orderId != 0 && task.status == "completed")
+            {
+                _blackboard.SetStepState(task.orderId, task.stepId, "completed");
+                var plan = _blackboard.GetOrderPlan(task.orderId);
+                var node = plan?.nodes?.Find(n => n.stepId == task.stepId);
+                if (node != null) node.status = "completed";
+            }
+
             // When SERVE completes, release the order's plate
             if (task.status == "completed" && task.type == TaskType.SERVE && task.orderId != 0)
             {
                 _blackboard.ReleaseOrderPlate(task.orderId);
                 AIDebugLogger.Log("Scheduler", $"Order #{task.orderId} served — releasing plate");
-            }
-
-            // Record role specialization
-            var agentState = _agentStates.Find(a => a.controller == chef);
-            if (agentState != null)
-            {
-                if (!agentState.roleCounts.ContainsKey(task.type))
-                    agentState.roleCounts[task.type] = 0;
-                agentState.roleCounts[task.type]++;
             }
 
             // Trigger immediate re-schedule if agent is now idle

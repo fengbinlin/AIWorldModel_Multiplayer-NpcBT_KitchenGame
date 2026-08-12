@@ -26,10 +26,11 @@ namespace Kitchen
         public override void Interact(ICanHoldKitchenObj holder)
         {
             //玩家持有物体，当前柜子没有物体 -> 放置物体（会自动开始烹饪）
-            //只有能被StoveCounter处理的食材才允许放置
+            //可加工原料，或本设施已完成的成品（熟了可放回，但不会再烧）
             if (holder.HasKitchenObj() && !HasKitchenObj())
             {
-                if (!DataTableManager.Sigleton.CanProcess(holder.GetKitchenObj().objEnum, FacilityEnum.StoveCounter))
+                if (!DataTableManager.Sigleton.CanPlaceOnFacility(
+                        holder.GetKitchenObj().objEnum, FacilityEnum.StoveCounter))
                     return;
                 KitchenObjOperator.PutKitchenObj(holder, this);
                 return;
@@ -66,27 +67,35 @@ namespace Kitchen
         /// </summary>
         public override void ClearKitchenObj()
         {
-            if (isCooking)
-            {
+            // `isCooking` is synchronized through a ClientRpc and is not
+            // authoritative on a dedicated server. Use the server coroutine
+            // as the source of truth so taking food off the pan really stops
+            // the burn timer.
+            if (IsServer)
+                StopCookingOnServer();
+            else if (isCooking)
                 _StopCookingServerRpc();
-            }
             base.ClearKitchenObj();
         }
 
         [ServerRpc(RequireOwnership = false)]
         private void _StopCookingServerRpc()
         {
+            StopCookingOnServer();
+        }
+
+        private void StopCookingOnServer()
+        {
             _cookingCts?.Cancel();
+            _cookingCts?.Dispose();
+            _cookingCts = null;
             _StopCookingClientRpc();
         }
 
         [ClientRpc]
         private void _StopCookingClientRpc()
         {
-            isCooking = false;
-            OnStopCooking?.Invoke();
-            OnCookingStageChange?.Invoke(null);
-            _progressBarUI.Hide();
+            ApplyCookingStoppedClient(clearStage: true);
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -114,23 +123,27 @@ namespace Kitchen
 
             _cookingCts = new CancellationTokenSource();
             _OnStartCookingClientRpc();
-            if (kitchenObj == null) { _OnStopCookingClientRpc(); return; }
+            if (kitchenObj == null) { _OnStopCookingClientRpc(true); return; }
             _CookingStageChangeClientRpc(kitchenObj.objEnum);
-            while (!_cookingCts.IsCancellationRequested)
+            while (_cookingCts != null && !_cookingCts.IsCancellationRequested)
             {
                 if (kitchenObj == null) break;
+                if (DataTableManager.Sigleton == null) break;
                 var process = DataTableManager.Sigleton.GetProcess(kitchenObj.objEnum, FacilityEnum.StoveCounter);
                 if (process == null) break;
 
                 float cookTime = process.processValue;
                 var startTime = Time.time;
-                while (Time.time - startTime < cookTime && !_cookingCts.IsCancellationRequested)
+                while (_cookingCts != null
+                       && Time.time - startTime < cookTime
+                       && !_cookingCts.IsCancellationRequested)
                 {
-                    await UniTask.WaitForFixedUpdate(cancellationToken: _cookingCts.Token);
+                    var cookingToken = _cookingCts.Token;
+                    await UniTask.WaitForFixedUpdate(cancellationToken: cookingToken);
                     _SetProgressClientRpc((Time.time - startTime) / cookTime);
                 }
 
-                if (_cookingCts.IsCancellationRequested) break;
+                if (_cookingCts == null || _cookingCts.IsCancellationRequested) break;
                 if (kitchenObj == null || kitchenObj.NetworkObject == null || !kitchenObj.NetworkObject.IsSpawned) break;
 
                 // Save the objEnum BEFORE Process (Process destroys the object)
@@ -153,18 +166,15 @@ namespace Kitchen
                     Debug.LogWarning($"[StoveCounter] kitchenObj became null after processing {currentObjEnum}");
             }
 
-            if (kitchenObj != null)
-            {
-                try { _CookingStageChangeClientRpc(kitchenObj.objEnum); }
-                catch (System.Exception) { /* item may be gone */ }
-            }
-            _OnStopCookingClientRpc();
+            // Item gone (picked up / destroyed): clear stage UI.
+            // Item still on stove (e.g. burned terminal): keep last stage for visuals, still stop bar/audio.
+            _OnStopCookingClientRpc(kitchenObj == null);
         }
 
         [ClientRpc]
         private void _SetProgressClientRpc(float progress)
         {
-            _progressBarUI.SetProgress(progress);
+            _progressBarUI?.SetProgress(progress);
         }
 
         [ClientRpc]
@@ -175,10 +185,19 @@ namespace Kitchen
         }
 
         [ClientRpc]
-        private void _OnStopCookingClientRpc()
+        private void _OnStopCookingClientRpc(bool clearStage)
+        {
+            ApplyCookingStoppedClient(clearStage);
+        }
+
+        /// <summary>All stop paths must hide progress; clear stage when pan is empty.</summary>
+        private void ApplyCookingStoppedClient(bool clearStage)
         {
             isCooking = false;
             OnStopCooking?.Invoke();
+            if (clearStage)
+                OnCookingStageChange?.Invoke(null);
+            _progressBarUI?.Hide();
         }
 
         [ClientRpc]

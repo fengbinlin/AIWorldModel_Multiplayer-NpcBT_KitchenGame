@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -16,7 +15,10 @@ namespace Kitchen
         };
 
         public EventHandler<KitchenObjEnum> onIngredientAdded;
+        public event Action onContentsChanged;
         private readonly HashSet<KitchenObjEnum> _ingredients = new();
+        // Insertion order for stacking visuals / icons.
+        private readonly List<KitchenObjEnum> _ingredientOrder = new();
         // Dedicated servers do not execute ClientRpc bodies. Keep an
         // authoritative server-side set so duplicate ADD_TO_PLATE RPCs cannot
         // be accepted before the clients receive the visual update.
@@ -53,7 +55,7 @@ namespace Kitchen
                 return;
             // The caller-side check is not sufficient when two agents reach the
             // same plate in the same network update. Keep the plate authoritative.
-            if (_ingredients.Contains(objEnum))
+            if (_serverIngredients.Contains(objEnum))
                 return;
             if (_cannotPlace.Contains(objEnum) || PlateAssemblyMatcher.IsBurnedWaste(objEnum))
                 return;
@@ -72,18 +74,18 @@ namespace Kitchen
         [ClientRpc]
         private void AddIngredientClientRpc(KitchenObjEnum objEnum)
         {
-            _ingredients.Add(objEnum);
+            AddLocal(objEnum);
             onIngredientAdded?.Invoke(this, objEnum);
 
             if (PlateAssemblyMatcher.TryMatch(_ingredients, out var output, out var rule))
             {
                 Debug.Log($"[Plate] Assembly {rule.assemblyId}: → {output}");
-                _ingredients.Clear();
-                _ingredients.Add(output);
+                ReplaceLocalWith(output);
                 onIngredientAdded?.Invoke(this, output);
             }
 
             SyncInspectorContents();
+            onContentsChanged?.Invoke();
         }
 
         public HashSet<KitchenObjEnum> GetIngredients()
@@ -91,12 +93,21 @@ namespace Kitchen
             return _ingredients;
         }
 
+        /// <summary>Ingredients in add order (bottom → top for stacking).</summary>
+        public IReadOnlyList<KitchenObjEnum> GetIngredientsOrdered()
+        {
+            return _ingredientOrder;
+        }
+
         /// <summary>Single deliverable item if the plate holds exactly one ingredient.</summary>
         public bool TryGetDeliverableItem(out KitchenObjEnum item)
         {
             item = default;
-            if (_ingredients.Count != 1) return false;
-            foreach (var i in _ingredients)
+            var source = IsServer && _serverIngredients.Count > 0
+                ? _serverIngredients
+                : _ingredients;
+            if (source.Count != 1) return false;
+            foreach (var i in source)
             {
                 item = i;
                 return true;
@@ -110,6 +121,31 @@ namespace Kitchen
                    && DataTableManager.Sigleton.CanProcess(item, facility);
         }
 
+        /// <summary>
+        /// Removes the single assembled item from this plate so a timed
+        /// facility can process the item itself while the now-empty plate is
+        /// returned to staging. Server-only; clients receive the empty-plate
+        /// state through the RPC below.
+        /// </summary>
+        public bool TryExtractIngredientForProcessingServer(
+            FacilityEnum facility,
+            int orderId,
+            out KitchenObjEnum input)
+        {
+            input = default;
+            if (!IsServer || orderId == 0 || BoundOrderId != orderId)
+                return false;
+            if (!TryGetDeliverableItem(out input))
+                return false;
+            if (DataTableManager.Sigleton.GetProcess(input, facility) == null)
+                return false;
+
+            ClearLocal();
+            _serverIngredients.Clear();
+            ClearIngredientsClientRpc(input);
+            return true;
+        }
+
         /// <summary>Server-only: transform the single plate ingredient via a facility process.</summary>
         public bool ApplyProcessServer(FacilityEnum facility)
         {
@@ -117,6 +153,8 @@ namespace Kitchen
             if (!TryGetDeliverableItem(out var input)) return false;
             var process = DataTableManager.Sigleton.GetProcess(input, facility);
             if (process == null) return false;
+            _serverIngredients.Clear();
+            _serverIngredients.Add(process.outputEnum);
             ReplaceIngredientClientRpc(input, process.outputEnum);
             return true;
         }
@@ -126,15 +164,44 @@ namespace Kitchen
         {
             if (!_ingredients.Contains(from)) return;
             _ingredients.Remove(from);
-            _ingredients.Add(to);
+            _ingredientOrder.Remove(from);
+            AddLocal(to);
             onIngredientAdded?.Invoke(this, to);
             SyncInspectorContents();
+            onContentsChanged?.Invoke();
+        }
+
+        [ClientRpc]
+        private void ClearIngredientsClientRpc(KitchenObjEnum removed)
+        {
+            ClearLocal();
+            SyncInspectorContents();
+            onContentsChanged?.Invoke();
+        }
+
+        private void AddLocal(KitchenObjEnum objEnum)
+        {
+            if (!_ingredients.Add(objEnum))
+                return;
+            _ingredientOrder.Add(objEnum);
+        }
+
+        private void ClearLocal()
+        {
+            _ingredients.Clear();
+            _ingredientOrder.Clear();
+        }
+
+        private void ReplaceLocalWith(KitchenObjEnum single)
+        {
+            ClearLocal();
+            AddLocal(single);
         }
 
         private void SyncInspectorContents()
         {
             inspectorContents.Clear();
-            inspectorContents.AddRange(_ingredients.OrderBy(x => (int)x));
+            inspectorContents.AddRange(_ingredientOrder);
         }
 
 #if UNITY_EDITOR

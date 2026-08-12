@@ -826,8 +826,15 @@ namespace Kitchen.AI
                         && a.currentTask.status != "abandoned")
                     .Select(a => a.currentTask.id));
 
+            // Ready-to-serve dishes must go first. Keep the original panel
+            // order within each priority group so preparation remains
+            // deterministic while completed orders are not starved.
             var availableTasks = taskPool
-                .Where(t => !activeTaskIds.Contains(t.id))
+                .Select((task, index) => new { task, index })
+                .Where(x => !activeTaskIds.Contains(x.task.id))
+                .OrderByDescending(x => x.task.type == TaskType.SERVE)
+                .ThenBy(x => x.index)
+                .Select(x => x.task)
                 .ToList();
             var remainingAgents = new Queue<AgentState>(idleAgents);
             var assignedTaskIds = new HashSet<int>();
@@ -844,7 +851,11 @@ namespace Kitchen.AI
                         || itemState.orderId != task.orderId
                         || (itemState.reservedByTask >= 0
                             && itemState.reservedByTask != task.id))
+                    {
+                        if (task.type == TaskType.SERVE)
+                            continue;
                         break;
+                    }
                 }
 
                 var agent = remainingAgents.Peek();
@@ -861,6 +872,8 @@ namespace Kitchen.AI
                         && facility.reservedByAgent != agent.agentId
                         && facility.reservedByAgent != -1)
                     {
+                        if (task.type == TaskType.SERVE)
+                            continue;
                         break;
                     }
 

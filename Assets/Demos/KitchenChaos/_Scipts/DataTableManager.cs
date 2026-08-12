@@ -34,10 +34,6 @@ namespace Kitchen
         /// </summary>
         public KitchenProcessSo GetProcess(KitchenObjEnum input, FacilityEnum facility)
         {
-            if (input == KitchenObjEnum.MeatPattyCooked
-                && facility == FacilityEnum.StoveCounter)
-                return null;
-
             _processDict.TryGetValue((input, facility), out var process);
             return process;
         }
@@ -47,11 +43,29 @@ namespace Kitchen
         /// </summary>
         public bool CanProcess(KitchenObjEnum input, FacilityEnum facility)
         {
-            if (input == KitchenObjEnum.MeatPattyCooked
-                && facility == FacilityEnum.StoveCounter)
-                return false;
-
             return _processDict.ContainsKey((input, facility));
+        }
+
+        /// <summary>
+        /// True if this item is the finished output of some process on the facility
+        /// (e.g. cooked meat on stove). Placeable, but does not cook further.
+        /// </summary>
+        public bool IsFacilityOutput(KitchenObjEnum item, FacilityEnum facility)
+        {
+            foreach (var kv in _processDict)
+            {
+                if (kv.Key.Item2 == facility && kv.Value.outputEnum == item)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Placeable on facility: still needs processing, or already a finished product of it.
+        /// </summary>
+        public bool CanPlaceOnFacility(KitchenObjEnum item, FacilityEnum facility)
+        {
+            return CanProcess(item, facility) || IsFacilityOutput(item, facility);
         }
 
         #endregion
@@ -80,6 +94,10 @@ namespace Kitchen
             var processList = Resources.LoadAll<KitchenProcessSo>(_processDataSoDir);
             foreach (var process in processList)
             {
+                // No burn chain: cooked/processed items stay put on any facility.
+                if (PlateAssemblyMatcher.IsBurnedWaste(process.outputEnum))
+                    continue;
+
                 var key = (process.inputEnum, process.requiredFacility);
                 _processDict.TryAdd(key, process);
             }

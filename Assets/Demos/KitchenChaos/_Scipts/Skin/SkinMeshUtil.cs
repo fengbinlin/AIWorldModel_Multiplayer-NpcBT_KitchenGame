@@ -69,6 +69,8 @@ namespace Kitchen.Skin
             inst.name = name;
             inst.transform.localPosition = localPos;
             inst.transform.localRotation = localRot;
+            // Root scale follows the old visual slot (usually 1). Authored size must live on
+            // CHILD transforms inside the skin prefab — root scale is overwritten here.
             inst.transform.localScale = localScale;
             inst.transform.SetSiblingIndex(Mathf.Clamp(sibling, 0, logicRoot.childCount - 1));
             return inst;

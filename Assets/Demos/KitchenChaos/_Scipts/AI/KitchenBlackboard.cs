@@ -277,6 +277,16 @@ namespace Kitchen.AI
                     i?.kitchenObj != null &&
                     i.carriedByAgent < 0 &&
                     Vector3.Distance(i.Position, candidate) < 0.45f);
+                // Blackboard item sync runs on a timer. Also inspect the
+                // authoritative scene immediately so two agents cannot select
+                // the same ground slot during the same scheduler tick.
+                if (!occupied)
+                {
+                    occupied = UnityEngine.Object.FindObjectsOfType<KitchenObj>()
+                        .Any(obj => obj != null
+                            && obj.IsFree
+                            && Vector3.Distance(obj.transform.position, candidate) < 0.45f);
+                }
                 if (occupied) continue;
 
                 float distance = Vector3.Distance(from, candidate);
@@ -334,6 +344,13 @@ namespace Kitchen.AI
                 s.taskType == TaskType.PROCESS &&
                 (s.requiredFacilityType == FacilityType.Oven ||
                  s.requiredFacilityType == FacilityType.Blender));
+            var postProcessAdd = postProcess == null
+                ? null
+                : steps.LastOrDefault(s =>
+                    s.taskType == TaskType.ADD_TO_PLATE &&
+                    s.inputType.HasValue &&
+                    postProcess.outputType.HasValue &&
+                    s.inputType.Value == postProcess.outputType.Value);
 
             for (int i = 0; i < steps.Count; i++)
             {
@@ -365,7 +382,7 @@ namespace Kitchen.AI
 
             if (postProcess != null)
             {
-                foreach (var add in addSteps)
+                foreach (var add in addSteps.Where(a => a != postProcessAdd))
                     if (!postProcess.dependsOnStepIds.Contains(add.id))
                         postProcess.dependsOnStepIds.Add(add.id);
             }
@@ -375,8 +392,9 @@ namespace Kitchen.AI
             {
                 if (postProcess != null)
                 {
-                    if (!serve.dependsOnStepIds.Contains(postProcess.id))
-                        serve.dependsOnStepIds.Add(postProcess.id);
+                    var finalDependency = postProcessAdd ?? postProcess;
+                    if (!serve.dependsOnStepIds.Contains(finalDependency.id))
+                        serve.dependsOnStepIds.Add(finalDependency.id);
                 }
                 else
                 {
@@ -457,6 +475,21 @@ namespace Kitchen.AI
                     inputType = postProcess.inputEnum,
                     outputType = postProcess.outputEnum,
                     requiredFacilityType = FacilityToType(postFacility.Value),
+                });
+
+                // Oven/blender processing is performed on a standalone item.
+                // The empty order plate is returned to staging while the
+                // facility works, then the processed output is put back on it.
+                steps.Add(new RecipeStep
+                {
+                    id = $"add_{postProcess.outputEnum}_{recipe.recipeName}",
+                    label = $"Add {postProcess.outputEnum} to plate",
+                    #if false
+                    label = $"鍔爗{postProcess.outputEnum}鍒扮洏瀛?,
+                    #endif
+                    taskType = TaskType.ADD_TO_PLATE,
+                    inputType = postProcess.outputEnum,
+                    requiredFacilityType = FacilityType.AssemblyTable,
                 });
             }
 

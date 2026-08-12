@@ -24,13 +24,6 @@ namespace Kitchen.PGC
 
             int playW = Mathf.Max(8, p.playW);
             int playH = Mathf.Max(6, p.playH);
-            // 设施多时自动放大地盘
-            int minCells = Mathf.Max(playW * playH, facilities.Count * 6 + 40);
-            while (playW * playH < minCells)
-            {
-                playW += 2;
-                playH += 2;
-            }
 
             int totalW = playW + 2;
             int totalH = playH + 2;

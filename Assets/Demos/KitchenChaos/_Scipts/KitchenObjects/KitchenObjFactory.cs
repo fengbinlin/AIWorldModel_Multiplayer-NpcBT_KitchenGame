@@ -40,6 +40,20 @@ namespace Kitchen
             var netObj = obj.GetComponent<NetworkObject>();
             netObj.Spawn(true);
             obj.BindToOrder(orderId);
+
+            // Keep the authoritative server-side holder in sync as well as
+            // the clients. This is required when a timed facility starts
+            // processing a newly spawned standalone pizza.
+            if (holderRef.TryGet(out NetworkObject holderObj))
+            {
+                var holder = holderObj.GetComponent<ICanHoldKitchenObj>();
+                if (holder != null)
+                {
+                    obj.SetHolder(holder);
+                    holder.SetKitchenObj(obj);
+                }
+            }
+
             _SetHolderClientRpc(holderRef, netObj);
         }
 
@@ -51,7 +65,7 @@ namespace Kitchen
             objReference.TryGet(out NetworkObject obj);
             var kitchenObj = obj.GetComponent<KitchenObj>();
 
-            if (holder.HasKitchenObj())
+            if (holder.HasKitchenObj() && holder.GetKitchenObj() != kitchenObj)
             {
                 Debug.LogWarning(
                     $"{holder}] already has:{holder.GetKitchenObj()}" +
@@ -108,6 +122,10 @@ namespace Kitchen
                            holderNetObj.OwnerClientId == senderClientId;
             if (!isValid) return;
 
+            // The server is authoritative for IsFree, holder references and
+            // physics. A ClientRpc alone leaves dedicated-server state stale,
+            // so AI cannot find the dropped object again.
+            kitchenObj.SetFree(dropPosition, dropDirection, dropForce);
             _DropObjClientRpc(objRef, dropPosition, dropDirection, dropForce);
         }
 
@@ -117,7 +135,8 @@ namespace Kitchen
             objRef.TryGet(out NetworkObject obj);
             if (obj == null) return;
             var kitchenObj = obj.GetComponent<KitchenObj>();
-            kitchenObj.SetFree(dropPosition, dropDirection, dropForce);
+            if (kitchenObj != null && !kitchenObj.IsServer)
+                kitchenObj.SetFree(dropPosition, dropDirection, dropForce);
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -138,6 +157,11 @@ namespace Kitchen
                            holderObj.OwnerClientId == senderClientId;
             if (!isValid) return;
 
+            // Keep the authoritative server-side holder in sync immediately.
+            var holder = holderObj.GetComponent<ICanHoldKitchenObj>();
+            if (holder == null) return;
+            kitchenObj.SetHeld(holder);
+            holder.SetKitchenObj(kitchenObj);
             _PickupObjClientRpc(objRef, holderRef);
         }
 
@@ -150,8 +174,11 @@ namespace Kitchen
 
             var kitchenObj = obj.GetComponent<KitchenObj>();
             var holder = holderObj.GetComponent<ICanHoldKitchenObj>();
-            kitchenObj.SetHeld(holder);
-            holder.SetKitchenObj(kitchenObj);
+            if (kitchenObj != null && holder != null && !kitchenObj.IsServer)
+            {
+                kitchenObj.SetHeld(holder);
+                holder.SetKitchenObj(kitchenObj);
+            }
         }
 
         [ServerRpc(RequireOwnership = false)]

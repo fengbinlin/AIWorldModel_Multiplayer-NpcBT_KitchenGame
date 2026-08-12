@@ -5,40 +5,50 @@ namespace Kitchen.UI
 {
     public class StoveFlashingBarUI : MonoBehaviour
     {
-        private StoveCounter _stoveCounter;
-        private ProgressBar _progressBar;
+        private ICookingFacility _cooking;
         private Animator _animator;
         private readonly int _animParamHash = Animator.StringToHash("flashing");
 
         private void Awake()
         {
-            _stoveCounter = GetComponentInParent<StoveCounter>();
+            // StoveCounter / TimedFacilityCounter both implement ICookingFacility
+            _cooking = GetComponentInParent<ICookingFacility>();
             _animator = GetComponent<Animator>();
-            _progressBar = GetComponent<ProgressBar>();
         }
 
-        private void Start()
+        private void OnEnable()
         {
-            _progressBar.onSetProgress += OnCookingStageChange;
+            if (_cooking == null)
+                _cooking = GetComponentInParent<ICookingFacility>();
+            if (_cooking == null) return;
+            _cooking.OnCookingStageChange += OnCookingStageChange;
+            _cooking.OnStopCooking += OnStopCooking;
         }
 
-        private void OnDestroy()
+        private void OnDisable()
         {
-            _progressBar.onSetProgress += OnCookingStageChange;
+            if (_cooking == null) return;
+            _cooking.OnCookingStageChange -= OnCookingStageChange;
+            _cooking.OnStopCooking -= OnStopCooking;
         }
 
-        private void OnCookingStageChange()
+        private void OnCookingStageChange(KitchenObjEnum? obj)
         {
-            var obj = _stoveCounter.GetKitchenObj().objEnum;
-
-            if (KitchenObjOperator.WillBeBurned(obj))
-            {
-                _animator.SetBool(_animParamHash, true);
-            }
-            else
+            if (_animator == null) return;
+            if (obj is null)
             {
                 _animator.SetBool(_animParamHash, false);
+                return;
             }
+
+            _animator.SetBool(_animParamHash, KitchenObjOperator.WillBeBurned(obj.Value));
+        }
+
+        private void OnStopCooking()
+        {
+            if (_animator == null) return;
+            // ProgressBar may deactivate this GO; ensure flashing is off when cooking stops.
+            _animator.SetBool(_animParamHash, false);
         }
     }
 }

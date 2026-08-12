@@ -106,6 +106,8 @@ namespace Kitchen.AI
         private ExecPhase _execPhase = ExecPhase.None;
         private KitchenObj _carryTargetItem;
         private Vector3 _carryDestPos;
+        private bool _returningPlateAfterTimedProcess;
+        private TimedFacilityCounter _timedProcessFacility;
 
         // Item holding (ICanHoldKitchenObj)
         private KitchenObj _heldItem;
@@ -1144,6 +1146,11 @@ namespace Kitchen.AI
         /// </summary>
         private BaseCounter FindDropTarget(KitchenObjEnum ingredient)
         {
+            return FindDropTarget(ingredient, 0);
+        }
+
+        private BaseCounter FindDropTarget(KitchenObjEnum ingredient, int orderId)
+        {
             var bb = _aiManager?.Blackboard;
             HashSet<BaseCounter> reservedCounters = null;
             if (bb != null)
@@ -1152,6 +1159,26 @@ namespace Kitchen.AI
                     bb.facilities
                         .Where(f => f.state == "reserved" && f.reservedByAgent != agentId)
                         .Select(f => f.counter));
+            }
+
+            // Safe FETCH→PROCESS fusion: if this order's next step processes
+            // the fetched item and that facility is empty, deliver directly
+            // to the facility instead of parking the item on a clear counter.
+            if (orderId != 0 && bb != null)
+            {
+                var directFacility = FindImmediateProcessFacility(
+                    bb,
+                    ingredient,
+                    orderId,
+                    reservedCounters);
+                if (directFacility != null)
+                {
+                    AIDebugLogger.Log(
+                        chefName,
+                        $"FindDropTarget({ingredient}, order={orderId}) → " +
+                        $"direct process facility {directFacility.name}");
+                    return directFacility;
+                }
             }
 
             var clear = FindObjectsOfType<ClearCounter>()
@@ -1165,6 +1192,48 @@ namespace Kitchen.AI
             }
             AIDebugLogger.LogWarning(chefName, $"FindDropTarget({ingredient}) → fallback nearest free");
             return FindNearestFreeCounter(transform.position, reservedCounters);
+        }
+
+        private static BaseCounter FindImmediateProcessFacility(
+            KitchenBlackboard bb,
+            KitchenObjEnum ingredient,
+            int orderId,
+            HashSet<BaseCounter> reservedCounters)
+        {
+            int orderIndex = bb.activeOrderIds.IndexOf(orderId);
+            if (orderIndex < 0 || orderIndex >= bb.activeOrders.Count)
+                return null;
+
+            var order = bb.activeOrders[orderIndex];
+            if (order == null
+                || !bb.recipeStepChains.TryGetValue(
+                    order.recipeName,
+                    out var steps))
+                return null;
+
+            var processStep = steps.FirstOrDefault(step =>
+                step.taskType == TaskType.PROCESS
+                && step.inputType == ingredient);
+            if (processStep == null)
+                return null;
+
+            var facility = bb.facilities.FirstOrDefault(f =>
+                f.type == processStep.requiredFacilityType
+                && f.counter != null
+                && !f.counter.HasKitchenObj()
+                && (f.state != "reserved"
+                    || f.reservedByAgent == -1)
+                && (reservedCounters == null
+                    || !reservedCounters.Contains(f.counter)));
+            if (facility == null)
+                return null;
+
+            bool alreadyTargeted = bb.agents.Any(agent =>
+                agent.currentTask != null
+                && agent.currentTask.status != "completed"
+                && agent.currentTask.status != "abandoned"
+                && agent.currentTask.targetFacility == facility.counter);
+            return alreadyTargeted ? null : facility.counter;
         }
 
         private BaseCounter FindNearestFreeCounter(
@@ -1194,9 +1263,34 @@ namespace Kitchen.AI
         private Vector3 GetGroundDropPosition(Vector3 fallback)
         {
             var bb = _aiManager?.Blackboard;
-            if (bb != null && bb.TryGetNearestGroundDropPosition(transform.position, out var position))
+            // Do not teleport an item to an arbitrary far-away path cell.
+            // The chef is already standing at the failed destination; use a
+            // designated slot only when it is close enough to be physically
+            // reachable without another movement phase.
+            if (bb != null
+                && bb.TryGetNearestGroundDropPosition(transform.position, out var position)
+                && Vector3.Distance(transform.position, position) <= 2.25f)
                 return position + Vector3.up * 0.35f;
-            return fallback;
+
+            // Most call sites face the occupied counter. Dropping in
+            // `transform.forward` puts the object inside that counter, so use
+            // the space behind the chef and resolve its actual floor height.
+            var near = transform.position - transform.forward * 0.65f;
+            near.y = 0f;
+            if (Physics.Raycast(
+                    near + Vector3.up * 2f,
+                    Vector3.down,
+                    out var hit,
+                    5f,
+                    Physics.DefaultRaycastLayers,
+                    QueryTriggerInteraction.Ignore)
+                && hit.normal.y > 0.5f)
+            {
+                return hit.point + Vector3.up * 0.35f;
+            }
+
+            near.y = 0.35f;
+            return near;
         }
 
         /// <summary>真正可摆放的空台（排除墙占位）。</summary>
@@ -1595,7 +1689,9 @@ namespace Kitchen.AI
                             _aiManager?.Blackboard?.TagItemForOrder(_heldItem, _currentTask.orderId);
 
                         // Successfully got the item — now deliver it to a processing facility
-                        var dropTarget = FindDropTarget(_currentTask.outputType);
+                        var dropTarget = FindDropTarget(
+                            _currentTask.outputType,
+                            _currentTask.orderId);
                         if (dropTarget != null && dropTarget != _targetCounter)
                         {
                             Debug.Log($"[{chefName}] FETCH got {_heldItem.objEnum}, delivering to {dropTarget.name}");
@@ -2075,6 +2171,39 @@ namespace Kitchen.AI
         {
             if (_heldItem != null && _targetCounter != null)
             {
+                // A plate is only a carrier for oven/blender recipes. Extract
+                // its assembled item onto the timed facility, then return the
+                // now-empty plate to a clear counter or the ground while the
+                // facility processes the standalone item.
+                if (_heldItem is Plate processPlate
+                    && _targetCounter is TimedFacilityCounter timedFacility
+                    && _currentTask?.orderId != 0
+                    && !timedFacility.HasKitchenObj()
+                    && timedFacility.TryAcceptPlateContentsForOrder(
+                        processPlate,
+                        _currentTask.orderId))
+                {
+                    _timedProcessFacility = timedFacility;
+                    _returningPlateAfterTimedProcess = true;
+
+                    var returnCounter = FindNearestFreeCounter(
+                        transform.position,
+                        exclude: timedFacility);
+                    if (returnCounter != null)
+                    {
+                        _targetCounter = returnCounter;
+                        _execPhase = ExecPhase.GotoDest;
+                        if (!MoveTo(returnCounter.transform.position))
+                        {
+                            DropHeldItemToGroundAndWaitForProcess(timedFacility);
+                        }
+                        return;
+                    }
+
+                    DropHeldItemToGroundAndWaitForProcess(timedFacility);
+                    return;
+                }
+
                 if (CanPlaceHeldItemOn(_targetCounter))
                 {
                     if (_targetCounter.GetKitchenObj() is Plate plate
@@ -2090,6 +2219,65 @@ namespace Kitchen.AI
                     else
                     {
                         PerformInteract(_targetCounter);
+
+                        // Timed facilities accept a whole plate (for example an
+                        // unbaked pizza). The network put operation normally
+                        // clears the chef's hands; on a remote client there can
+                        // be one frame where the local holder still references
+                        // the object. If the facility now owns that exact item,
+                        // clear the stale hand reference so the chef does not
+                        // carry a second copy into the next interaction.
+                        if (_targetCounter is TimedFacilityCounter
+                            && _heldItem != null
+                            && _targetCounter.GetKitchenObj() == _heldItem)
+                        {
+                            ClearKitchenObj();
+                        }
+                        else if (_targetCounter is TimedFacilityCounter
+                            && _heldItem != null)
+                        {
+                            // The facility did not take the local held object.
+                            // Never leave the chef carrying a plate while the
+                            // timed facility is running: return it to a clear
+                            // counter, or use the configured ground-drop point.
+                            var heldAfterInteract = _heldItem;
+                            var returnCounter = FindNearestFreeCounter(
+                                transform.position,
+                                exclude: _targetCounter);
+                            if (returnCounter != null)
+                            {
+                                AIDebugLogger.Log(
+                                    chefName,
+                                    $"Timed facility did not take {heldAfterInteract.objEnum}; " +
+                                    $"returning it to {returnCounter.name}");
+                                _targetCounter = returnCounter;
+                                _execPhase = ExecPhase.GotoDest;
+                                if (!MoveTo(returnCounter.transform.position))
+                                {
+                                    KitchenObjFactory.Instance.DropObjServerRpc(
+                                        heldAfterInteract.NetworkObject,
+                                        GetGroundDropPosition(
+                                            transform.position + transform.forward * 0.5f),
+                                        Vector3.down,
+                                        0f,
+                                        default);
+                                    ClearKitchenObj();
+                                    AbandonTask();
+                                }
+                                return;
+                            }
+
+                            KitchenObjFactory.Instance.DropObjServerRpc(
+                                heldAfterInteract.NetworkObject,
+                                GetGroundDropPosition(
+                                    transform.position + transform.forward * 0.5f),
+                                Vector3.down,
+                                0f,
+                                default);
+                            ClearKitchenObj();
+                            AbandonTask();
+                            return;
+                        }
                     }
                     AIDebugLogger.Log(chefName, $"DropItemAtFacility: → {_targetCounter.name}, held={_heldItem?.objEnum.ToString() ?? "null"}");
                     Debug.Log($"[{chefName}] Dropped item at {_targetCounter.name}");
@@ -2130,6 +2318,29 @@ namespace Kitchen.AI
             _stateTimer = 0;
         }
 
+        private void DropHeldItemToGroundAndWaitForProcess(
+            TimedFacilityCounter facility)
+        {
+            if (_heldItem != null)
+            {
+                KitchenObjFactory.Instance.DropObjServerRpc(
+                    _heldItem.NetworkObject,
+                    GetGroundDropPosition(
+                        transform.position + transform.forward * 0.5f),
+                    Vector3.down,
+                    0f,
+                    default);
+                ClearKitchenObj();
+            }
+
+            _targetCounter = facility;
+            _execPhase = ExecPhase.None;
+            _substate = "waiting";
+            _waitTimer = 0f;
+            facility.OnCookingStageChange -= OnStoveStageChanged;
+            facility.OnCookingStageChange += OnStoveStageChanged;
+        }
+
         private void DropItemAtDestination()
         {
             if (_heldItem == null || _targetCounter == null)
@@ -2161,6 +2372,22 @@ namespace Kitchen.AI
                 if (_heldItem == null || (heldBefore is Plate && _heldItem is Plate))
                 {
                     Debug.Log($"[{chefName}] Dropped/stacked at destination {_targetCounter.name}");
+
+                    if (_returningPlateAfterTimedProcess
+                        && _timedProcessFacility != null)
+                    {
+                        var facility = _timedProcessFacility;
+                        _returningPlateAfterTimedProcess = false;
+                        _timedProcessFacility = null;
+                        _targetCounter = facility;
+                        _execPhase = ExecPhase.None;
+                        _substate = "waiting";
+                        _waitTimer = 0f;
+                        facility.OnCookingStageChange -= OnStoveStageChanged;
+                        facility.OnCookingStageChange += OnStoveStageChanged;
+                        return;
+                    }
+
                     _execPhase = ExecPhase.None;
                     CompleteTask();
                     return;
@@ -2187,9 +2414,42 @@ namespace Kitchen.AI
                 return;
             }
 
-            AIDebugLogger.LogWarning(chefName, "DropItemAtDestination: no free counter, waiting");
-            _substate = "waiting";
-            _waitTimer = 0;
+            // A direct FETCH→PROCESS route can race with another agent and
+            // find its chosen facility occupied on arrival. Do not wait
+            // forever: stage FETCH items on the ground and let the next
+            // PROCESS task pick them up; other task types are retried.
+            if (_currentTask?.type == TaskType.FETCH && _heldItem != null)
+            {
+                var dropped = _heldItem;
+                KitchenObjFactory.Instance.DropObjServerRpc(
+                    dropped.NetworkObject,
+                    GetGroundDropPosition(
+                        transform.position + transform.forward * 0.5f),
+                    Vector3.down,
+                    0f,
+                    default);
+                ClearKitchenObj();
+                AIDebugLogger.Log(
+                    chefName,
+                    $"DropItemAtDestination: {_targetCounter.name} occupied; " +
+                    $"staged {dropped.objEnum} on ground for PROCESS");
+                CompleteTask();
+                return;
+            }
+
+            if (_heldItem != null)
+            {
+                var dropped = _heldItem;
+                KitchenObjFactory.Instance.DropObjServerRpc(
+                    dropped.NetworkObject,
+                    GetGroundDropPosition(
+                        transform.position + transform.forward * 0.5f),
+                    Vector3.down,
+                    0f,
+                    default);
+                ClearKitchenObj();
+            }
+            AbandonTask();
         }
 
         #endregion

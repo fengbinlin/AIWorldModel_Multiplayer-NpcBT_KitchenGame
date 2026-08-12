@@ -15,6 +15,5 @@ MonoBehaviour:
   assemblyId: T4_ShrimpSushi
   inputs:
   - 17
-  - 19
   - 18
   output: 27

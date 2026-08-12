@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Kitchen.UI
@@ -17,45 +16,55 @@ namespace Kitchen.UI
 
         private void OnEnable()
         {
+            if (_plate == null) return;
             _plate.onIngredientAdded += OnIngredientAdded;
+            _plate.onContentsChanged += RefreshIcons;
+            RefreshIcons();
         }
 
         private void OnDisable()
         {
+            if (_plate == null) return;
             _plate.onIngredientAdded -= OnIngredientAdded;
+            _plate.onContentsChanged -= RefreshIcons;
         }
 
         private void OnIngredientAdded(object sender, KitchenObjEnum e)
         {
-            var obj = Instantiate(iconPrefab, transform);
-            var icon = obj.GetComponent<KitchenObjIcon>();
-            _icons.Add(icon);
-            //修改Icon图标
-            var dataSo = DataTableManager.Sigleton.GetKitchenObjSo(e);
-            icon.SetData(dataSo);
+            // Full refresh handles assembly collapse / extract-to-oven empty plate.
+            RefreshIcons();
         }
 
-        private void OnIngredientRemoved(object sender, KitchenObjEnum e)
+        private void RefreshIcons()
         {
-            //找到第一个对应的Icon 移除掉
-            KitchenObjIcon target = null;
-            foreach (var icon in _icons)
-            {
-                if (icon.objEnum == e)
-                {
-                    target = icon;
-                    break;
-                }
-            }
+            if (_plate == null || iconPrefab == null) return;
 
-            if (target == null)
+            for (int i = _icons.Count - 1; i >= 0; i--)
             {
+                if (_icons[i] != null)
+                    Destroy(_icons[i].gameObject);
+            }
+            _icons.Clear();
+
+            var ingredients = _plate.GetIngredientsOrdered();
+            if (ingredients == null || ingredients.Count == 0)
                 return;
-            }
 
-            _icons.Remove(target);
-            //ToDO 可以优化 不真正的destroy
-            Destroy(target.gameObject);
+            foreach (var ingredient in ingredients)
+            {
+                var obj = Instantiate(iconPrefab, transform);
+                var icon = obj.GetComponent<KitchenObjIcon>();
+                if (icon == null)
+                {
+                    Destroy(obj);
+                    continue;
+                }
+
+                _icons.Add(icon);
+                var dataSo = DataTableManager.Sigleton.GetKitchenObjSo(ingredient);
+                if (dataSo != null)
+                    icon.SetData(dataSo);
+            }
         }
     }
 }

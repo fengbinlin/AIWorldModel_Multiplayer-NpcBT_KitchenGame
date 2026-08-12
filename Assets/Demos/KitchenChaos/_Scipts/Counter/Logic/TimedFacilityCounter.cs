@@ -29,9 +29,40 @@ namespace Kitchen
         private bool CanAccept(KitchenObj obj)
         {
             if (obj == null) return false;
+            if (DataTableManager.Sigleton.CanPlaceOnFacility(obj.objEnum, ProcessFacility))
+                return true;
+            return obj is Plate plate && plate.CanProcessOn(ProcessFacility);
+        }
+
+        private bool ShouldStartProcess(KitchenObj obj)
+        {
+            if (obj == null) return false;
             if (DataTableManager.Sigleton.CanProcess(obj.objEnum, ProcessFacility))
                 return true;
             return obj is Plate plate && plate.CanProcessOn(ProcessFacility);
+        }
+
+        /// <summary>
+        /// Extracts the single assembled item from an order plate and spawns
+        /// that item directly on this facility. The plate remains empty and
+        /// can be returned to an assembly counter while processing runs.
+        /// </summary>
+        public bool TryAcceptPlateContentsForOrder(Plate plate, int orderId)
+        {
+            if (!IsServer || plate == null || orderId == 0 || HasKitchenObj())
+                return false;
+
+            if (!plate.TryExtractIngredientForProcessingServer(
+                    ProcessFacility,
+                    orderId,
+                    out var input))
+                return false;
+
+            KitchenObjOperator.SpawnKitchenObjForOrderRpc(
+                input,
+                this,
+                orderId);
+            return true;
         }
         public override void Interact(ICanHoldKitchenObj holder)
         {
@@ -53,19 +84,33 @@ namespace Kitchen
         public override void SetKitchenObj(KitchenObj newKitchenObj)
         {
             base.SetKitchenObj(newKitchenObj);
-            if (newKitchenObj != null && !isCooking && CanAccept(newKitchenObj))
+            if (newKitchenObj != null && !isCooking && ShouldStartProcess(newKitchenObj))
                 StartProcessServerRpc();
         }
         public override void ClearKitchenObj()
         {
-            if (isCooking)
+            // `isCooking` is a client-facing visual flag. On a dedicated
+            // server it is not set by StartProcessClientRpc, so cancellation
+            // must be driven by the authoritative process token instead.
+            if (IsServer)
+                StopProcessOnServer();
+            else if (isCooking)
                 StopProcessServerRpc();
             base.ClearKitchenObj();
         }
         [ServerRpc(RequireOwnership = false)]
         private void StopProcessServerRpc()
         {
+            StopProcessOnServer();
+        }
+
+        private void StopProcessOnServer()
+        {
+            // Only cancel — RunProcess owns dispose via its local CTS.
+            // Process() destroys the input and ClearKitchenObj runs mid-loop;
+            // nulling/disposing the field here used to NRE on the next while check.
             _cts?.Cancel();
+            _cts = null;
             StopProcessClientRpc();
         }
         [ClientRpc]
@@ -84,67 +129,87 @@ namespace Kitchen
         }
         private void CancelProcess()
         {
-            if (_cts != null && !_cts.IsCancellationRequested)
-            {
-                _cts.Cancel();
-                _cts.Dispose();
-            }
+            _cts?.Cancel();
             _cts = null;
         }
         private async UniTask RunProcess()
         {
             if (!IsServer) return;
-            _cts = new CancellationTokenSource();
+            var cts = new CancellationTokenSource();
+            _cts = cts;
             StartProcessClientRpc();
-            if (kitchenObj == null)
+            try
             {
-                StopProcessClientRpc();
-                return;
-            }
-            KitchenObjEnum stage = kitchenObj is Plate p && p.TryGetDeliverableItem(out var held)
-                ? held
-                : kitchenObj.objEnum;
-            StageChangeClientRpc(stage);
-            while (!_cts.IsCancellationRequested)
-            {
-                if (kitchenObj == null) break;
-                KitchenProcessSo process = null;
-                Plate plate = kitchenObj as Plate;
-                if (plate != null && plate.TryGetDeliverableItem(out var plateItem))
-                    process = DataTableManager.Sigleton.GetProcess(plateItem, ProcessFacility);
-                else
-                    process = DataTableManager.Sigleton.GetProcess(kitchenObj.objEnum, ProcessFacility);
-                if (process == null) break;
-                float duration = process.processValue;
-                var startTime = Time.time;
-                while (Time.time - startTime < duration && !_cts.IsCancellationRequested)
+                if (kitchenObj == null)
+                    return;
+
+                KitchenObjEnum stage = kitchenObj is Plate p && p.TryGetDeliverableItem(out var held)
+                    ? held
+                    : kitchenObj.objEnum;
+                StageChangeClientRpc(stage);
+
+                while (!cts.IsCancellationRequested)
                 {
-                    await UniTask.WaitForFixedUpdate(cancellationToken: _cts.Token);
-                    SetProgressClientRpc((Time.time - startTime) / duration);
-                }
-                if (_cts.IsCancellationRequested) break;
-                if (kitchenObj == null || kitchenObj.NetworkObject == null || !kitchenObj.NetworkObject.IsSpawned)
-                    break;
-                try
-                {
-                    if (plate != null)
+                    if (kitchenObj == null) break;
+                    KitchenProcessSo process = null;
+                    Plate plate = kitchenObj as Plate;
+                    if (plate != null && plate.TryGetDeliverableItem(out var plateItem))
+                        process = DataTableManager.Sigleton.GetProcess(plateItem, ProcessFacility);
+                    else
+                        process = DataTableManager.Sigleton.GetProcess(kitchenObj.objEnum, ProcessFacility);
+                    if (process == null) break;
+
+                    float duration = process.processValue;
+                    var startTime = Time.time;
+                    while (Time.time - startTime < duration && !cts.IsCancellationRequested)
                     {
-                        plate.ApplyProcessServer(ProcessFacility);
-                        if (plate.TryGetDeliverableItem(out var after))
-                            StageChangeClientRpc(after);
+                        try
+                        {
+                            await UniTask.WaitForFixedUpdate(cancellationToken: cts.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            return;
+                        }
+
+                        SetProgressClientRpc((Time.time - startTime) / duration);
+                    }
+
+                    if (cts.IsCancellationRequested) break;
+                    if (kitchenObj == null || kitchenObj.NetworkObject == null || !kitchenObj.NetworkObject.IsSpawned)
+                        break;
+
+                    try
+                    {
+                        if (plate != null)
+                        {
+                            plate.ApplyProcessServer(ProcessFacility);
+                            if (plate.TryGetDeliverableItem(out var after))
+                                StageChangeClientRpc(after);
+                            break;
+                        }
+
+                        // May ClearKitchenObj → cancel cts when the input is destroyed.
+                        KitchenObjOperator.Process(kitchenObj, this, ProcessFacility);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError($"[{ProcessFacility}] process failed: {e.Message}");
                         break;
                     }
-                    KitchenObjOperator.Process(kitchenObj, this, ProcessFacility);
+
+                    if (cts.IsCancellationRequested) break;
+                    if (kitchenObj != null)
+                        StageChangeClientRpc(kitchenObj.objEnum);
                 }
-                catch (Exception e)
-                {
-                    Debug.LogError($"[{ProcessFacility}] process failed: {e.Message}");
-                    break;
-                }
-                if (kitchenObj != null)
-                    StageChangeClientRpc(kitchenObj.objEnum);
             }
-            StopProcessClientRpc();
+            finally
+            {
+                cts.Dispose();
+                if (ReferenceEquals(_cts, cts))
+                    _cts = null;
+                StopProcessClientRpc();
+            }
         }
         [ClientRpc]
         private void SetProgressClientRpc(float progress)

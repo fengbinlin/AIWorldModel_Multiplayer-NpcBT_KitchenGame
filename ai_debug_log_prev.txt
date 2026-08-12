@@ -1,0 +1,698 @@
+══════════════════════════════════════════════════
+  AI Chef Debug Log
+  Session: 2026-08-12 21:27:56
+  Platform: WindowsEditor
+  Unity: 2022.3.49f1c1
+══════════════════════════════════════════════════
+
+[00:02.275] [Init] KitchenAIManager initialized: 4 chefs, 25 facilities
+[00:05.649] ═══ SCHEDULER CYCLE #1 ═══ agents=4 tasks=0 orders=0
+[00:05.649] [Scheduler] 4 idle agents, 4 candidate tasks
+[00:05.649] [ASSIGN] Agent#1(AI_Chef) ← 番茄鸡腿披萨: 取ChickenRaw type=FETCH order=1212885990 facility=Storage_3_原料柜:ChickenRaw
+[00:05.649] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取ChickenRaw facility=Storage_3_原料柜:ChickenRaw item=none
+[00:05.649] [ASSIGN] Agent#2(AI_Chef) ← 番茄鸡腿披萨: 取Tomato type=FETCH order=1212885990 facility=Storage_5_原料柜:Tomato
+[00:05.649] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取Tomato facility=Storage_5_原料柜:Tomato item=none
+[00:05.649] [ASSIGN] Agent#3(AI_Chef) ← 番茄鸡腿披萨: 取CheeseBlock type=FETCH order=1212885990 facility=Storage_7_原料柜:CheeseBlock
+[00:05.649] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取CheeseBlock facility=Storage_7_原料柜:CheeseBlock item=none
+[00:05.649] [ASSIGN] Agent#4(AI_Chef) ← 番茄鸡腿披萨: 取PizzaDough type=FETCH order=1212885990 facility=Storage_9_原料柜:PizzaDough
+[00:05.649] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取PizzaDough facility=Storage_9_原料柜:PizzaDough item=none
+[00:05.853] ═══ SCHEDULER CYCLE #2 ═══ agents=4 tasks=0 orders=1
+[00:05.853] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:06.058] ═══ SCHEDULER CYCLE #3 ═══ agents=4 tasks=0 orders=1
+[00:06.058] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:06.264] ═══ SCHEDULER CYCLE #4 ═══ agents=4 tasks=0 orders=1
+[00:06.264] [WARN] [Scheduler] 0 tasks for 1 orders! skippedCompleted=0 skippedActive=4 skippedNoStorage=0 skippedNoFacility=0
+[00:06.476] ═══ SCHEDULER CYCLE #5 ═══ agents=4 tasks=0 orders=1
+[00:06.618] [STATE] AI_Chef: moving → arrived | at (-5.6,5.3) dist=0.32 time=0.0s
+[00:06.676] ═══ SCHEDULER CYCLE #6 ═══ agents=4 tasks=4 orders=2
+[00:06.880] ═══ SCHEDULER CYCLE #7 ═══ agents=4 tasks=4 orders=2
+[00:06.981] [AI_Chef] FindDropTarget(CheeseBlock, order=1212885990) → direct process facility CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:06.981] [AI_Chef] FETCH got CheeseBlock, delivering to CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:07.082] ═══ SCHEDULER CYCLE #8 ═══ agents=4 tasks=4 orders=2
+[00:07.285] ═══ SCHEDULER CYCLE #9 ═══ agents=4 tasks=4 orders=2
+[00:07.490] ═══ SCHEDULER CYCLE #10 ═══ agents=4 tasks=4 orders=2
+[00:07.699] ═══ SCHEDULER CYCLE #11 ═══ agents=4 tasks=4 orders=2
+[00:07.904] ═══ SCHEDULER CYCLE #12 ═══ agents=4 tasks=4 orders=2
+[00:08.108] ═══ SCHEDULER CYCLE #13 ═══ agents=4 tasks=4 orders=2
+[00:08.122] [STATE] AI_Chef: moving → arrived | at (0.4,-6.8) dist=0.21 time=0.0s
+[00:08.166] [STATE] AI_Chef: moving → arrived | at (-2.6,6.8) dist=0.29 time=0.0s
+[00:08.313] ═══ SCHEDULER CYCLE #14 ═══ agents=4 tasks=4 orders=2
+[00:08.459] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 取CheeseBlock: completed
+[00:08.474] ═══ SCHEDULER CYCLE #15 ═══ agents=4 tasks=4 orders=2
+[00:08.474] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 取CheeseBlock: released (status=completed)
+[00:08.474] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:08.474] [ASSIGN] Agent#3(AI_Chef) ← 番茄鸡腿披萨: CheeseBlock→CheeseSlices type=PROCESS order=1212885990 facility=CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:08.474] [STATE] AI_Chef: idle → executing PROCESS | task=番茄鸡腿披萨: CheeseBlock→CheeseSlices facility=CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices item=none
+[00:08.474] [AI_Chef] ExecuteProcess: counter CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices has CheeseBlock, → wait/interact
+[00:08.504] [STATE] AI_Chef: moving → arrived | at (-2.6,6.8) dist=0.29 time=0.0s
+[00:08.591] [AI_Chef] FindDropTarget(PizzaDough) → ClearCounter AssemblyTable_24_空台
+[00:08.591] [AI_Chef] FETCH got PizzaDough, delivering to AssemblyTable_24_空台
+[00:08.679] ═══ SCHEDULER CYCLE #16 ═══ agents=4 tasks=4 orders=2
+[00:08.814] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=CheeseBlock taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:08.814] [STATE] AI_Chef: start cutting → CheeseBlock | → CheeseSlices on CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:08.865] [STATE] AI_Chef: moving → arrived | at (3.8,3.5) dist=0.29 time=0.0s
+[00:08.881] ═══ SCHEDULER CYCLE #17 ═══ agents=4 tasks=4 orders=2
+[00:08.932] [STATE] AI_Chef: moving → arrived | at (11.3,3.5) dist=0.23 time=0.0s
+[00:09.085] ═══ SCHEDULER CYCLE #18 ═══ agents=4 tasks=4 orders=2
+[00:09.286] ═══ SCHEDULER CYCLE #19 ═══ agents=4 tasks=4 orders=2
+[00:09.320] [AI_Chef] FindDropTarget(Tomato, order=1212885990) → direct process facility CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:09.320] [AI_Chef] FETCH got Tomato, delivering to CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:09.387] [AI_Chef] FindDropTarget(ChickenRaw, order=1212885990) → direct process facility FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:09.387] [AI_Chef] FETCH got ChickenRaw, delivering to FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:09.490] ═══ SCHEDULER CYCLE #20 ═══ agents=4 tasks=4 orders=2
+[00:09.697] ═══ SCHEDULER CYCLE #21 ═══ agents=4 tasks=5 orders=3
+[00:09.903] ═══ SCHEDULER CYCLE #22 ═══ agents=4 tasks=5 orders=3
+[00:10.106] ═══ SCHEDULER CYCLE #23 ═══ agents=4 tasks=5 orders=3
+[00:10.310] ═══ SCHEDULER CYCLE #24 ═══ agents=4 tasks=5 orders=3
+[00:10.514] ═══ SCHEDULER CYCLE #25 ═══ agents=4 tasks=5 orders=3
+[00:10.718] ═══ SCHEDULER CYCLE #26 ═══ agents=4 tasks=5 orders=3
+[00:10.820] [STATE] AI_Chef: working → done | duration=2.0s task=番茄鸡腿披萨: CheeseBlock→CheeseSlices
+[00:10.820] [AI_Chef] Working done but output not ready (counter has CheeseBlock), entering wait
+[00:10.922] ═══ SCHEDULER CYCLE #27 ═══ agents=4 tasks=5 orders=3
+[00:11.124] ═══ SCHEDULER CYCLE #28 ═══ agents=4 tasks=5 orders=3
+[00:11.326] ═══ SCHEDULER CYCLE #29 ═══ agents=4 tasks=5 orders=3
+[00:11.496] [STATE] AI_Chef: moving → arrived | at (11.3,4.1) dist=0.28 time=0.0s
+[00:11.530] ═══ SCHEDULER CYCLE #30 ═══ agents=4 tasks=5 orders=3
+[00:11.581] [STATE] AI_Chef: moving → arrived | at (3.8,-4.1) dist=0.23 time=0.0s
+[00:11.738] ═══ SCHEDULER CYCLE #31 ═══ agents=4 tasks=5 orders=3
+[00:11.755] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: 取Tomato: completed
+[00:11.772] ═══ SCHEDULER CYCLE #32 ═══ agents=4 tasks=5 orders=3
+[00:11.772] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: 取Tomato: released (status=completed)
+[00:11.772] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:11.772] [ASSIGN] Agent#2(AI_Chef) ← 番茄鸡腿披萨: Tomato→TomatoSlices type=PROCESS order=1212885990 facility=CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:11.772] [STATE] AI_Chef: idle → executing PROCESS | task=番茄鸡腿披萨: Tomato→TomatoSlices facility=CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices item=none
+[00:11.772] [AI_Chef] ExecuteProcess: counter CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices has Tomato, → wait/interact
+[00:11.772] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 取PizzaDough: completed
+[00:11.789] ═══ SCHEDULER CYCLE #33 ═══ agents=4 tasks=5 orders=3
+[00:11.789] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 取PizzaDough: released (status=completed)
+[00:11.789] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:11.789] [ASSIGN] Agent#4(AI_Chef) ← 番茄鸡腿披萨: 拿盘子 type=FETCH_PLATE order=1212885990 facility=PlatesCounter_0_盘架#0
+[00:11.789] [STATE] AI_Chef: idle → executing FETCH_PLATE | task=番茄鸡腿披萨: 拿盘子 facility=PlatesCounter_0_盘架#0 item=none
+[00:11.806] [STATE] AI_Chef: moving → arrived | at (3.8,-4.1) dist=0.23 time=0.0s
+[00:11.993] ═══ SCHEDULER CYCLE #34 ═══ agents=4 tasks=4 orders=3
+[00:12.111] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=Tomato taskOutput=TomatoSlices
+[00:12.111] [STATE] AI_Chef: start cutting → Tomato | → TomatoSlices on CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:12.195] ═══ SCHEDULER CYCLE #35 ═══ agents=4 tasks=4 orders=3
+[00:12.399] ═══ SCHEDULER CYCLE #36 ═══ agents=4 tasks=4 orders=3
+[00:12.609] ═══ SCHEDULER CYCLE #37 ═══ agents=4 tasks=4 orders=3
+[00:12.817] ═══ SCHEDULER CYCLE #38 ═══ agents=4 tasks=4 orders=3
+[00:12.970] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=CheeseSlices taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:12.970] [STATE] AI_Chef: taking output → CheeseSlices | from CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:12.970] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: CheeseBlock→CheeseSlices: completed
+[00:12.970] [AI_Chef] CleanupTask: moving to AssemblyTable_19_空台 to drop CheeseSlices (dist=6.2)
+[00:13.020] ═══ SCHEDULER CYCLE #39 ═══ agents=4 tasks=4 orders=3
+[00:13.223] ═══ SCHEDULER CYCLE #40 ═══ agents=4 tasks=4 orders=3
+[00:13.425] ═══ SCHEDULER CYCLE #41 ═══ agents=4 tasks=4 orders=3
+[00:13.443] [STATE] AI_Chef: moving → arrived | at (-7.1,-5.3) dist=0.21 time=0.0s
+[00:13.630] ═══ SCHEDULER CYCLE #42 ═══ agents=4 tasks=4 orders=3
+[00:13.646] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: 取ChickenRaw: completed
+[00:13.676] ═══ SCHEDULER CYCLE #43 ═══ agents=4 tasks=5 orders=3
+[00:13.676] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: 取ChickenRaw: released (status=completed)
+[00:13.676] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:13.676] [ASSIGN] Agent#1(AI_Chef) ← 番茄鸡腿披萨: ChickenRaw→ChickenCooked type=PROCESS order=1212885990 facility=FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:13.676] [STATE] AI_Chef: idle → executing PROCESS | task=番茄鸡腿披萨: ChickenRaw→ChickenCooked facility=FryingPan_4_FryingPan:ChickenRaw→ChickenCooked item=none
+[00:13.676] [AI_Chef] ExecuteProcess: counter FryingPan_4_FryingPan:ChickenRaw→ChickenCooked has ChickenRaw, → wait/interact
+[00:13.697] [STATE] AI_Chef: moving → arrived | at (-7.1,-5.3) dist=0.21 time=0.0s
+[00:13.885] ═══ SCHEDULER CYCLE #44 ═══ agents=4 tasks=5 orders=3
+[00:14.003] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=ChickenRaw taskInput=ChickenRaw taskOutput=ChickenCooked
+[00:14.003] [STATE] AI_Chef: start/subscribe cooking → ChickenRaw | → ChickenCooked on FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:14.089] ═══ SCHEDULER CYCLE #45 ═══ agents=4 tasks=5 orders=3
+[00:14.124] [STATE] AI_Chef: working → done | duration=2.0s task=番茄鸡腿披萨: Tomato→TomatoSlices
+[00:14.124] [AI_Chef] Working done but output not ready (counter has Tomato), entering wait
+[00:14.156] [STATE] AI_Chef: moving → arrived | at (0.4,-2.3) dist=0.22 time=0.0s
+[00:14.293] ═══ SCHEDULER CYCLE #46 ═══ agents=4 tasks=5 orders=3
+[00:14.361] [STATE] AI_Chef: moving → arrived | at (3.8,4.1) dist=0.21 time=0.0s
+[00:14.516] ═══ SCHEDULER CYCLE #47 ═══ agents=4 tasks=5 orders=3
+[00:14.654] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: CheeseBlock→CheeseSlices: completed
+[00:14.672] ═══ SCHEDULER CYCLE #48 ═══ agents=4 tasks=5 orders=3
+[00:14.672] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: CheeseBlock→CheeseSlices: released (status=completed)
+[00:14.672] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:14.672] [ASSIGN] Agent#3(AI_Chef) ← 番茄鸡腿披萨: 取ChickenRaw type=FETCH order=-349302732 facility=Storage_3_原料柜:ChickenRaw
+[00:14.672] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取ChickenRaw facility=Storage_3_原料柜:ChickenRaw item=none
+[00:14.880] ═══ SCHEDULER CYCLE #49 ═══ agents=4 tasks=3 orders=3
+[00:15.084] ═══ SCHEDULER CYCLE #50 ═══ agents=4 tasks=4 orders=3
+[00:15.290] ═══ SCHEDULER CYCLE #51 ═══ agents=4 tasks=4 orders=3
+[00:15.496] ═══ SCHEDULER CYCLE #52 ═══ agents=4 tasks=4 orders=3
+[00:15.702] ═══ SCHEDULER CYCLE #53 ═══ agents=4 tasks=4 orders=3
+[00:15.913] ═══ SCHEDULER CYCLE #54 ═══ agents=4 tasks=4 orders=3
+[00:16.120] ═══ SCHEDULER CYCLE #55 ═══ agents=4 tasks=4 orders=3
+[00:16.137] [STATE] AI_Chef: moving → arrived | at (3.8,4.1) dist=0.25 time=0.0s
+[00:16.154] [STATE] AI_Chef: moving → arrived | at (11.3,3.5) dist=0.26 time=0.0s
+[00:16.275] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=TomatoSlices taskInput=Tomato taskOutput=TomatoSlices
+[00:16.275] [STATE] AI_Chef: taking output → TomatoSlices | from CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:16.275] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: Tomato→TomatoSlices: completed
+[00:16.275] [AI_Chef] CleanupTask: moving to AssemblyTable_13_空台 to drop TomatoSlices (dist=3.0)
+[00:16.325] ═══ SCHEDULER CYCLE #56 ═══ agents=4 tasks=4 orders=3
+[00:16.411] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 拿盘子: completed
+[00:16.411] [AI_Chef] CleanupTask: moving to AssemblyTable_20_空台 to drop Plate (dist=2.2)
+[00:16.532] ═══ SCHEDULER CYCLE #57 ═══ agents=4 tasks=4 orders=3
+[00:16.602] [AI_Chef] FindDropTarget(ChickenRaw) → ClearCounter AssemblyTable_23_空台
+[00:16.602] [AI_Chef] FETCH got ChickenRaw, delivering to AssemblyTable_23_空台
+[00:16.659] [AI_Chef] Stove stage changed: ChickenCooked (want ChickenCooked)
+[00:16.659] [STATE] AI_Chef: process grab → ChickenCooked | output ready
+[00:16.659] [AI_Chef] Delivering cooked ChickenCooked to AssemblyTable_12_空台
+[00:16.742] ═══ SCHEDULER CYCLE #58 ═══ agents=4 tasks=4 orders=3
+[00:16.796] [STATE] AI_Chef: moving → arrived | at (5.5,-3.8) dist=0.25 time=0.0s
+[00:16.899] [STATE] AI_Chef: moving → arrived | at (5.3,4.1) dist=0.26 time=0.0s
+[00:16.934] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: Tomato→TomatoSlices: completed
+[00:16.951] ═══ SCHEDULER CYCLE #59 ═══ agents=4 tasks=4 orders=3
+[00:16.951] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: Tomato→TomatoSlices: released (status=completed)
+[00:16.951] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:16.951] [ASSIGN] Agent#2(AI_Chef) ← 番茄鸡腿披萨: 取Tomato type=FETCH order=-349302732 facility=Storage_5_原料柜:Tomato
+[00:16.951] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取Tomato facility=Storage_5_原料柜:Tomato item=none
+[00:17.054] [STATE] AI_Chef: moving → arrived | at (9.8,4.1) dist=0.28 time=0.0s
+[00:17.157] ═══ SCHEDULER CYCLE #60 ═══ agents=4 tasks=3 orders=3
+[00:17.175] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 拿盘子: completed
+[00:17.192] ═══ SCHEDULER CYCLE #61 ═══ agents=4 tasks=4 orders=3
+[00:17.192] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 拿盘子: released (status=completed)
+[00:17.192] [Scheduler] 1 idle agents, 8 candidate tasks
+[00:17.192] [ASSIGN] Agent#4(AI_Chef) ← 番茄鸡腿披萨: 加TomatoSlices到盘子 type=ADD_TO_PLATE order=1212885990 facility=AssemblyTable_20_空台 item=TomatoSlices@(7, 1, -4)
+[00:17.192] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=番茄鸡腿披萨: 加TomatoSlices到盘子 facility=AssemblyTable_20_空台 item=TomatoSlices
+[00:17.192] [AI_Chef] ExecuteAddToPlate: picking up TomatoSlices from AssemblyTable_13_空台
+[00:17.330] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 取ChickenRaw: completed
+[00:17.347] ═══ SCHEDULER CYCLE #62 ═══ agents=4 tasks=7 orders=3
+[00:17.347] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 取ChickenRaw: released (status=completed)
+[00:17.347] [Scheduler] 1 idle agents, 8 candidate tasks
+[00:17.347] [ASSIGN] Agent#3(AI_Chef) ← 番茄鸡腿披萨: 加CheeseSlices到盘子 type=ADD_TO_PLATE order=1212885990 facility=AssemblyTable_20_空台 item=CheeseSlices@(4, 1, 5)
+[00:17.347] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=番茄鸡腿披萨: 加CheeseSlices到盘子 facility=AssemblyTable_20_空台 item=CheeseSlices
+[00:17.347] [AI_Chef] ExecuteAddToPlate: picking up CheeseSlices from AssemblyTable_19_空台
+[00:17.554] ═══ SCHEDULER CYCLE #63 ═══ agents=4 tasks=7 orders=3
+[00:17.763] ═══ SCHEDULER CYCLE #64 ═══ agents=4 tasks=7 orders=3
+[00:17.971] ═══ SCHEDULER CYCLE #65 ═══ agents=4 tasks=7 orders=3
+[00:18.177] ═══ SCHEDULER CYCLE #66 ═══ agents=4 tasks=7 orders=3
+[00:18.384] ═══ SCHEDULER CYCLE #67 ═══ agents=4 tasks=7 orders=3
+[00:18.558] [STATE] AI_Chef: moving → arrived | at (3.8,3.5) dist=0.28 time=0.0s
+[00:18.592] ═══ SCHEDULER CYCLE #68 ═══ agents=4 tasks=7 orders=3
+[00:18.804] ═══ SCHEDULER CYCLE #69 ═══ agents=4 tasks=7 orders=3
+[00:18.857] [STATE] AI_Chef: moving → arrived | at (3.8,4.1) dist=0.32 time=0.0s
+[00:18.996] [STATE] AI_Chef: GotoItem → counter-pickup | taking CheeseSlices from AssemblyTable_19_空台
+[00:18.996] [STATE] AI_Chef: GotoItem → GotoDest | carrying CheeseSlices, heading to AssemblyTable_20_空台
+[00:19.013] ═══ SCHEDULER CYCLE #70 ═══ agents=4 tasks=7 orders=3
+[00:19.031] [AI_Chef] FindDropTarget(Tomato, order=-349302732) → direct process facility CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:19.031] [AI_Chef] FETCH got Tomato, delivering to CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:19.219] ═══ SCHEDULER CYCLE #71 ═══ agents=4 tasks=7 orders=3
+[00:19.236] [STATE] AI_Chef: moving → arrived | at (5.5,-3.8) dist=0.26 time=0.0s
+[00:19.323] [STATE] AI_Chef: moving → arrived | at (5.5,-5.3) dist=0.26 time=0.0s
+[00:19.426] ═══ SCHEDULER CYCLE #72 ═══ agents=4 tasks=7 orders=3
+[00:19.494] [STATE] AI_Chef: GotoItem → counter-pickup | taking TomatoSlices from AssemblyTable_13_空台
+[00:19.494] [STATE] AI_Chef: GotoItem → GotoDest | carrying TomatoSlices, heading to AssemblyTable_20_空台
+[00:19.564] [STATE] AI_Chef: moving → arrived | at (5.3,4.1) dist=0.22 time=0.0s
+[00:19.581] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: ChickenRaw→ChickenCooked: completed
+[00:19.599] ═══ SCHEDULER CYCLE #73 ═══ agents=4 tasks=7 orders=3
+[00:19.599] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: ChickenRaw→ChickenCooked: released (status=completed)
+[00:19.599] [Scheduler] 1 idle agents, 8 candidate tasks
+[00:19.599] [ASSIGN] Agent#1(AI_Chef) ← 番茄鸡腿披萨: 加ChickenCooked到盘子 type=ADD_TO_PLATE order=1212885990 facility=AssemblyTable_20_空台 item=ChickenCooked@(7, 1, -5)
+[00:19.599] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=番茄鸡腿披萨: 加ChickenCooked到盘子 facility=AssemblyTable_20_空台 item=ChickenCooked
+[00:19.599] [AI_Chef] ExecuteAddToPlate: picking up ChickenCooked from AssemblyTable_12_空台
+[00:19.633] [STATE] AI_Chef: moving → arrived | at (5.5,-5.3) dist=0.26 time=0.0s
+[00:19.775] [STATE] AI_Chef: GotoItem → counter-pickup | taking ChickenCooked from AssemblyTable_12_空台
+[00:19.775] [STATE] AI_Chef: GotoItem → GotoDest | carrying ChickenCooked, heading to AssemblyTable_20_空台
+[00:19.811] ═══ SCHEDULER CYCLE #74 ═══ agents=4 tasks=7 orders=3
+[00:19.863] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 加CheeseSlices到盘子: completed
+[00:19.881] ═══ SCHEDULER CYCLE #75 ═══ agents=4 tasks=7 orders=3
+[00:19.881] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 加CheeseSlices到盘子: released (status=completed)
+[00:19.881] [Scheduler] 1 idle agents, 7 candidate tasks
+[00:19.881] [ASSIGN] Agent#3(AI_Chef) ← 番茄鸡腿披萨: 加PizzaDough到盘子 type=ADD_TO_PLATE order=1212885990 facility=AssemblyTable_20_空台 item=PizzaDough@(11, 1, 5)
+[00:19.881] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=番茄鸡腿披萨: 加PizzaDough到盘子 facility=AssemblyTable_20_空台 item=PizzaDough
+[00:19.881] [AI_Chef] ExecuteAddToPlate: picking up PizzaDough from AssemblyTable_24_空台
+[00:20.091] ═══ SCHEDULER CYCLE #76 ═══ agents=4 tasks=6 orders=3
+[00:20.298] ═══ SCHEDULER CYCLE #77 ═══ agents=4 tasks=6 orders=3
+[00:20.506] ═══ SCHEDULER CYCLE #78 ═══ agents=4 tasks=6 orders=3
+[00:20.595] [STATE] AI_Chef: moving → arrived | at (-2.6,6.8) dist=0.23 time=0.0s
+[00:20.718] ═══ SCHEDULER CYCLE #79 ═══ agents=4 tasks=6 orders=3
+[00:20.806] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: 取Tomato: completed
+[00:20.824] ═══ SCHEDULER CYCLE #80 ═══ agents=4 tasks=6 orders=3
+[00:20.824] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: 取Tomato: released (status=completed)
+[00:20.824] [Scheduler] 1 idle agents, 7 candidate tasks
+[00:20.824] [ASSIGN] Agent#2(AI_Chef) ← 番茄鸡腿披萨: ChickenRaw→ChickenCooked type=PROCESS order=-349302732 facility=FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:20.824] [STATE] AI_Chef: idle → executing PROCESS | task=番茄鸡腿披萨: ChickenRaw→ChickenCooked facility=FryingPan_4_FryingPan:ChickenRaw→ChickenCooked item=none
+[00:20.824] [AI_Chef] ExecuteProcess: self-fetching ChickenRaw from AssemblyTable_23_空台 → FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:21.031] ═══ SCHEDULER CYCLE #81 ═══ agents=4 tasks=6 orders=3
+[00:21.117] [STATE] AI_Chef: moving → arrived | at (11.3,4.1) dist=0.27 time=0.0s
+[00:21.151] [STATE] AI_Chef: moving → arrived | at (5.3,4.1) dist=0.23 time=0.0s
+[00:21.238] ═══ SCHEDULER CYCLE #82 ═══ agents=4 tasks=6 orders=3
+[00:21.290] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 加TomatoSlices到盘子: completed
+[00:21.308] ═══ SCHEDULER CYCLE #83 ═══ agents=4 tasks=6 orders=3
+[00:21.308] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 加TomatoSlices到盘子: released (status=completed)
+[00:21.308] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:21.308] [ASSIGN] Agent#4(AI_Chef) ← 番茄鸡腿披萨: Tomato→TomatoSlices type=PROCESS order=-349302732 facility=CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:21.308] [STATE] AI_Chef: idle → executing PROCESS | task=番茄鸡腿披萨: Tomato→TomatoSlices facility=CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices item=none
+[00:21.308] [AI_Chef] ExecuteProcess: counter CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices has Tomato, → wait/interact
+[00:21.430] [STATE] AI_Chef: GotoItem → counter-pickup | taking PizzaDough from AssemblyTable_24_空台
+[00:21.430] [STATE] AI_Chef: GotoItem → GotoDest | carrying PizzaDough, heading to AssemblyTable_20_空台
+[00:21.517] ═══ SCHEDULER CYCLE #84 ═══ agents=4 tasks=5 orders=3
+[00:21.729] ═══ SCHEDULER CYCLE #85 ═══ agents=4 tasks=5 orders=3
+[00:21.939] ═══ SCHEDULER CYCLE #86 ═══ agents=4 tasks=5 orders=3
+[00:22.145] ═══ SCHEDULER CYCLE #87 ═══ agents=4 tasks=5 orders=3
+[00:22.351] ═══ SCHEDULER CYCLE #88 ═══ agents=4 tasks=5 orders=3
+[00:22.560] ═══ SCHEDULER CYCLE #89 ═══ agents=4 tasks=5 orders=3
+[00:22.771] ═══ SCHEDULER CYCLE #90 ═══ agents=4 tasks=5 orders=3
+[00:22.788] [STATE] AI_Chef: moving → arrived | at (5.3,4.1) dist=0.16 time=0.0s
+[00:22.982] ═══ SCHEDULER CYCLE #91 ═══ agents=4 tasks=5 orders=3
+[00:23.085] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 加PizzaDough到盘子: completed
+[00:23.103] ═══ SCHEDULER CYCLE #92 ═══ agents=4 tasks=5 orders=3
+[00:23.103] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 加PizzaDough到盘子: released (status=completed)
+[00:23.103] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:23.103] [ASSIGN] Agent#3(AI_Chef) ← 番茄鸡腿披萨: 取CheeseBlock type=FETCH order=-349302732 facility=Storage_7_原料柜:CheeseBlock
+[00:23.103] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取CheeseBlock facility=Storage_7_原料柜:CheeseBlock item=none
+[00:23.309] ═══ SCHEDULER CYCLE #93 ═══ agents=4 tasks=4 orders=3
+[00:23.430] [STATE] AI_Chef: moving → arrived | at (9.8,4.1) dist=0.22 time=0.0s
+[00:23.447] [STATE] AI_Chef: moving → arrived | at (-2.6,6.8) dist=0.23 time=0.0s
+[00:23.515] ═══ SCHEDULER CYCLE #94 ═══ agents=4 tasks=5 orders=3
+[00:23.705] [STATE] AI_Chef: GotoItem → counter-pickup | taking ChickenRaw from AssemblyTable_23_空台
+[00:23.705] [STATE] AI_Chef: GotoItem → GotoFacility | carrying ChickenRaw, heading to FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:23.722] ═══ SCHEDULER CYCLE #95 ═══ agents=4 tasks=5 orders=3
+[00:23.791] [STATE] AI_Chef: moving → arrived | at (5.3,4.1) dist=0.25 time=0.0s
+[00:23.808] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=Tomato taskOutput=TomatoSlices
+[00:23.808] [STATE] AI_Chef: start cutting → Tomato | → TomatoSlices on CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:23.931] ═══ SCHEDULER CYCLE #96 ═══ agents=4 tasks=5 orders=3
+[00:24.052] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: 加ChickenCooked到盘子: completed
+[00:24.070] ═══ SCHEDULER CYCLE #97 ═══ agents=4 tasks=5 orders=3
+[00:24.070] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: 加ChickenCooked到盘子: released (status=completed)
+[00:24.070] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:24.070] [ASSIGN] Agent#1(AI_Chef) ← 番茄鸡腿披萨: PizzaUnbaked→PizzaBaked type=PROCESS order=1212885990 facility=Oven_10_Oven:PizzaUnbaked→PizzaBaked
+[00:24.070] [STATE] AI_Chef: idle → executing PROCESS | task=番茄鸡腿披萨: PizzaUnbaked→PizzaBaked facility=Oven_10_Oven:PizzaUnbaked→PizzaBaked item=none
+[00:24.070] [AI_Chef] ExecuteProcess: self-fetching PizzaUnbaked from AssemblyTable_20_空台 → Oven_10_Oven:PizzaUnbaked→PizzaBaked
+[00:24.103] [STATE] AI_Chef: moving → arrived | at (5.3,4.1) dist=0.25 time=0.0s
+[00:24.245] [STATE] AI_Chef: GotoItem → counter-pickup | taking Plate from AssemblyTable_20_空台
+[00:24.245] [STATE] AI_Chef: GotoItem → GotoFacility | carrying Plate, heading to Oven_10_Oven:PizzaUnbaked→PizzaBaked
+[00:24.275] ═══ SCHEDULER CYCLE #98 ═══ agents=4 tasks=5 orders=3
+[00:24.479] ═══ SCHEDULER CYCLE #99 ═══ agents=4 tasks=5 orders=3
+[00:24.688] ═══ SCHEDULER CYCLE #100 ═══ agents=4 tasks=5 orders=3
+[00:24.901] ═══ SCHEDULER CYCLE #101 ═══ agents=4 tasks=5 orders=3
+[00:25.109] ═══ SCHEDULER CYCLE #102 ═══ agents=4 tasks=5 orders=3
+[00:25.138] [STATE] AI_Chef: moving → arrived | at (-5.6,5.3) dist=0.28 time=0.0s
+[00:25.315] ═══ SCHEDULER CYCLE #103 ═══ agents=4 tasks=5 orders=3
+[00:25.404] [STATE] AI_Chef: moving → arrived | at (2.3,5.6) dist=0.28 time=0.0s
+[00:25.448] [AI_Chef] FindDropTarget(CheeseBlock, order=-349302732) → direct process facility CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:25.448] [AI_Chef] FETCH got CheeseBlock, delivering to CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:25.523] ═══ SCHEDULER CYCLE #104 ═══ agents=4 tasks=5 orders=3
+[00:25.736] ═══ SCHEDULER CYCLE #105 ═══ agents=4 tasks=5 orders=3
+[00:25.813] [STATE] AI_Chef: working → done | duration=2.0s task=番茄鸡腿披萨: Tomato→TomatoSlices
+[00:25.813] [AI_Chef] Working done but output not ready (counter has Tomato), entering wait
+[00:25.949] ═══ SCHEDULER CYCLE #106 ═══ agents=4 tasks=5 orders=3
+[00:26.156] ═══ SCHEDULER CYCLE #107 ═══ agents=4 tasks=5 orders=3
+[00:26.364] ═══ SCHEDULER CYCLE #108 ═══ agents=4 tasks=5 orders=3
+[00:26.441] [STATE] AI_Chef: moving → arrived | at (3.8,4.1) dist=0.29 time=0.0s
+[00:26.572] ═══ SCHEDULER CYCLE #109 ═══ agents=4 tasks=5 orders=3
+[00:26.779] ═══ SCHEDULER CYCLE #110 ═══ agents=4 tasks=5 orders=3
+[00:26.990] ═══ SCHEDULER CYCLE #111 ═══ agents=4 tasks=5 orders=3
+[00:27.197] ═══ SCHEDULER CYCLE #112 ═══ agents=4 tasks=5 orders=3
+[00:27.403] ═══ SCHEDULER CYCLE #113 ═══ agents=4 tasks=5 orders=3
+[00:27.563] [STATE] AI_Chef: moving → arrived | at (-7.1,-5.3) dist=0.27 time=0.0s
+[00:27.608] ═══ SCHEDULER CYCLE #114 ═══ agents=4 tasks=5 orders=3
+[00:27.745] [AI_Chef] DropItemAtFacility: → FryingPan_4_FryingPan:ChickenRaw→ChickenCooked, held=null
+[00:27.823] ═══ SCHEDULER CYCLE #115 ═══ agents=4 tasks=5 orders=3
+[00:27.836] [STATE] AI_Chef: moving → arrived | at (3.8,-4.1) dist=0.28 time=0.0s
+[00:27.897] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=ChickenRaw taskInput=ChickenRaw taskOutput=ChickenCooked
+[00:27.897] [STATE] AI_Chef: start/subscribe cooking → ChickenRaw | → ChickenCooked on FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:27.957] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=TomatoSlices taskInput=Tomato taskOutput=TomatoSlices
+[00:27.957] [STATE] AI_Chef: taking output → TomatoSlices | from CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:27.957] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: Tomato→TomatoSlices: completed
+[00:27.957] [AI_Chef] CleanupTask: moving to AssemblyTable_20_空台 to drop TomatoSlices (dist=7.7)
+[00:28.031] ═══ SCHEDULER CYCLE #116 ═══ agents=4 tasks=5 orders=3
+[00:28.091] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 取CheeseBlock: completed
+[00:28.105] ═══ SCHEDULER CYCLE #117 ═══ agents=4 tasks=5 orders=3
+[00:28.105] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 取CheeseBlock: released (status=completed)
+[00:28.105] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:28.105] [ASSIGN] Agent#3(AI_Chef) ← 番茄鸡腿披萨: CheeseBlock→CheeseSlices type=PROCESS order=-349302732 facility=CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:28.105] [STATE] AI_Chef: idle → executing PROCESS | task=番茄鸡腿披萨: CheeseBlock→CheeseSlices facility=CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices item=none
+[00:28.105] [AI_Chef] ExecuteProcess: counter CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices has CheeseBlock, → wait/interact
+[00:28.135] [STATE] AI_Chef: moving → arrived | at (3.8,-4.1) dist=0.22 time=0.0s
+[00:28.310] ═══ SCHEDULER CYCLE #118 ═══ agents=4 tasks=5 orders=3
+[00:28.442] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=CheeseBlock taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:28.442] [STATE] AI_Chef: start cutting → CheeseBlock | → CheeseSlices on CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:28.515] ═══ SCHEDULER CYCLE #119 ═══ agents=4 tasks=5 orders=3
+[00:28.720] ═══ SCHEDULER CYCLE #120 ═══ agents=4 tasks=5 orders=3
+[00:28.929] ═══ SCHEDULER CYCLE #121 ═══ agents=4 tasks=5 orders=3
+[00:29.135] ═══ SCHEDULER CYCLE #122 ═══ agents=4 tasks=5 orders=3
+[00:29.340] ═══ SCHEDULER CYCLE #123 ═══ agents=4 tasks=5 orders=3
+[00:29.544] ═══ SCHEDULER CYCLE #124 ═══ agents=4 tasks=5 orders=3
+[00:29.752] ═══ SCHEDULER CYCLE #125 ═══ agents=4 tasks=6 orders=3
+[00:29.965] ═══ SCHEDULER CYCLE #126 ═══ agents=4 tasks=6 orders=3
+[00:30.171] ═══ SCHEDULER CYCLE #127 ═══ agents=4 tasks=6 orders=3
+[00:30.377] ═══ SCHEDULER CYCLE #128 ═══ agents=4 tasks=6 orders=3
+[00:30.407] [STATE] AI_Chef: moving → arrived | at (5.3,4.1) dist=0.29 time=0.0s
+[00:30.452] [STATE] AI_Chef: working → done | duration=2.0s task=番茄鸡腿披萨: CheeseBlock→CheeseSlices
+[00:30.452] [AI_Chef] Working done but output not ready (counter has CheeseBlock), entering wait
+[00:30.586] ═══ SCHEDULER CYCLE #129 ═══ agents=4 tasks=6 orders=3
+[00:30.600] [STATE] AI_Chef: moving → arrived | at (2.3,5.6) dist=0.27 time=0.0s
+[00:30.690] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: Tomato→TomatoSlices: completed
+[00:30.707] ═══ SCHEDULER CYCLE #130 ═══ agents=4 tasks=6 orders=3
+[00:30.707] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: Tomato→TomatoSlices: released (status=completed)
+[00:30.707] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:30.707] [ASSIGN] Agent#4(AI_Chef) ← 番茄鸡腿披萨: Add PizzaBaked to plate type=ADD_TO_PLATE order=1212885990 facility=AssemblyTable_19_空台 item=PizzaBaked@(2, 1, 7)
+[00:30.707] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=番茄鸡腿披萨: Add PizzaBaked to plate facility=AssemblyTable_19_空台 item=PizzaBaked
+[00:30.707] [AI_Chef] ExecuteAddToPlate: picking up PizzaBaked from Oven_10_Oven:PizzaUnbaked→PizzaBaked
+[00:30.760] [AI_Chef] Stove stage changed: ChickenCooked (want ChickenCooked)
+[00:30.760] [STATE] AI_Chef: process grab → ChickenCooked | output ready
+[00:30.760] [AI_Chef] Delivering cooked ChickenCooked to AssemblyTable_12_空台
+[00:30.891] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=PizzaBaked taskInput=PizzaUnbaked taskOutput=PizzaBaked
+[00:30.891] [STATE] AI_Chef: taking output → PizzaBaked | from Oven_10_Oven:PizzaUnbaked→PizzaBaked
+[00:30.891] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: PizzaUnbaked→PizzaBaked: completed
+[00:30.891] [AI_Chef] CleanupTask: moving to AssemblyTable_21_空台 to drop PizzaBaked (dist=4.6)
+[00:30.920] ═══ SCHEDULER CYCLE #131 ═══ agents=4 tasks=5 orders=3
+[00:31.128] ═══ SCHEDULER CYCLE #132 ═══ agents=4 tasks=5 orders=3
+[00:31.332] ═══ SCHEDULER CYCLE #133 ═══ agents=4 tasks=5 orders=3
+[00:31.538] ═══ SCHEDULER CYCLE #134 ═══ agents=4 tasks=5 orders=3
+[00:31.715] [STATE] AI_Chef: moving → arrived | at (2.3,5.6) dist=0.25 time=0.0s
+[00:31.744] ═══ SCHEDULER CYCLE #135 ═══ agents=4 tasks=5 orders=3
+[00:31.953] ═══ SCHEDULER CYCLE #136 ═══ agents=4 tasks=5 orders=3
+[00:31.997] [WARN] [AI_Chef] PickupItem: PizzaBaked is NOT free (holder=AIPlayer(Clone))
+[00:31.997] [ABANDON] Agent#4(AI_Chef) 番茄鸡腿披萨: Add PizzaBaked to plate: substate=paused phase=GotoItem timer=0.1
+[00:31.997] [WARN] [AI_Chef] GotoItem: pickup failed for 
+[00:31.997] [ABANDON] Agent#4(AI_Chef) null: substate=paused phase=None timer=0.0
+[00:32.012] ═══ SCHEDULER CYCLE #137 ═══ agents=4 tasks=5 orders=3
+[00:32.012] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: Add PizzaBaked to plate: released (status=abandoned)
+[00:32.012] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:32.012] [ASSIGN] Agent#4(AI_Chef) ← 番茄鸡腿披萨: 取PizzaDough type=FETCH order=-349302732 facility=Storage_9_原料柜:PizzaDough
+[00:32.012] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取PizzaDough facility=Storage_9_原料柜:PizzaDough item=none
+[00:32.219] ═══ SCHEDULER CYCLE #138 ═══ agents=4 tasks=4 orders=3
+[00:32.425] ═══ SCHEDULER CYCLE #139 ═══ agents=4 tasks=5 orders=3
+[00:32.498] [STATE] AI_Chef: moving → arrived | at (6.8,4.1) dist=0.28 time=0.0s
+[00:32.616] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=CheeseSlices taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:32.616] [STATE] AI_Chef: taking output → CheeseSlices | from CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:32.616] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: CheeseBlock→CheeseSlices: completed
+[00:32.616] [AI_Chef] CleanupTask: moving to AssemblyTable_13_空台 to drop CheeseSlices (dist=3.2)
+[00:32.630] ═══ SCHEDULER CYCLE #140 ═══ agents=4 tasks=5 orders=3
+[00:32.782] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: PizzaUnbaked→PizzaBaked: completed
+[00:32.797] ═══ SCHEDULER CYCLE #141 ═══ agents=4 tasks=5 orders=3
+[00:32.797] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: PizzaUnbaked→PizzaBaked: released (status=completed)
+[00:32.797] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:32.797] [ASSIGN] Agent#1(AI_Chef) ← 番茄鸡腿披萨: Add PizzaBaked to plate type=ADD_TO_PLATE order=1212885990 facility=AssemblyTable_19_空台 item=PizzaBaked@(7, 1, 5)
+[00:32.797] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=番茄鸡腿披萨: Add PizzaBaked to plate facility=AssemblyTable_19_空台 item=PizzaBaked
+[00:32.797] [AI_Chef] ExecuteAddToPlate: picking up PizzaBaked from AssemblyTable_21_空台
+[00:32.830] [STATE] AI_Chef: moving → arrived | at (6.8,4.1) dist=0.22 time=0.0s
+[00:32.966] [STATE] AI_Chef: GotoItem → counter-pickup | taking PizzaBaked from AssemblyTable_21_空台
+[00:32.966] [STATE] AI_Chef: GotoItem → GotoDest | carrying PizzaBaked, heading to AssemblyTable_19_空台
+[00:33.010] ═══ SCHEDULER CYCLE #142 ═══ agents=4 tasks=5 orders=3
+[00:33.159] [STATE] AI_Chef: moving → arrived | at (5.5,-3.8) dist=0.25 time=0.0s
+[00:33.218] ═══ SCHEDULER CYCLE #143 ═══ agents=4 tasks=5 orders=3
+[00:33.306] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: CheeseBlock→CheeseSlices: completed
+[00:33.322] ═══ SCHEDULER CYCLE #144 ═══ agents=4 tasks=5 orders=3
+[00:33.322] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: CheeseBlock→CheeseSlices: released (status=completed)
+[00:33.322] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:33.322] [ASSIGN] Agent#3(AI_Chef) ← 番茄鸡腿披萨: 拿盘子 type=FETCH_PLATE order=-349302732 facility=PlatesCounter_0_盘架#0
+[00:33.322] [STATE] AI_Chef: idle → executing FETCH_PLATE | task=番茄鸡腿披萨: 拿盘子 facility=PlatesCounter_0_盘架#0 item=none
+[00:33.528] ═══ SCHEDULER CYCLE #145 ═══ agents=4 tasks=4 orders=3
+[00:33.734] ═══ SCHEDULER CYCLE #146 ═══ agents=4 tasks=5 orders=3
+[00:33.809] [STATE] AI_Chef: moving → arrived | at (3.8,4.1) dist=0.27 time=0.0s
+[00:33.944] ═══ SCHEDULER CYCLE #147 ═══ agents=4 tasks=5 orders=3
+[00:34.108] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: Add PizzaBaked to plate: completed
+[00:34.123] ═══ SCHEDULER CYCLE #148 ═══ agents=4 tasks=5 orders=3
+[00:34.123] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: Add PizzaBaked to plate: released (status=completed)
+[00:34.123] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:34.123] [ASSIGN] Agent#1(AI_Chef) ← 番茄鸡腿披萨: 出餐番茄鸡腿披萨 type=SERVE order=1212885990 facility=ServingCounter_1_出餐口 item=Plate@(4, 1, 5)
+[00:34.123] [STATE] AI_Chef: idle → executing SERVE | task=番茄鸡腿披萨: 出餐番茄鸡腿披萨 facility=ServingCounter_1_出餐口 item=Plate
+[00:34.152] [STATE] AI_Chef: moving → arrived | at (3.8,4.1) dist=0.20 time=0.0s
+[00:34.270] [STATE] AI_Chef: moving → arrived | at (0.4,-6.8) dist=0.28 time=0.0s
+[00:34.299] [STATE] AI_Chef: GotoItem → counter-pickup | taking Plate from AssemblyTable_19_空台
+[00:34.299] [STATE] AI_Chef: GotoItem → GotoDest | carrying Plate, heading to ServingCounter_1_出餐口
+[00:34.329] ═══ SCHEDULER CYCLE #149 ═══ agents=4 tasks=5 orders=3
+[00:34.490] [STATE] AI_Chef: moving → arrived | at (5.5,-5.3) dist=0.23 time=0.0s
+[00:34.535] ═══ SCHEDULER CYCLE #150 ═══ agents=4 tasks=5 orders=3
+[00:34.726] [AI_Chef] FindDropTarget(PizzaDough) → ClearCounter AssemblyTable_24_空台
+[00:34.726] [AI_Chef] FETCH got PizzaDough, delivering to AssemblyTable_24_空台
+[00:34.743] ═══ SCHEDULER CYCLE #151 ═══ agents=4 tasks=5 orders=3
+[00:34.759] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: ChickenRaw→ChickenCooked: completed
+[00:34.773] ═══ SCHEDULER CYCLE #152 ═══ agents=4 tasks=5 orders=3
+[00:34.773] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: ChickenRaw→ChickenCooked: released (status=completed)
+[00:34.773] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:34.773] [ASSIGN] Agent#2(AI_Chef) ← 番茄鸡腿披萨: 取ChickenRaw type=FETCH order=512625947 facility=Storage_3_原料柜:ChickenRaw
+[00:34.773] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取ChickenRaw facility=Storage_3_原料柜:ChickenRaw item=none
+[00:34.788] [STATE] AI_Chef: moving → arrived | at (0.4,-2.3) dist=0.27 time=0.0s
+[00:34.973] ═══ SCHEDULER CYCLE #153 ═══ agents=4 tasks=4 orders=3
+[00:35.181] ═══ SCHEDULER CYCLE #154 ═══ agents=4 tasks=4 orders=3
+[00:35.386] ═══ SCHEDULER CYCLE #155 ═══ agents=4 tasks=4 orders=3
+[00:35.593] ═══ SCHEDULER CYCLE #156 ═══ agents=4 tasks=4 orders=3
+[00:35.803] ═══ SCHEDULER CYCLE #157 ═══ agents=4 tasks=4 orders=3
+[00:36.017] ═══ SCHEDULER CYCLE #158 ═══ agents=4 tasks=4 orders=3
+[00:36.225] ═══ SCHEDULER CYCLE #159 ═══ agents=4 tasks=4 orders=3
+[00:36.431] ═══ SCHEDULER CYCLE #160 ═══ agents=4 tasks=4 orders=3
+[00:36.636] ═══ SCHEDULER CYCLE #161 ═══ agents=4 tasks=4 orders=3
+[00:36.845] ═══ SCHEDULER CYCLE #162 ═══ agents=4 tasks=4 orders=3
+[00:36.882] [STATE] AI_Chef: moving → arrived | at (6.8,2.0) dist=0.25 time=0.0s
+[00:37.056] ═══ SCHEDULER CYCLE #163 ═══ agents=4 tasks=4 orders=3
+[00:37.192] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 拿盘子: completed
+[00:37.209] ═══ SCHEDULER CYCLE #164 ═══ agents=4 tasks=4 orders=3
+[00:37.209] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 拿盘子: released (status=completed)
+[00:37.209] [Scheduler] 1 idle agents, 7 candidate tasks
+[00:37.209] [ASSIGN] Agent#3(AI_Chef) ← 番茄鸡腿披萨: 加ChickenCooked到盘子 type=ADD_TO_PLATE order=-349302732 facility=AssemblyTable_16_空台 item=ChickenCooked@(7, 1, -5)
+[00:37.209] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=番茄鸡腿披萨: 加ChickenCooked到盘子 facility=AssemblyTable_16_空台 item=ChickenCooked
+[00:37.209] [AI_Chef] ExecuteAddToPlate: picking up ChickenCooked from AssemblyTable_12_空台
+[00:37.226] [STATE] AI_Chef: moving → arrived | at (11.3,3.5) dist=0.20 time=0.0s
+[00:37.413] ═══ SCHEDULER CYCLE #165 ═══ agents=4 tasks=6 orders=3
+[00:37.617] ═══ SCHEDULER CYCLE #166 ═══ agents=4 tasks=6 orders=3
+[00:37.684] [AI_Chef] FindDropTarget(ChickenRaw, order=512625947) → direct process facility FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:37.684] [AI_Chef] FETCH got ChickenRaw, delivering to FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:37.769] [STATE] AI_Chef: moving → arrived | at (-7.1,-6.8) dist=0.24 time=0.0s
+[00:37.820] ═══ SCHEDULER CYCLE #167 ═══ agents=4 tasks=6 orders=3
+[00:38.026] ═══ SCHEDULER CYCLE #168 ═══ agents=4 tasks=6 orders=3
+[00:38.026] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: 出餐番茄鸡腿披萨: completed
+[00:38.026] [Scheduler] Order #1212885990 served — releasing plate
+[00:38.043] ═══ SCHEDULER CYCLE #169 ═══ agents=4 tasks=6 orders=3
+[00:38.043] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: 出餐番茄鸡腿披萨: released (status=completed)
+[00:38.043] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:38.043] [ASSIGN] Agent#1(AI_Chef) ← 番茄鸡腿披萨: 加TomatoSlices到盘子 type=ADD_TO_PLATE order=-349302732 facility=AssemblyTable_16_空台 item=TomatoSlices@(5, 1, 5)
+[00:38.043] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=番茄鸡腿披萨: 加TomatoSlices到盘子 facility=AssemblyTable_16_空台 item=TomatoSlices
+[00:38.043] [AI_Chef] ExecuteAddToPlate: picking up TomatoSlices from AssemblyTable_20_空台
+[00:38.247] ═══ SCHEDULER CYCLE #170 ═══ agents=4 tasks=5 orders=2
+[00:38.298] [STATE] AI_Chef: moving → arrived | at (11.3,4.1) dist=0.28 time=0.0s
+[00:38.450] ═══ SCHEDULER CYCLE #171 ═══ agents=4 tasks=5 orders=2
+[00:38.585] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 取PizzaDough: completed
+[00:38.602] ═══ SCHEDULER CYCLE #172 ═══ agents=4 tasks=5 orders=2
+[00:38.602] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 取PizzaDough: released (status=completed)
+[00:38.602] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:38.602] [ASSIGN] Agent#4(AI_Chef) ← 番茄鸡腿披萨: 加CheeseSlices到盘子 type=ADD_TO_PLATE order=-349302732 facility=AssemblyTable_16_空台 item=CheeseSlices@(7, 1, -4)
+[00:38.602] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=番茄鸡腿披萨: 加CheeseSlices到盘子 facility=AssemblyTable_16_空台 item=CheeseSlices
+[00:38.602] [AI_Chef] ExecuteAddToPlate: picking up CheeseSlices from AssemblyTable_13_空台
+[00:38.807] ═══ SCHEDULER CYCLE #173 ═══ agents=4 tasks=5 orders=2
+[00:39.015] ═══ SCHEDULER CYCLE #174 ═══ agents=4 tasks=5 orders=2
+[00:39.050] [STATE] AI_Chef: moving → arrived | at (5.5,-5.3) dist=0.25 time=0.0s
+[00:39.220] ═══ SCHEDULER CYCLE #175 ═══ agents=4 tasks=5 orders=2
+[00:39.356] [STATE] AI_Chef: GotoItem → counter-pickup | taking ChickenCooked from AssemblyTable_12_空台
+[00:39.356] [STATE] AI_Chef: GotoItem → GotoDest | carrying ChickenCooked, heading to AssemblyTable_16_空台
+[00:39.424] ═══ SCHEDULER CYCLE #176 ═══ agents=4 tasks=5 orders=2
+[00:39.627] ═══ SCHEDULER CYCLE #177 ═══ agents=4 tasks=5 orders=2
+[00:39.830] ═══ SCHEDULER CYCLE #178 ═══ agents=4 tasks=6 orders=3
+[00:40.037] ═══ SCHEDULER CYCLE #179 ═══ agents=4 tasks=6 orders=3
+[00:40.241] ═══ SCHEDULER CYCLE #180 ═══ agents=4 tasks=6 orders=3
+[00:40.445] ═══ SCHEDULER CYCLE #181 ═══ agents=4 tasks=6 orders=3
+[00:40.647] ═══ SCHEDULER CYCLE #182 ═══ agents=4 tasks=6 orders=3
+[00:40.853] ═══ SCHEDULER CYCLE #183 ═══ agents=4 tasks=6 orders=3
+[00:40.958] [STATE] AI_Chef: moving → arrived | at (5.5,-3.8) dist=0.25 time=0.0s
+[00:41.062] ═══ SCHEDULER CYCLE #184 ═══ agents=4 tasks=6 orders=3
+[00:41.079] [STATE] AI_Chef: moving → arrived | at (5.3,4.1) dist=0.19 time=0.0s
+[00:41.249] [STATE] AI_Chef: GotoItem → counter-pickup | taking CheeseSlices from AssemblyTable_13_空台
+[00:41.249] [STATE] AI_Chef: GotoItem → GotoDest | carrying CheeseSlices, heading to AssemblyTable_16_空台
+[00:41.266] ═══ SCHEDULER CYCLE #185 ═══ agents=4 tasks=6 orders=3
+[00:41.282] [STATE] AI_Chef: moving → arrived | at (6.8,2.0) dist=0.25 time=0.0s
+[00:41.384] [STATE] AI_Chef: GotoItem → counter-pickup | taking TomatoSlices from AssemblyTable_20_空台
+[00:41.384] [STATE] AI_Chef: GotoItem → GotoDest | carrying TomatoSlices, heading to AssemblyTable_16_空台
+[00:41.469] ═══ SCHEDULER CYCLE #186 ═══ agents=4 tasks=6 orders=3
+[00:41.570] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 加ChickenCooked到盘子: completed
+[00:41.587] ═══ SCHEDULER CYCLE #187 ═══ agents=4 tasks=6 orders=3
+[00:41.587] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 加ChickenCooked到盘子: released (status=completed)
+[00:41.587] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:41.587] [ASSIGN] Agent#3(AI_Chef) ← 番茄鸡腿披萨: 加PizzaDough到盘子 type=ADD_TO_PLATE order=-349302732 facility=AssemblyTable_16_空台 item=PizzaDough@(11, 1, 5)
+[00:41.587] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=番茄鸡腿披萨: 加PizzaDough到盘子 facility=AssemblyTable_16_空台 item=PizzaDough
+[00:41.587] [AI_Chef] ExecuteAddToPlate: picking up PizzaDough from AssemblyTable_24_空台
+[00:41.789] ═══ SCHEDULER CYCLE #188 ═══ agents=4 tasks=5 orders=3
+[00:41.891] [STATE] AI_Chef: moving → arrived | at (-7.1,-5.3) dist=0.27 time=0.0s
+[00:41.994] ═══ SCHEDULER CYCLE #189 ═══ agents=4 tasks=5 orders=3
+[00:42.080] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: 取ChickenRaw: completed
+[00:42.097] ═══ SCHEDULER CYCLE #190 ═══ agents=4 tasks=5 orders=3
+[00:42.097] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: 取ChickenRaw: released (status=completed)
+[00:42.097] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:42.097] [ASSIGN] Agent#2(AI_Chef) ← 番茄鸡腿披萨: ChickenRaw→ChickenCooked type=PROCESS order=512625947 facility=FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:42.097] [STATE] AI_Chef: idle → executing PROCESS | task=番茄鸡腿披萨: ChickenRaw→ChickenCooked facility=FryingPan_4_FryingPan:ChickenRaw→ChickenCooked item=none
+[00:42.097] [AI_Chef] ExecuteProcess: counter FryingPan_4_FryingPan:ChickenRaw→ChickenCooked has ChickenRaw, → wait/interact
+[00:42.131] [STATE] AI_Chef: moving → arrived | at (-7.1,-5.3) dist=0.27 time=0.0s
+[00:42.233] [STATE] AI_Chef: moving → arrived | at (6.8,2.0) dist=0.23 time=0.0s
+[00:42.301] ═══ SCHEDULER CYCLE #191 ═══ agents=4 tasks=5 orders=3
+[00:42.436] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=ChickenRaw taskInput=ChickenRaw taskOutput=ChickenCooked
+[00:42.436] [STATE] AI_Chef: start/subscribe cooking → ChickenRaw | → ChickenCooked on FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:42.486] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: 加TomatoSlices到盘子: completed
+[00:42.504] ═══ SCHEDULER CYCLE #192 ═══ agents=4 tasks=5 orders=3
+[00:42.504] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: 加TomatoSlices到盘子: released (status=completed)
+[00:42.504] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:42.504] [ASSIGN] Agent#1(AI_Chef) ← 番茄鸡腿披萨: 取Tomato type=FETCH order=512625947 facility=Storage_5_原料柜:Tomato
+[00:42.504] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取Tomato facility=Storage_5_原料柜:Tomato item=none
+[00:42.588] [STATE] AI_Chef: moving → arrived | at (11.3,4.1) dist=0.25 time=0.0s
+[00:42.706] ═══ SCHEDULER CYCLE #193 ═══ agents=4 tasks=4 orders=3
+[00:42.862] [STATE] AI_Chef: GotoItem → counter-pickup | taking PizzaDough from AssemblyTable_24_空台
+[00:42.862] [STATE] AI_Chef: GotoItem → GotoDest | carrying PizzaDough, heading to AssemblyTable_16_空台
+[00:42.916] ═══ SCHEDULER CYCLE #194 ═══ agents=4 tasks=5 orders=3
+[00:43.127] ═══ SCHEDULER CYCLE #195 ═══ agents=4 tasks=5 orders=3
+[00:43.335] ═══ SCHEDULER CYCLE #196 ═══ agents=4 tasks=5 orders=3
+[00:43.540] ═══ SCHEDULER CYCLE #197 ═══ agents=4 tasks=5 orders=3
+[00:43.743] ═══ SCHEDULER CYCLE #198 ═══ agents=4 tasks=5 orders=3
+[00:43.862] [STATE] AI_Chef: moving → arrived | at (3.8,3.5) dist=0.28 time=0.0s
+[00:43.946] ═══ SCHEDULER CYCLE #199 ═══ agents=4 tasks=5 orders=3
+[00:43.963] [STATE] AI_Chef: moving → arrived | at (6.8,2.0) dist=0.18 time=0.0s
+[00:44.153] ═══ SCHEDULER CYCLE #200 ═══ agents=4 tasks=5 orders=3
+[00:44.187] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 加CheeseSlices到盘子: completed
+[00:44.204] ═══ SCHEDULER CYCLE #201 ═══ agents=4 tasks=5 orders=3
+[00:44.204] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 加CheeseSlices到盘子: released (status=completed)
+[00:44.204] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:44.204] [ASSIGN] Agent#4(AI_Chef) ← 番茄鸡腿披萨: 取CheeseBlock type=FETCH order=512625947 facility=Storage_7_原料柜:CheeseBlock
+[00:44.204] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取CheeseBlock facility=Storage_7_原料柜:CheeseBlock item=none
+[00:44.307] [AI_Chef] FindDropTarget(Tomato, order=512625947) → direct process facility CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:44.307] [AI_Chef] FETCH got Tomato, delivering to CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:44.409] ═══ SCHEDULER CYCLE #202 ═══ agents=4 tasks=4 orders=3
+[00:44.511] [STATE] AI_Chef: moving → arrived | at (6.8,2.0) dist=0.29 time=0.0s
+[00:44.613] ═══ SCHEDULER CYCLE #203 ═══ agents=4 tasks=5 orders=3
+[00:44.750] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 加PizzaDough到盘子: completed
+[00:44.767] ═══ SCHEDULER CYCLE #204 ═══ agents=4 tasks=5 orders=3
+[00:44.767] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: 加PizzaDough到盘子: released (status=completed)
+[00:44.767] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:44.767] [ASSIGN] Agent#3(AI_Chef) ← 番茄鸡腿披萨: PizzaUnbaked→PizzaBaked type=PROCESS order=-349302732 facility=Oven_10_Oven:PizzaUnbaked→PizzaBaked
+[00:44.767] [STATE] AI_Chef: idle → executing PROCESS | task=番茄鸡腿披萨: PizzaUnbaked→PizzaBaked facility=Oven_10_Oven:PizzaUnbaked→PizzaBaked item=none
+[00:44.767] [AI_Chef] ExecuteProcess: self-fetching PizzaUnbaked from AssemblyTable_16_空台 → Oven_10_Oven:PizzaUnbaked→PizzaBaked
+[00:44.801] [STATE] AI_Chef: moving → arrived | at (6.8,2.0) dist=0.29 time=0.0s
+[00:44.947] [STATE] AI_Chef: GotoItem → counter-pickup | taking Plate from AssemblyTable_16_空台
+[00:44.947] [STATE] AI_Chef: GotoItem → GotoFacility | carrying Plate, heading to Oven_10_Oven:PizzaUnbaked→PizzaBaked
+[00:44.977] ═══ SCHEDULER CYCLE #205 ═══ agents=4 tasks=5 orders=3
+[00:45.099] [AI_Chef] Stove stage changed: ChickenCooked (want ChickenCooked)
+[00:45.099] [STATE] AI_Chef: process grab → ChickenCooked | output ready
+[00:45.099] [AI_Chef] Delivering cooked ChickenCooked to AssemblyTable_12_空台
+[00:45.185] ═══ SCHEDULER CYCLE #206 ═══ agents=4 tasks=5 orders=3
+[00:45.389] ═══ SCHEDULER CYCLE #207 ═══ agents=4 tasks=5 orders=3
+[00:45.592] ═══ SCHEDULER CYCLE #208 ═══ agents=4 tasks=5 orders=3
+[00:45.724] [STATE] AI_Chef: moving → arrived | at (-2.6,6.8) dist=0.27 time=0.0s
+[00:45.796] ═══ SCHEDULER CYCLE #209 ═══ agents=4 tasks=5 orders=3
+[00:45.945] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: 取Tomato: completed
+[00:45.960] ═══ SCHEDULER CYCLE #210 ═══ agents=4 tasks=5 orders=3
+[00:45.960] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: 取Tomato: released (status=completed)
+[00:45.960] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:45.960] [ASSIGN] Agent#1(AI_Chef) ← 番茄鸡腿披萨: Tomato→TomatoSlices type=PROCESS order=512625947 facility=CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:45.960] [STATE] AI_Chef: idle → executing PROCESS | task=番茄鸡腿披萨: Tomato→TomatoSlices facility=CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices item=none
+[00:45.960] [AI_Chef] ExecuteProcess: counter CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices has Tomato, → wait/interact
+[00:45.989] [STATE] AI_Chef: moving → arrived | at (-2.6,6.8) dist=0.22 time=0.0s
+[00:46.168] ═══ SCHEDULER CYCLE #211 ═══ agents=4 tasks=5 orders=3
+[00:46.300] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=Tomato taskInput=Tomato taskOutput=TomatoSlices
+[00:46.300] [STATE] AI_Chef: start cutting → Tomato | → TomatoSlices on CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:46.372] ═══ SCHEDULER CYCLE #212 ═══ agents=4 tasks=5 orders=3
+[00:46.562] [STATE] AI_Chef: moving → arrived | at (2.3,5.6) dist=0.25 time=0.0s
+[00:46.577] ═══ SCHEDULER CYCLE #213 ═══ agents=4 tasks=5 orders=3
+[00:46.649] [STATE] AI_Chef: moving → arrived | at (-5.6,5.3) dist=0.25 time=0.0s
+[00:46.782] ═══ SCHEDULER CYCLE #214 ═══ agents=4 tasks=5 orders=3
+[00:46.991] ═══ SCHEDULER CYCLE #215 ═══ agents=4 tasks=5 orders=3
+[00:47.036] [AI_Chef] FindDropTarget(CheeseBlock, order=512625947) → direct process facility CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:47.036] [AI_Chef] FETCH got CheeseBlock, delivering to CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:47.197] ═══ SCHEDULER CYCLE #216 ═══ agents=4 tasks=5 orders=3
+[00:47.402] ═══ SCHEDULER CYCLE #217 ═══ agents=4 tasks=5 orders=3
+[00:47.605] ═══ SCHEDULER CYCLE #218 ═══ agents=4 tasks=5 orders=3
+[00:47.620] [STATE] AI_Chef: moving → arrived | at (5.5,-5.3) dist=0.21 time=0.0s
+[00:47.649] [STATE] AI_Chef: moving → arrived | at (3.8,4.1) dist=0.26 time=0.0s
+[00:47.813] ═══ SCHEDULER CYCLE #219 ═══ agents=4 tasks=5 orders=3
+[00:47.902] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: ChickenRaw→ChickenCooked: completed
+[00:47.918] ═══ SCHEDULER CYCLE #220 ═══ agents=4 tasks=5 orders=3
+[00:47.918] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: ChickenRaw→ChickenCooked: released (status=completed)
+[00:47.918] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:47.918] [ASSIGN] Agent#2(AI_Chef) ← 番茄鸡腿披萨: 取PizzaDough type=FETCH order=512625947 facility=Storage_9_原料柜:PizzaDough
+[00:47.918] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取PizzaDough facility=Storage_9_原料柜:PizzaDough item=none
+[00:48.130] ═══ SCHEDULER CYCLE #221 ═══ agents=4 tasks=4 orders=3
+[00:48.304] [STATE] AI_Chef: working → done | duration=2.0s task=番茄鸡腿披萨: Tomato→TomatoSlices
+[00:48.304] [AI_Chef] Working done but output not ready (counter has Tomato), entering wait
+[00:48.333] ═══ SCHEDULER CYCLE #222 ═══ agents=4 tasks=5 orders=3
+[00:48.535] ═══ SCHEDULER CYCLE #223 ═══ agents=4 tasks=5 orders=3
+[00:48.738] ═══ SCHEDULER CYCLE #224 ═══ agents=4 tasks=5 orders=3
+[00:48.948] ═══ SCHEDULER CYCLE #225 ═══ agents=4 tasks=5 orders=3
+[00:49.154] ═══ SCHEDULER CYCLE #226 ═══ agents=4 tasks=5 orders=3
+[00:49.356] ═══ SCHEDULER CYCLE #227 ═══ agents=4 tasks=5 orders=3
+[00:49.514] [STATE] AI_Chef: moving → arrived | at (0.4,-6.8) dist=0.26 time=0.0s
+[00:49.557] ═══ SCHEDULER CYCLE #228 ═══ agents=4 tasks=5 orders=3
+[00:49.743] [STATE] AI_Chef: moving → arrived | at (3.8,-4.1) dist=0.26 time=0.0s
+[00:49.757] ═══ SCHEDULER CYCLE #229 ═══ agents=4 tasks=5 orders=3
+[00:49.928] [AI_Chef] FindDropTarget(PizzaDough) → ClearCounter AssemblyTable_24_空台
+[00:49.928] [AI_Chef] FETCH got PizzaDough, delivering to AssemblyTable_24_空台
+[00:49.957] ═══ SCHEDULER CYCLE #230 ═══ agents=4 tasks=5 orders=3
+[00:50.015] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 取CheeseBlock: completed
+[00:50.029] ═══ SCHEDULER CYCLE #231 ═══ agents=4 tasks=5 orders=3
+[00:50.029] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: 取CheeseBlock: released (status=completed)
+[00:50.029] [Scheduler] 1 idle agents, 6 candidate tasks
+[00:50.029] [ASSIGN] Agent#4(AI_Chef) ← 番茄鸡腿披萨: CheeseBlock→CheeseSlices type=PROCESS order=512625947 facility=CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:50.029] [STATE] AI_Chef: idle → executing PROCESS | task=番茄鸡腿披萨: CheeseBlock→CheeseSlices facility=CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices item=none
+[00:50.029] [AI_Chef] ExecuteProcess: counter CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices has CheeseBlock, → wait/interact
+[00:50.063] [STATE] AI_Chef: moving → arrived | at (3.8,-4.1) dist=0.21 time=0.0s
+[00:50.233] ═══ SCHEDULER CYCLE #232 ═══ agents=4 tasks=5 orders=3
+[00:50.366] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=CheeseBlock taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:50.366] [STATE] AI_Chef: start cutting → CheeseBlock | → CheeseSlices on CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:50.449] ═══ SCHEDULER CYCLE #233 ═══ agents=4 tasks=5 orders=3
+[00:50.466] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=TomatoSlices taskInput=Tomato taskOutput=TomatoSlices
+[00:50.466] [STATE] AI_Chef: taking output → TomatoSlices | from CuttingBoard_8_CuttingBoard:CheeseBlock→CheeseSlices
+[00:50.466] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: Tomato→TomatoSlices: completed
+[00:50.466] [AI_Chef] CleanupTask: moving to AssemblyTable_20_空台 to drop TomatoSlices (dist=7.7)
+[00:50.664] ═══ SCHEDULER CYCLE #234 ═══ agents=4 tasks=5 orders=3
+[00:50.865] ═══ SCHEDULER CYCLE #235 ═══ agents=4 tasks=5 orders=3
+[00:51.071] ═══ SCHEDULER CYCLE #236 ═══ agents=4 tasks=6 orders=3
+[00:51.273] ═══ SCHEDULER CYCLE #237 ═══ agents=4 tasks=6 orders=3
+[00:51.490] ═══ SCHEDULER CYCLE #238 ═══ agents=4 tasks=6 orders=3
+[00:51.691] ═══ SCHEDULER CYCLE #239 ═══ agents=4 tasks=6 orders=3
+[00:51.895] ═══ SCHEDULER CYCLE #240 ═══ agents=4 tasks=6 orders=3
+[00:52.016] [STATE] AI_Chef: moving → arrived | at (2.3,5.6) dist=0.25 time=0.0s
+[00:52.103] ═══ SCHEDULER CYCLE #241 ═══ agents=4 tasks=6 orders=3
+[00:52.305] ═══ SCHEDULER CYCLE #242 ═══ agents=4 tasks=6 orders=3
+[00:52.322] [STATE] AI_Chef: moving → arrived | at (5.3,4.1) dist=0.22 time=0.0s
+[00:52.371] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=PizzaBaked taskInput=PizzaUnbaked taskOutput=PizzaBaked
+[00:52.371] [STATE] AI_Chef: taking output → PizzaBaked | from Oven_10_Oven:PizzaUnbaked→PizzaBaked
+[00:52.371] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: PizzaUnbaked→PizzaBaked: completed
+[00:52.371] [AI_Chef] CleanupTask: moving to AssemblyTable_20_空台 to drop PizzaBaked (dist=3.1)
+[00:52.371] [STATE] AI_Chef: working → done | duration=2.0s task=番茄鸡腿披萨: CheeseBlock→CheeseSlices
+[00:52.371] [AI_Chef] Working done but output not ready (counter has CheeseBlock), entering wait
+[00:52.521] ═══ SCHEDULER CYCLE #243 ═══ agents=4 tasks=6 orders=3
+[00:52.621] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: Tomato→TomatoSlices: completed
+[00:52.638] ═══ SCHEDULER CYCLE #244 ═══ agents=4 tasks=5 orders=3
+[00:52.638] [COMPLETE] Agent#1(AI_Chef) 番茄鸡腿披萨: Tomato→TomatoSlices: released (status=completed)
+[00:52.638] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:52.638] [ASSIGN] Agent#1(AI_Chef) ← 番茄鸡腿披萨: 拿盘子 type=FETCH_PLATE order=512625947 facility=PlatesCounter_0_盘架#0
+[00:52.638] [STATE] AI_Chef: idle → executing FETCH_PLATE | task=番茄鸡腿披萨: 拿盘子 facility=PlatesCounter_0_盘架#0 item=none
+[00:52.839] ═══ SCHEDULER CYCLE #245 ═══ agents=4 tasks=4 orders=3
+[00:53.045] ═══ SCHEDULER CYCLE #246 ═══ agents=4 tasks=5 orders=3
+[00:53.064] [STATE] AI_Chef: moving → arrived | at (11.3,4.1) dist=0.22 time=0.0s
+[00:53.248] ═══ SCHEDULER CYCLE #247 ═══ agents=4 tasks=5 orders=3
+[00:53.349] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: 取PizzaDough: completed
+[00:53.365] ═══ SCHEDULER CYCLE #248 ═══ agents=4 tasks=5 orders=3
+[00:53.365] [COMPLETE] Agent#2(AI_Chef) 番茄鸡腿披萨: 取PizzaDough: released (status=completed)
+[00:53.365] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:53.365] [ASSIGN] Agent#2(AI_Chef) ← 番茄鸡腿披萨: 取ChickenRaw type=FETCH order=-1873061998 facility=Storage_3_原料柜:ChickenRaw
+[00:53.365] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取ChickenRaw facility=Storage_3_原料柜:ChickenRaw item=none
+[00:53.566] ═══ SCHEDULER CYCLE #249 ═══ agents=4 tasks=4 orders=3
+[00:53.599] [STATE] AI_Chef: moving → arrived | at (5.3,4.1) dist=0.22 time=0.0s
+[00:53.632] [STATE] AI_Chef: moving → arrived | at (11.3,3.5) dist=0.30 time=0.0s
+[00:53.766] ═══ SCHEDULER CYCLE #250 ═══ agents=4 tasks=4 orders=3
+[00:53.881] [AI_Chef] DropItemAtDestination: AssemblyTable_20_空台 occupied, moving to free AssemblyTable_21_空台
+[00:53.982] ═══ SCHEDULER CYCLE #251 ═══ agents=4 tasks=4 orders=3
+[00:54.083] [AI_Chef] FindDropTarget(ChickenRaw, order=-1873061998) → direct process facility FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:54.083] [AI_Chef] FETCH got ChickenRaw, delivering to FryingPan_4_FryingPan:ChickenRaw→ChickenCooked
+[00:54.184] ═══ SCHEDULER CYCLE #252 ═══ agents=4 tasks=4 orders=3
+[00:54.369] [STATE] AI_Chef: moving → arrived | at (6.8,4.1) dist=0.24 time=0.0s
+[00:54.385] ═══ SCHEDULER CYCLE #253 ═══ agents=4 tasks=4 orders=3
+[00:54.402] [STATE] AI_Chef: moving → arrived | at (0.4,-2.3) dist=0.24 time=0.0s
+[00:54.536] [AI_Chef] HandleProcess: held=none counterHas=True counterItem=CheeseSlices taskInput=CheeseBlock taskOutput=CheeseSlices
+[00:54.536] [STATE] AI_Chef: taking output → CheeseSlices | from CuttingBoard_6_CuttingBoard:Tomato→TomatoSlices
+[00:54.536] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: CheeseBlock→CheeseSlices: completed
+[00:54.536] [AI_Chef] CleanupTask: moving to AssemblyTable_13_空台 to drop CheeseSlices (dist=3.2)
+[00:54.602] ═══ SCHEDULER CYCLE #254 ═══ agents=4 tasks=4 orders=3
+[00:54.668] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: PizzaUnbaked→PizzaBaked: completed
+[00:54.684] ═══ SCHEDULER CYCLE #255 ═══ agents=4 tasks=4 orders=3
+[00:54.684] [COMPLETE] Agent#3(AI_Chef) 番茄鸡腿披萨: PizzaUnbaked→PizzaBaked: released (status=completed)
+[00:54.684] [Scheduler] 1 idle agents, 5 candidate tasks
+[00:54.684] [ASSIGN] Agent#3(AI_Chef) ← 番茄鸡腿披萨: Add PizzaBaked to plate type=ADD_TO_PLATE order=-349302732 facility=AssemblyTable_19_空台 item=PizzaBaked@(7, 1, 5)
+[00:54.684] [STATE] AI_Chef: idle → executing ADD_TO_PLATE | task=番茄鸡腿披萨: Add PizzaBaked to plate facility=AssemblyTable_19_空台 item=PizzaBaked
+[00:54.684] [AI_Chef] ExecuteAddToPlate: picking up PizzaBaked from AssemblyTable_21_空台
+[00:54.718] [STATE] AI_Chef: moving → arrived | at (6.8,4.1) dist=0.18 time=0.0s
+[00:54.869] [STATE] AI_Chef: GotoItem → counter-pickup | taking PizzaBaked from AssemblyTable_21_空台
+[00:54.869] [STATE] AI_Chef: GotoItem → GotoDest | carrying PizzaBaked, heading to AssemblyTable_19_空台
+[00:54.886] ═══ SCHEDULER CYCLE #256 ═══ agents=4 tasks=4 orders=3
+[00:55.077] [STATE] AI_Chef: moving → arrived | at (5.5,-3.8) dist=0.27 time=0.0s
+[00:55.093] ═══ SCHEDULER CYCLE #257 ═══ agents=4 tasks=4 orders=3
+[00:55.213] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: CheeseBlock→CheeseSlices: completed
+[00:55.231] ═══ SCHEDULER CYCLE #258 ═══ agents=4 tasks=4 orders=3
+[00:55.231] [COMPLETE] Agent#4(AI_Chef) 番茄鸡腿披萨: CheeseBlock→CheeseSlices: released (status=completed)
+[00:55.231] [Scheduler] 1 idle agents, 4 candidate tasks
+[00:55.231] [ASSIGN] Agent#4(AI_Chef) ← 番茄鸡腿披萨: 取Tomato type=FETCH order=-1873061998 facility=Storage_5_原料柜:Tomato
+[00:55.231] [STATE] AI_Chef: idle → executing FETCH | task=番茄鸡腿披萨: 取Tomato facility=Storage_5_原料柜:Tomato item=none
+[00:55.447] ═══ SCHEDULER CYCLE #259 ═══ agents=4 tasks=3 orders=3
+[00:55.651] ═══ SCHEDULER CYCLE #260 ═══ agents=4 tasks=3 orders=3

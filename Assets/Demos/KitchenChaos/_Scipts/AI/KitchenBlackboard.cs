@@ -703,18 +703,23 @@ namespace Kitchen.AI
 
         /// <summary>
         /// Find a free facility of a given type, preferring ones with more nearby items.
+        /// Never returns a counter that already has a kitchen object on it.
         /// </summary>
         public FacilityState BestFreeFacility(FacilityType type, Vector3 fromPos)
         {
-            var candidates = facilities.FindAll(f => f.type == type && f.state == "free");
+            static bool IsPhysicallyFree(FacilityState f) =>
+                f?.counter != null && !f.counter.HasKitchenObj();
+
+            var candidates = facilities.FindAll(f =>
+                f.type == type && f.state == "free" && IsPhysicallyFree(f));
+
             if (candidates.Count == 0)
             {
-                // Also consider reserved ones
-                candidates = facilities.FindAll(f => f.type == type);
-                if (candidates.Count == 0) return null;
-                candidates.Sort((a, b) =>
-                    Vector3.Distance(a.Center, fromPos).CompareTo(Vector3.Distance(b.Center, fromPos)));
-                return candidates[0];
+                // Reserved-but-empty is OK (reservation may be stale); occupied counters are not.
+                candidates = facilities.FindAll(f =>
+                    f.type == type && IsPhysicallyFree(f));
+                if (candidates.Count == 0)
+                    return null;
             }
 
             if (candidates.Count == 1) return candidates[0];

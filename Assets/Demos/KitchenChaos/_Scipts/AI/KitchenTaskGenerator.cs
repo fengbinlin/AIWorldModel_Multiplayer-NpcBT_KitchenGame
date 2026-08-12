@@ -262,14 +262,33 @@ namespace Kitchen.AI
                 }
             }
 
-            // Fallback to best free facility
+            // Fallback to a physically empty facility only
             if (facility == null)
                 facility = bb.BestFreeFacility(facilityType, Vector3.zero);
 
             if (facility == null)
             {
+                // All facilities of this type are busy — do not spawn a PROCESS that
+                // sends agents to an occupied cooker (causes park/reassign pacing loops).
                 skippedNoFacility++;
                 return;
+            }
+
+            // Double-check: never target a counter that already holds a foreign item
+            if (facility.counter.HasKitchenObj())
+            {
+                var onFac = facility.counter.GetKitchenObj();
+                bool ours = (onFac.objEnum == step.inputType.Value && onFac.BoundOrderId == orderId)
+                    || (onFac.objEnum == step.outputType.Value && onFac.BoundOrderId == orderId)
+                    || (onFac is Plate pl
+                        && pl.BoundOrderId == orderId
+                        && (pl.GetIngredients().Contains(step.inputType.Value)
+                            || pl.GetIngredients().Contains(step.outputType.Value)));
+                if (!ours)
+                {
+                    skippedNoFacility++;
+                    return;
+                }
             }
 
             // Input may be a free KitchenObj or sitting as a plate ingredient (assembled dish).

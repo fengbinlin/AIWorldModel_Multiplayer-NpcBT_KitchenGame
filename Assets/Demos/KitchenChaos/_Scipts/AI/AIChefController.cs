@@ -108,6 +108,11 @@ namespace Kitchen.AI
         private Vector3 _carryDestPos;
         private bool _returningPlateAfterTimedProcess;
         private TimedFacilityCounter _timedProcessFacility;
+        /// <summary>Waiting because the target facility/counter was busy on arrival.</summary>
+        private bool _waitingForFreeFacility;
+        private float _offMeshRecoverTimer;
+        /// <summary>After parking an item because a facility was busy, abandon (don't complete) the task.</summary>
+        private bool _abandonAfterDestinationDrop;
 
         // Item holding (ICanHoldKitchenObj)
         private KitchenObj _heldItem;
@@ -333,6 +338,7 @@ namespace Kitchen.AI
 
             UpdateStateMachine();
             UpdateMovement();
+            EnsureOnNavMesh();
             UpdateHeldItem();
         }
 
@@ -561,7 +567,24 @@ namespace Kitchen.AI
                     // Check if we can proceed (periodic re-check)
                     if (_waitTimer > 0.3f && CanProceedFromWaiting())
                     {
-                        // 手里有货、等空柜：去新目标柜，不要直接 interacting（会再误触邻柜）
+                        // Holding ingredient during PROCESS wait = wrong state.
+                        // Occupied → park; never wait for the cooker to free then place.
+                        if (_heldItem != null && _currentTask?.type == TaskType.PROCESS)
+                        {
+                            if (_targetCounter != null && _targetCounter.HasKitchenObj())
+                                ParkHeldItemBecauseFacilityBusy();
+                            else
+                                DropItemAtFacility();
+                            break;
+                        }
+
+                        if (_heldItem != null && _waitingForFreeFacility)
+                        {
+                            ParkHeldItemBecauseFacilityBusy();
+                            break;
+                        }
+
+                        // 手里有货、等空柜：去新目标柜
                         if (_heldItem != null && _execPhase == ExecPhase.GotoDest)
                         {
                             if (_targetCounter == null || !CanPlaceHeldItemOn(_targetCounter))
@@ -572,15 +595,50 @@ namespace Kitchen.AI
                             if (_targetCounter != null)
                             {
                                 debugState = $"wait → retarget {_targetCounter.name}";
+                                _execPhase = ExecPhase.GotoDest;
                                 if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; }
                                 break;
                             }
                         }
 
+                        // PROCESS finished — grab output
+                        if (_heldItem == null
+                            && _currentTask?.type == TaskType.PROCESS
+                            && _targetCounter != null
+                            && _targetCounter.HasKitchenObj()
+                            && _currentTask.outputType != 0
+                            && (_targetCounter.GetKitchenObj().objEnum == _currentTask.outputType
+                                || (_targetCounter.GetKitchenObj() is Plate p
+                                    && p.GetIngredients().Contains(_currentTask.outputType))))
+                        {
+                            _waitingForFreeFacility = false;
+                            _substate = "interacting";
+                            _stateTimer = 0;
+                            break;
+                        }
+
+                        _waitingForFreeFacility = false;
                         _substate = "interacting";
                         _stateTimer = 0;
                         debugState = "retrying interaction";
-                        // Don't reset _waitTimer — let the timeout catch stuck loops
+                        break;
+                    }
+
+                    // Holding + PROCESS: never idle-wait for a free cooker
+                    if (_heldItem != null
+                        && _currentTask?.type == TaskType.PROCESS
+                        && _waitTimer > 0.15f)
+                    {
+                        if (_targetCounter != null && _targetCounter.HasKitchenObj())
+                            ParkHeldItemBecauseFacilityBusy();
+                        else
+                            DropItemAtFacility();
+                        break;
+                    }
+
+                    if (_waitingForFreeFacility && _heldItem != null && _waitTimer > 0.15f)
+                    {
+                        ParkHeldItemBecauseFacilityBusy();
                         break;
                     }
 
@@ -589,7 +647,7 @@ namespace Kitchen.AI
                     if (_waitTimer > maxWait)
                     {
                         Debug.Log($"[{chefName}] Waited {maxWait}s, abandoning: {_currentTask?.label}");
-                        AIDebugLogger.LogWarning(chefName, $"FETCH_PLATE wait timeout ({maxWait}s), abandoning");
+                        AIDebugLogger.LogWarning(chefName, $"Wait timeout ({maxWait}s), abandoning");
                         AbandonTask();
                     }
                     break;
@@ -753,7 +811,16 @@ namespace Kitchen.AI
                     break;
 
                 case ExecPhase.GotoFacility:
-                    // Arrived at facility — drop held item first, then interact
+                    // Arrived at facility — if occupied, park immediately (never stand and wait).
+                    if (_heldItem != null
+                        && _targetCounter != null
+                        && _targetCounter.HasKitchenObj())
+                    {
+                        AIDebugLogger.Log(chefName,
+                            $"GotoFacility: {_targetCounter.name} occupied by {_targetCounter.GetKitchenObj().objEnum} — park now");
+                        ParkHeldItemBecauseFacilityBusy();
+                        break;
+                    }
                     DropItemAtFacility();
                     break;
 
@@ -867,6 +934,40 @@ namespace Kitchen.AI
 
             // AIPath handles vertical positioning automatically via graph constraints.
             // No Y-clamping needed.
+        }
+
+        /// <summary>
+        /// RVO / collisions can shove agents off the walkable mesh. Snap back to
+        /// the nearest graph point so they do not path forever into the void.
+        /// </summary>
+        private void EnsureOnNavMesh()
+        {
+            if (AstarPath.active == null || _ai == null) return;
+
+            _offMeshRecoverTimer += Time.deltaTime;
+            if (_offMeshRecoverTimer < 0.4f) return;
+            _offMeshRecoverTimer = 0f;
+
+            var nearest = AstarPath.active.GetNearest(transform.position);
+            if (nearest.node == null) return;
+
+            Vector3 flatPos = transform.position;
+            flatPos.y = nearest.position.y;
+            float dist = Vector3.Distance(flatPos, nearest.position);
+            if (dist <= 0.85f) return;
+
+            AIDebugLogger.LogWarning(chefName, $"Off walkable mesh by {dist:F2}m — warping back");
+            _ai.Teleport(nearest.position);
+
+            if (_substate == "moving")
+            {
+                Vector3 dest = _hasApproachPoint ? _lastApproachPoint : _ai.destination;
+                _ai.destination = dest;
+                _ai.SearchPath();
+                _ai.isStopped = false;
+                _stuckProgressTimer = 0f;
+                _lastProgressDist = float.MaxValue;
+            }
         }
 
         private void StartWander()
@@ -1062,6 +1163,10 @@ namespace Kitchen.AI
             _execPhase = ExecPhase.None;
             _carryTargetItem = null;
             _waitTimer = 0;
+            _returningPlateAfterTimedProcess = false;
+            _timedProcessFacility = null;
+            _waitingForFreeFacility = false;
+            _abandonAfterDestinationDrop = false;
 
             AIDebugLogger.LogAssignment(agentId, chefName, task);
 
@@ -1115,8 +1220,8 @@ namespace Kitchen.AI
                 && _heldItem.BoundOrderId == task.orderId)
             {
                 AIDebugLogger.Log(chefName, $"ExecuteFetch: already holding {_heldItem.objEnum}, finding drop target");
-                // Find destination facility for this ingredient
-                _targetCounter = FindDropTarget(task.outputType);
+                // Find destination facility for this ingredient (pass orderId so FETCH→PROCESS fusion works)
+                _targetCounter = FindDropTarget(task.outputType, task.orderId);
                 if (_targetCounter != null && _targetCounter != counter)
                 {
                     _execPhase = ExecPhase.GotoDest;
@@ -1161,26 +1266,9 @@ namespace Kitchen.AI
                         .Select(f => f.counter));
             }
 
-            // Safe FETCH→PROCESS fusion: if this order's next step processes
-            // the fetched item and that facility is empty, deliver directly
-            // to the facility instead of parking the item on a clear counter.
-            if (orderId != 0 && bb != null)
-            {
-                var directFacility = FindImmediateProcessFacility(
-                    bb,
-                    ingredient,
-                    orderId,
-                    reservedCounters);
-                if (directFacility != null)
-                {
-                    AIDebugLogger.Log(
-                        chefName,
-                        $"FindDropTarget({ingredient}, order={orderId}) → " +
-                        $"direct process facility {directFacility.name}");
-                    return directFacility;
-                }
-            }
-
+            // Safe staging only: FETCH always parks on a ClearCounter.
+            // PROCESS tasks own placing on cookers and waiting for output.
+            // (Direct FETCH→facility fusion caused place-and-leave / broken cook.)
             var clear = FindObjectsOfType<ClearCounter>()
                 .FirstOrDefault(c => IsUsableClearCounter(c)
                     && !c.HasKitchenObj()
@@ -1192,48 +1280,6 @@ namespace Kitchen.AI
             }
             AIDebugLogger.LogWarning(chefName, $"FindDropTarget({ingredient}) → fallback nearest free");
             return FindNearestFreeCounter(transform.position, reservedCounters);
-        }
-
-        private static BaseCounter FindImmediateProcessFacility(
-            KitchenBlackboard bb,
-            KitchenObjEnum ingredient,
-            int orderId,
-            HashSet<BaseCounter> reservedCounters)
-        {
-            int orderIndex = bb.activeOrderIds.IndexOf(orderId);
-            if (orderIndex < 0 || orderIndex >= bb.activeOrders.Count)
-                return null;
-
-            var order = bb.activeOrders[orderIndex];
-            if (order == null
-                || !bb.recipeStepChains.TryGetValue(
-                    order.recipeName,
-                    out var steps))
-                return null;
-
-            var processStep = steps.FirstOrDefault(step =>
-                step.taskType == TaskType.PROCESS
-                && step.inputType == ingredient);
-            if (processStep == null)
-                return null;
-
-            var facility = bb.facilities.FirstOrDefault(f =>
-                f.type == processStep.requiredFacilityType
-                && f.counter != null
-                && !f.counter.HasKitchenObj()
-                && (f.state != "reserved"
-                    || f.reservedByAgent == -1)
-                && (reservedCounters == null
-                    || !reservedCounters.Contains(f.counter)));
-            if (facility == null)
-                return null;
-
-            bool alreadyTargeted = bb.agents.Any(agent =>
-                agent.currentTask != null
-                && agent.currentTask.status != "completed"
-                && agent.currentTask.status != "abandoned"
-                && agent.currentTask.targetFacility == facility.counter);
-            return alreadyTargeted ? null : facility.counter;
         }
 
         private BaseCounter FindNearestFreeCounter(
@@ -1303,10 +1349,23 @@ namespace Kitchen.AI
 
         /// <summary>
         /// 手里物品能否放到该柜：空柜，或柜上/手里有盘子可叠放。
+        /// 炉灶/烤箱/砧板等加工台：台上已有东西则不能再放（避免“拿着盘子也当成能放”而干等）。
         /// </summary>
         private bool CanPlaceHeldItemOn(BaseCounter counter)
         {
             if (_heldItem == null || counter == null) return false;
+
+            bool isProcessor = counter is StoveCounter
+                               || counter is CuttingCounter
+                               || counter is TimedFacilityCounter;
+            if (isProcessor)
+            {
+                // Empty processor — OK to place input / plate-for-extract.
+                if (!counter.HasKitchenObj()) return true;
+                // Never treat an occupied cooker as placeable just because we hold a plate.
+                return false;
+            }
+
             if (!counter.HasKitchenObj()) return true;
             if (counter.GetKitchenObj() is Plate) return true;
             if (_heldItem is Plate) return true;
@@ -1349,31 +1408,52 @@ namespace Kitchen.AI
 
             Vector3 approachPos = GetApproachPosition(counter);
 
-            if (_heldItem != null
-                && task.itemType != 0
-                && _heldItem.objEnum == task.itemType
-                && _heldItem.BoundOrderId == task.orderId)
-            {
-                // Holding the right input — go drop it and start processing
-                AIDebugLogger.Log(chefName, $"ExecuteProcess: holding {_heldItem.objEnum}, → GotoFacility {counter.name}");
-                _execPhase = ExecPhase.GotoFacility;
-                if (!MoveTo(counter.transform.position)) { AbandonTask(); return; }
-            }
-            else if (counter.HasKitchenObj())
+            // Hard gate: if the cooker is busy with something that is not ours to take,
+            // park held input (if any) and stop. Never self-fetch into a busy facility.
+            if (counter.HasKitchenObj())
             {
                 var onCounter = counter.GetKitchenObj();
-                bool ready = onCounter.objEnum == task.itemType
-                             || onCounter.objEnum == task.outputType
-                             || (onCounter is Plate readyPlate
-                                 && (readyPlate.GetIngredients().Contains(task.itemType)
-                                     || readyPlate.GetIngredients().Contains(task.outputType)));
-                if (ready)
+                bool ourOutput = task.outputType != 0
+                    && (onCounter.objEnum == task.outputType
+                        || (onCounter is Plate op
+                            && op.GetIngredients().Contains(task.outputType)));
+                bool ourInput = task.itemType != 0
+                    && task.orderId != 0
+                    && onCounter.BoundOrderId == task.orderId
+                    && (onCounter.objEnum == task.itemType
+                        || (onCounter is Plate ip
+                            && ip.GetIngredients().Contains(task.itemType)));
+
+                if (!ourOutput && !ourInput)
                 {
-                    AIDebugLogger.Log(chefName, $"ExecuteProcess: counter {counter.name} has {onCounter.objEnum}, → wait/interact");
+                    AIDebugLogger.Log(chefName,
+                        $"ExecuteProcess: {counter.name} busy with {onCounter.objEnum} — stop (no chase loop)");
+                    if (_heldItem != null)
+                        ParkHeldItemBecauseFacilityBusy();
+                    else
+                        AbandonTask();
+                    return;
+                }
+
+                if (ourOutput || ourInput)
+                {
+                    AIDebugLogger.Log(chefName,
+                        $"ExecuteProcess: {counter.name} has our {onCounter.objEnum} — go interact");
                     _execPhase = ExecPhase.None;
                     if (!MoveTo(counter.transform.position)) { AbandonTask(); return; }
                     return;
                 }
+            }
+
+            if (_heldItem != null
+                && task.itemType != 0
+                && (_heldItem.objEnum == task.itemType
+                    || (_heldItem is Plate holdPl && holdPl.GetIngredients().Contains(task.itemType))))
+            {
+                AIDebugLogger.Log(chefName, $"ExecuteProcess: holding {_heldItem.objEnum}, → GotoFacility {counter.name}");
+                _execPhase = ExecPhase.GotoFacility;
+                if (!MoveTo(counter.transform.position)) { AbandonTask(); return; }
+                return;
             }
 
             // Holding a plate that already has the input ingredient (assembled dish → oven/blender)
@@ -1385,7 +1465,7 @@ namespace Kitchen.AI
                 return;
             }
 
-            // Counter empty / wrong — find KitchenObj or plate with input
+            // Counter empty — find KitchenObj or plate with input
             KitchenObj foundItem = FindItemAnywhere(task.itemType, task.orderId)
                 ?? FindPlateHoldingIngredient(task.itemType, task.orderId);
             if (foundItem != null)
@@ -1899,8 +1979,26 @@ namespace Kitchen.AI
             {
                 AIDebugLogger.LogState(chefName, "placing", _heldItem.objEnum.ToString(), $"→ {counter.name}");
                 PerformInteract(counter);
-                _substate = "waiting";
-                _waitTimer = 0;
+                if (_heldItem != null)
+                {
+                    // Place failed (occupied race) — park on clear, never sit waiting for free.
+                    AIDebugLogger.LogWarning(chefName,
+                        $"HandleProcess CASE1: still holding after put — park");
+                    ParkHeldItemBecauseFacilityBusy();
+                    return;
+                }
+                // Re-enter HandleProcess so CASE 3 starts cutting/cooking (do not skip that path).
+                StayForProcessAfterPlace();
+                return;
+            }
+
+            // Holding input but facility occupied → park (do not wait for free)
+            if (_heldItem != null && hasItem
+                && (_heldItem.objEnum == _currentTask.itemType || HeldPlateHas(_currentTask.itemType)))
+            {
+                AIDebugLogger.LogWarning(chefName,
+                    $"HandleProcess: holding input but {counter.name} occupied — park");
+                ParkHeldItemBecauseFacilityBusy();
                 return;
             }
 
@@ -1933,6 +2031,17 @@ namespace Kitchen.AI
             if (_heldItem == null && hasItem
                 && (counterItem.objEnum == _currentTask.itemType || PlateHas(_currentTask.itemType)))
             {
+                // Someone else's order is already cooking here — do not stand and wait.
+                if (_currentTask.orderId != 0
+                    && counterItem.BoundOrderId != 0
+                    && counterItem.BoundOrderId != _currentTask.orderId)
+                {
+                    AIDebugLogger.LogWarning(chefName,
+                        $"HandleProcess: {counter.name} has other order's {counterItem.objEnum} — abandon");
+                    AbandonTask();
+                    return;
+                }
+
                 if (counter is CuttingCounter cc)
                 {
                     AIDebugLogger.LogState(chefName, "start cutting", _currentTask.itemType.ToString(),
@@ -1967,6 +2076,20 @@ namespace Kitchen.AI
                     _substate = "waiting";
                     _waitTimer = 0;
                 }
+                else
+                {
+                    // ClearCounter etc. cannot process — abandon
+                    AbandonTask();
+                }
+                return;
+            }
+
+            // Holding input but facility already has something (including same type) → park
+            if (_heldItem != null && hasItem)
+            {
+                AIDebugLogger.LogWarning(chefName,
+                    $"HandleProcess: holding {_heldItem.objEnum} but {counter.name} occupied — park");
+                ParkHeldItemBecauseFacilityBusy();
                 return;
             }
 
@@ -2026,30 +2149,31 @@ namespace Kitchen.AI
                 else
                 {
                     // Facility is occupied by someone else's valid ingredient.
-                    // Do NOT clear it — that's unnatural instant teleporting.
-                    // Drop our held item nearby and abandon gracefully.
-                    AIDebugLogger.LogWarning(chefName, $"HandleProcess: {counter.name} occupied by {counterItem.objEnum}, not clearing — abandoning");
-
+                    // Park immediately — do not wait for it to free.
+                    AIDebugLogger.LogWarning(chefName,
+                        $"HandleProcess: {counter.name} occupied by {counterItem.objEnum} — park held item");
                     if (_heldItem != null)
                     {
-                        var dropSpot = FindNearestFreeCounter(transform.position);
-                        if (dropSpot != null) PerformInteract(dropSpot);
-                        else
-                        {
-                            KitchenObjFactory.Instance.DropObjServerRpc(
-                                _heldItem.NetworkObject, transform.position + transform.forward * 0.5f,
-                                Vector3.down, 0f, default);
-                            ClearKitchenObj();
-                        }
+                        ParkHeldItemBecauseFacilityBusy();
+                        return;
                     }
                     AbandonTask();
                     return;
                 }
             }
 
-            // === CASE 5: Counter empty and we don't hold input → abandon ===
+            // === CASE 5: Counter empty and we don't hold input ===
             if (!hasItem && _heldItem == null)
             {
+                // Brief sync lag after place — stay, do not walk away.
+                if (_currentTask.type == TaskType.PROCESS
+                    && (counter is StoveCounter or CuttingCounter or TimedFacilityCounter))
+                {
+                    AIDebugLogger.Log(chefName,
+                        "HandleProcess: empty counter after place race — stay waiting");
+                    StayForProcessAfterPlace();
+                    return;
+                }
                 AIDebugLogger.LogWarning(chefName, $"HandleProcess: counter empty, nothing to process — abandoning");
                 AbandonTask();
                 return;
@@ -2066,6 +2190,27 @@ namespace Kitchen.AI
             }
             AIDebugLogger.LogWarning(chefName, $"HandleProcess: edge case — abandoning");
             AbandonTask();
+        }
+
+        /// <summary>
+        /// After putting input on a cooker: stay and let HandleProcess CASE 3
+        /// start cutting/cooking. Never invent a fake PROCESS from FETCH.
+        /// </summary>
+        private void StayForProcessAfterPlace()
+        {
+            _waitingForFreeFacility = false;
+            _execPhase = ExecPhase.None;
+            if (_targetCounter != null && _targetCounter.HasKitchenObj())
+            {
+                // Item is visible — run HandleProcess immediately (CASE 3).
+                _substate = "interacting";
+                _stateTimer = 0.2f; // skip interact delay; ExecuteInteraction next tick
+                return;
+            }
+
+            // Sync lag: wait until input appears, then CanProceed → interacting → CASE 3.
+            _substate = "waiting";
+            _waitTimer = 0;
         }
 
         #endregion
@@ -2171,6 +2316,13 @@ namespace Kitchen.AI
         {
             if (_heldItem != null && _targetCounter != null)
             {
+                // Occupied → park immediately. Never fall through into process-wait.
+                if (_targetCounter.HasKitchenObj())
+                {
+                    ParkHeldItemBecauseFacilityBusy();
+                    return;
+                }
+
                 // A plate is only a carrier for oven/blender recipes. Extract
                 // its assembled item onto the timed facility, then return the
                 // now-empty plate to a clear counter or the ground while the
@@ -2178,7 +2330,6 @@ namespace Kitchen.AI
                 if (_heldItem is Plate processPlate
                     && _targetCounter is TimedFacilityCounter timedFacility
                     && _currentTask?.orderId != 0
-                    && !timedFacility.HasKitchenObj()
                     && timedFacility.TryAcceptPlateContentsForOrder(
                         processPlate,
                         _currentTask.orderId))
@@ -2206,116 +2357,102 @@ namespace Kitchen.AI
 
                 if (CanPlaceHeldItemOn(_targetCounter))
                 {
-                    if (_targetCounter.GetKitchenObj() is Plate plate
-                        && _heldItem is not Plate
-                        && _currentTask?.orderId != 0)
-                    {
-                        if (!TryPutHeldItemOnOrderPlate(plate))
-                        {
-                            AbandonTask();
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        PerformInteract(_targetCounter);
+                    PerformInteract(_targetCounter);
 
-                        // Timed facilities accept a whole plate (for example an
-                        // unbaked pizza). The network put operation normally
-                        // clears the chef's hands; on a remote client there can
-                        // be one frame where the local holder still references
-                        // the object. If the facility now owns that exact item,
-                        // clear the stale hand reference so the chef does not
-                        // carry a second copy into the next interaction.
+                    // Place failed (race) — still holding: park, do not wait here.
+                    if (_heldItem != null)
+                    {
                         if (_targetCounter is TimedFacilityCounter
-                            && _heldItem != null
                             && _targetCounter.GetKitchenObj() == _heldItem)
                         {
                             ClearKitchenObj();
                         }
-                        else if (_targetCounter is TimedFacilityCounter
-                            && _heldItem != null)
+                        else
                         {
-                            // The facility did not take the local held object.
-                            // Never leave the chef carrying a plate while the
-                            // timed facility is running: return it to a clear
-                            // counter, or use the configured ground-drop point.
-                            var heldAfterInteract = _heldItem;
-                            var returnCounter = FindNearestFreeCounter(
-                                transform.position,
-                                exclude: _targetCounter);
-                            if (returnCounter != null)
-                            {
-                                AIDebugLogger.Log(
-                                    chefName,
-                                    $"Timed facility did not take {heldAfterInteract.objEnum}; " +
-                                    $"returning it to {returnCounter.name}");
-                                _targetCounter = returnCounter;
-                                _execPhase = ExecPhase.GotoDest;
-                                if (!MoveTo(returnCounter.transform.position))
-                                {
-                                    KitchenObjFactory.Instance.DropObjServerRpc(
-                                        heldAfterInteract.NetworkObject,
-                                        GetGroundDropPosition(
-                                            transform.position + transform.forward * 0.5f),
-                                        Vector3.down,
-                                        0f,
-                                        default);
-                                    ClearKitchenObj();
-                                    AbandonTask();
-                                }
-                                return;
-                            }
-
-                            KitchenObjFactory.Instance.DropObjServerRpc(
-                                heldAfterInteract.NetworkObject,
-                                GetGroundDropPosition(
-                                    transform.position + transform.forward * 0.5f),
-                                Vector3.down,
-                                0f,
-                                default);
-                            ClearKitchenObj();
-                            AbandonTask();
+                            AIDebugLogger.LogWarning(chefName,
+                                $"DropItemAtFacility: still holding {_heldItem.objEnum} after put — park");
+                            ParkHeldItemBecauseFacilityBusy();
                             return;
                         }
                     }
-                    AIDebugLogger.Log(chefName, $"DropItemAtFacility: → {_targetCounter.name}, held={_heldItem?.objEnum.ToString() ?? "null"}");
+
+                    AIDebugLogger.Log(chefName, $"DropItemAtFacility: placed on {_targetCounter.name}");
                     Debug.Log($"[{chefName}] Dropped item at {_targetCounter.name}");
-                }
-                else
-                {
-                    // 加工台被占：改投其他同型空闲台，或暂存到空台
-                    var alt = FindDropTarget(_heldItem.objEnum);
-                    if (alt != null && alt != _targetCounter)
-                    {
-                        AIDebugLogger.Log(chefName,
-                            $"DropItemAtFacility: {_targetCounter.name} busy, retarget → {alt.name}");
-                        _targetCounter = alt;
-                        _execPhase = ExecPhase.GotoFacility;
-                        if (!MoveTo(alt.transform.position)) { AbandonTask(); return; }
-                        return;
-                    }
-
-                    var clear = FindNearestFreeCounter(transform.position);
-                    if (clear != null)
-                    {
-                        AIDebugLogger.Log(chefName,
-                            $"DropItemAtFacility: facility busy, park on {clear.name}");
-                        _targetCounter = clear;
-                        _execPhase = ExecPhase.GotoDest;
-                        if (!MoveTo(clear.transform.position)) { AbandonTask(); return; }
-                        return;
-                    }
-
-                    _substate = "waiting";
-                    _waitTimer = 0;
+                    StayForProcessAfterPlace();
                     return;
                 }
+
+                ParkHeldItemBecauseFacilityBusy();
+                return;
             }
 
-            // Now start the actual work
+            // Hands empty — monitor / take from facility
+            _waitingForFreeFacility = false;
             _substate = "interacting";
             _stateTimer = 0;
+        }
+
+        /// <summary>
+        /// Facility occupied on arrival → put held item on a free clear counter once and abandon.
+        /// Prefer immediate put if already in range so we do not pace between facility and counter.
+        /// </summary>
+        private void ParkHeldItemBecauseFacilityBusy()
+        {
+            _waitingForFreeFacility = false;
+            _execPhase = ExecPhase.GotoDest;
+
+            if (_heldItem == null)
+            {
+                AbandonTask();
+                return;
+            }
+
+            var clear = FindNearestFreeCounter(transform.position, exclude: _targetCounter);
+            if (clear != null)
+            {
+                float dist = Vector3.Distance(transform.position, clear.transform.position);
+                if (dist <= interactionRange && CanPlaceHeldItemOn(clear))
+                {
+                    AIDebugLogger.Log(chefName,
+                        $"Facility busy — immediate park {_heldItem.objEnum} on {clear.name}");
+                    PerformInteract(clear);
+                    if (_heldItem == null)
+                    {
+                        AbandonTask();
+                        return;
+                    }
+                }
+
+                AIDebugLogger.Log(chefName,
+                    $"Facility busy — walk park {_heldItem.objEnum} → {clear.name}");
+                _targetCounter = clear;
+                _abandonAfterDestinationDrop = true;
+                if (!MoveTo(clear.transform.position))
+                {
+                    KitchenObjFactory.Instance.DropObjServerRpc(
+                        _heldItem.NetworkObject,
+                        GetGroundDropPosition(
+                            transform.position + transform.forward * 0.5f),
+                        Vector3.down,
+                        0f,
+                        default);
+                    ClearKitchenObj();
+                    AbandonTask();
+                }
+                return;
+            }
+
+            AIDebugLogger.LogWarning(chefName,
+                $"Facility busy and no free counter — drop {_heldItem.objEnum} on ground");
+            KitchenObjFactory.Instance.DropObjServerRpc(
+                _heldItem.NetworkObject,
+                GetGroundDropPosition(
+                    transform.position + transform.forward * 0.5f),
+                Vector3.down,
+                0f,
+                default);
+            ClearKitchenObj();
+            AbandonTask();
         }
 
         private void DropHeldItemToGroundAndWaitForProcess(
@@ -2333,12 +2470,37 @@ namespace Kitchen.AI
                 ClearKitchenObj();
             }
 
+            BeginWaitAtTimedFacility(facility);
+        }
+
+        /// <summary>
+        /// After starting oven/blender, walk back to the facility and wait there
+        /// so HandleProcess can subscribe / grab output (no remote deadlocks).
+        /// </summary>
+        private void BeginWaitAtTimedFacility(TimedFacilityCounter facility)
+        {
+            if (facility == null)
+            {
+                AbandonTask();
+                return;
+            }
+
+            _returningPlateAfterTimedProcess = false;
+            _timedProcessFacility = null;
+            _waitingForFreeFacility = false;
             _targetCounter = facility;
             _execPhase = ExecPhase.None;
-            _substate = "waiting";
-            _waitTimer = 0f;
-            facility.OnCookingStageChange -= OnStoveStageChanged;
-            facility.OnCookingStageChange += OnStoveStageChanged;
+            AIDebugLogger.Log(chefName,
+                $"Return to {facility.name} to wait for {_currentTask?.outputType}");
+
+            if (!MoveTo(facility.transform.position))
+            {
+                // Can't path — wait in place with stage events
+                _substate = "waiting";
+                _waitTimer = 0f;
+                facility.OnCookingStageChange -= OnStoveStageChanged;
+                facility.OnCookingStageChange += OnStoveStageChanged;
+            }
         }
 
         private void DropItemAtDestination()
@@ -2368,40 +2530,94 @@ namespace Kitchen.AI
                 {
                     PerformInteract(_targetCounter);
                 }
-                // 放成功：手里空了；或手里仍是盘子（从柜上叠了食材）
-                if (_heldItem == null || (heldBefore is Plate && _heldItem is Plate))
+
+                // Returning empty plate after oven/blender extract.
+                // Must go back to the facility to wait/grab — waiting at the clear
+                // counter with only an event subscription was deadlocking.
+                if (_returningPlateAfterTimedProcess && _timedProcessFacility != null)
+                {
+                    if (_heldItem != null)
+                    {
+                        var altPlateDrop = FindNearestFreeCounter(
+                            transform.position, exclude: _targetCounter);
+                        if (altPlateDrop != null)
+                        {
+                            AIDebugLogger.LogWarning(chefName,
+                                $"Plate still in hand; retry drop on {altPlateDrop.name}");
+                            _targetCounter = altPlateDrop;
+                            _execPhase = ExecPhase.GotoDest;
+                            if (!MoveTo(altPlateDrop.transform.position)) { AbandonTask(); return; }
+                            return;
+                        }
+
+                        // No free counter — drop plate on ground and return to oven
+                        AIDebugLogger.LogWarning(chefName,
+                            "Plate still in hand; drop to ground and return to facility");
+                        KitchenObjFactory.Instance.DropObjServerRpc(
+                            _heldItem.NetworkObject,
+                            GetGroundDropPosition(
+                                transform.position + transform.forward * 0.5f),
+                            Vector3.down,
+                            0f,
+                            default);
+                        ClearKitchenObj();
+                    }
+
+                    BeginWaitAtTimedFacility(_timedProcessFacility);
+                    return;
+                }
+
+                // 放成功：手里空了；或手里仍是盘子且柜上已不是盘子（从柜上叠了食材）
+                bool placedEmpty = _heldItem == null;
+                bool stackedOntoPlate = heldBefore is Plate
+                    && _heldItem is Plate
+                    && !(_targetCounter.GetKitchenObj() is Plate);
+                if (placedEmpty || stackedOntoPlate)
                 {
                     Debug.Log($"[{chefName}] Dropped/stacked at destination {_targetCounter.name}");
-
-                    if (_returningPlateAfterTimedProcess
-                        && _timedProcessFacility != null)
+                    _execPhase = ExecPhase.None;
+                    if (_abandonAfterDestinationDrop)
                     {
-                        var facility = _timedProcessFacility;
-                        _returningPlateAfterTimedProcess = false;
-                        _timedProcessFacility = null;
-                        _targetCounter = facility;
-                        _execPhase = ExecPhase.None;
-                        _substate = "waiting";
-                        _waitTimer = 0f;
-                        facility.OnCookingStageChange -= OnStoveStageChanged;
-                        facility.OnCookingStageChange += OnStoveStageChanged;
+                        _abandonAfterDestinationDrop = false;
+                        AbandonTask();
                         return;
                     }
 
-                    _execPhase = ExecPhase.None;
                     CompleteTask();
                     return;
                 }
 
-                // 理论上可放却仍拿着 — 短暂等待后重试同一柜，不要误排除
+                // Place failed while still holding — never stand waiting for the cooker to free.
                 AIDebugLogger.LogWarning(chefName,
-                    $"DropItemAtDestination: place on {_targetCounter.name} failed, waiting retry");
-                _substate = "waiting";
-                _waitTimer = 0;
+                    $"DropItemAtDestination: place on {_targetCounter.name} failed — park, no wait-retry");
+                if (_targetCounter is StoveCounter
+                    or CuttingCounter
+                    or TimedFacilityCounter)
+                {
+                    ParkHeldItemBecauseFacilityBusy();
+                    return;
+                }
+                var retryClear = FindNearestFreeCounter(transform.position, exclude: _targetCounter);
+                if (retryClear != null)
+                {
+                    _targetCounter = retryClear;
+                    _execPhase = ExecPhase.GotoDest;
+                    if (!MoveTo(retryClear.transform.position)) { AbandonTask(); return; }
+                    return;
+                }
+                ParkHeldItemBecauseFacilityBusy();
                 return;
             }
 
-            // 目标已被占用且无法叠放：走到另一张空闲空台，禁止就地丢到邻柜
+            // 目标已被占用且无法叠放：立刻改去空柜，禁止空等设施释放
+            if (_targetCounter is StoveCounter
+                or CuttingCounter
+                or TimedFacilityCounter)
+            {
+                ParkHeldItemBecauseFacilityBusy();
+                return;
+            }
+
             var alt = FindNearestFreeCounter(transform.position, exclude: _targetCounter);
             if (alt != null)
             {
@@ -2463,6 +2679,14 @@ namespace Kitchen.AI
                 sc.OnCookingStageChange -= OnStoveStageChanged;
             if (_targetCounter is TimedFacilityCounter tfc)
                 tfc.OnCookingStageChange -= OnStoveStageChanged;
+            if (_timedProcessFacility != null)
+            {
+                _timedProcessFacility.OnCookingStageChange -= OnStoveStageChanged;
+                _timedProcessFacility = null;
+            }
+            _returningPlateAfterTimedProcess = false;
+            _waitingForFreeFacility = false;
+            _abandonAfterDestinationDrop = false;
 
             int taskOrderId = _currentTask?.orderId ?? 0;
             TaskType? taskType = _currentTask?.type;
@@ -2597,6 +2821,14 @@ namespace Kitchen.AI
                 sc.OnCookingStageChange -= OnStoveStageChanged;
             if (_targetCounter is TimedFacilityCounter tfc)
                 tfc.OnCookingStageChange -= OnStoveStageChanged;
+            if (_timedProcessFacility != null)
+            {
+                _timedProcessFacility.OnCookingStageChange -= OnStoveStageChanged;
+                _timedProcessFacility = null;
+            }
+            _returningPlateAfterTimedProcess = false;
+            _waitingForFreeFacility = false;
+            _abandonAfterDestinationDrop = false;
 
             // Drop held item so scheduler can find it — must walk to free counter, no neighbor dump
             if (_heldItem != null)
@@ -2639,6 +2871,10 @@ namespace Kitchen.AI
         /// </summary>
         private bool CanProceedFromWaiting()
         {
+            // Busy-facility wait should exit ASAP via ParkHeldItemBecauseFacilityBusy.
+            if (_waitingForFreeFacility && _heldItem != null)
+                return true;
+
             // 等空柜摆放：目标可放，或出现别的空闲空台
             if (_heldItem != null && _execPhase == ExecPhase.GotoDest)
             {
@@ -2667,11 +2903,12 @@ namespace Kitchen.AI
                     break;
 
                 case TaskType.PROCESS:
-                    // Check if processing is done (output KitchenObj or plate ingredient)
+                    // Output ready → grab. Input on counter + empty hands → CASE 3 start cook.
+                    // Never treat "empty + still holding" as proceed (wait-for-free-then-place).
                     if (_targetCounter.HasKitchenObj())
                     {
                         var objOnCounter = _targetCounter.GetKitchenObj();
-                        debugState = $"wait-chk {objOnCounter.objEnum} vs {_currentTask.outputType}";
+                        debugState = $"wait-chk {objOnCounter.objEnum} vs out={_currentTask.outputType}/in={_currentTask.itemType}";
                         if (_currentTask.outputType != 0 &&
                             (objOnCounter.objEnum == _currentTask.outputType
                              || (objOnCounter is Plate outPlate
@@ -2680,6 +2917,13 @@ namespace Kitchen.AI
                             Debug.Log($"[{chefName}] PROCESS output ready: {_currentTask.outputType} on {_targetCounter.name}");
                             return true;
                         }
+
+                        if (_heldItem == null
+                            && _currentTask.itemType != 0
+                            && (objOnCounter.objEnum == _currentTask.itemType
+                                || (objOnCounter is Plate inPlate
+                                    && inPlate.GetIngredients().Contains(_currentTask.itemType))))
+                            return true;
                     }
                     else
                     {
@@ -2705,18 +2949,29 @@ namespace Kitchen.AI
         {
             if (_currentTask == null || _targetCounter == null) return;
             if (_currentTask.type != TaskType.PROCESS) return;
-            if (!currentStage.HasValue) return;
 
-            AIDebugLogger.Log(chefName, $"Stove stage changed: {currentStage.Value} (want {_currentTask.outputType})");
+            // Timed facilities clear stage to null when the timer ends; still grab if output sits there.
+            KitchenObjEnum? stage = currentStage;
+            if (!stage.HasValue
+                && _targetCounter.HasKitchenObj()
+                && _currentTask.outputType != 0
+                && _targetCounter.GetKitchenObj().objEnum == _currentTask.outputType)
+            {
+                stage = _currentTask.outputType;
+            }
 
-            bool stageReady = currentStage.Value == _currentTask.outputType;
+            if (!stage.HasValue) return;
+
+            AIDebugLogger.Log(chefName, $"Stove stage changed: {stage.Value} (want {_currentTask.outputType})");
+
+            bool stageReady = stage.Value == _currentTask.outputType;
             bool plateReady = _targetCounter.HasKitchenObj()
                               && _targetCounter.GetKitchenObj() is Plate readyPlate
                               && readyPlate.GetIngredients().Contains(_currentTask.outputType);
             if ((stageReady || plateReady) && _targetCounter.HasKitchenObj())
             {
-                Debug.Log($"[{chefName}] Process output ready: {currentStage.Value}, grabbing!");
-                AIDebugLogger.LogState(chefName, "process grab", currentStage.Value.ToString(),
+                Debug.Log($"[{chefName}] Process output ready: {stage.Value}, grabbing!");
+                AIDebugLogger.LogState(chefName, "process grab", stage.Value.ToString(),
                     "output ready");
                 if (_targetCounter is StoveCounter sc)
                     sc.OnCookingStageChange -= OnStoveStageChanged;
@@ -2745,11 +3000,12 @@ namespace Kitchen.AI
 
         private float GetMaxWaitTime()
         {
+            if (_waitingForFreeFacility) return 2f;
             if (_currentTask == null) return 2f;
             switch (_currentTask.type)
             {
                 case TaskType.FETCH_PLATE: return 10f;  // plates spawn every 4s
-                case TaskType.PROCESS:     return 12f;  // cooking can take multiple stages
+                case TaskType.PROCESS:     return 20f;  // oven/stove bake time
                 case TaskType.FETCH:       return 5f;
                 default:                   return 4f;
             }

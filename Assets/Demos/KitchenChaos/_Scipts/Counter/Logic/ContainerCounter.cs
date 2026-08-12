@@ -11,12 +11,33 @@ namespace Kitchen
         public event Action OnInteractEvent;
         public SpriteRenderer re;
 
+        protected override void Awake()
+        {
+            base.Awake();
+            RebindObjectSprite();
+        }
 
         private void Start()
         {
-            //ToDO 这里的方式不是很好
             _kitchenObjSo = DataTableManager.Sigleton.GetKitchenObjSo(objEnum);
-            re.sprite = _kitchenObjSo.sprite;
+            RebindObjectSprite();
+            if (re != null && _kitchenObjSo != null)
+                re.sprite = _kitchenObjSo.sprite;
+        }
+
+        /// <summary>
+        /// 换肤会 Destroy 旧 Visual，预制体上序列化的 ObjectSprite 引用会失效，需重新查找。
+        /// </summary>
+        private void RebindObjectSprite()
+        {
+            if (re != null) return;
+
+            foreach (var t in GetComponentsInChildren<Transform>(true))
+            {
+                if (t == null || t.name != "ObjectSprite") continue;
+                re = t.GetComponent<SpriteRenderer>();
+                if (re != null) return;
+            }
         }
 
         public override void Interact(ICanHoldKitchenObj holder)

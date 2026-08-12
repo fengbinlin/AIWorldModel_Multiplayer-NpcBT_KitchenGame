@@ -66,7 +66,16 @@ namespace Kitchen.Skin
 
             if (mode == SkinResolvedMode.Prefab)
             {
-                SkinMeshUtil.ReplaceVisualChild(transform, entry.visualPrefab);
+                var inst = SkinMeshUtil.ReplaceVisualChild(transform, entry.visualPrefab);
+                if (inst != null && counter is ContainerCounter)
+                {
+                    var visual = inst.GetComponent<ContainerCounterVisual>();
+                    if (visual == null)
+                        visual = inst.AddComponent<ContainerCounterVisual>();
+                    // 换肤可能发生在 Start 之后（PGC 在 Spawn 后再 ApplyOn），补一次订阅
+                    visual.TrySubscribe();
+                }
+
                 _applied = true;
                 return;
             }

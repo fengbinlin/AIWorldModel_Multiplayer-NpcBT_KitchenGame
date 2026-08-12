@@ -14175,7 +14175,7 @@ MonoBehaviour:
   - {fileID: 671155257}
   - {fileID: 2042069038}
   - {fileID: 367351757}
-  _aiMoveSpeed: 3.5
+  _aiMoveSpeed: 4.2
   _aiInteractionRange: 2.5
   _aiArrivalThreshold: 0.4
   _aiStuckTimeout: 8

@@ -76,8 +76,17 @@ namespace Kitchen.AI.Visual
                 : null;
             _playing = Presenter.PlayClip(_clip);
             if (_playing == null) return;
-            // Reaction_Knockout is non-looping — replay while still waiting.
-            _playing.Events(this).OnEnd = OnClipEnd;
+            if (_playing.IsLooping)
+            {
+                // Dance_3 etc.: suppress Animancer end spam so the loop keeps playing.
+                var events = _playing.Events(this);
+                events.NormalizedEndTime = float.NaN;
+                events.OnEnd = null;
+            }
+            else
+            {
+                _playing.Events(this).OnEnd = OnClipEnd;
+            }
         }
 
         private void OnClipEnd()

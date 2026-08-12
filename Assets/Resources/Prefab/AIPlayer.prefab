@@ -232,7 +232,7 @@ MonoBehaviour:
   chefName: AI_Chef
   chefColor: {r: 1, g: 1, b: 1, a: 1}
   agentId: -1
-  _moveSpeed: 3.5
+  _moveSpeed: 4.2
   interactionRange: 2
   arrivalThreshold: 0.4
   stuckTimeout: 8

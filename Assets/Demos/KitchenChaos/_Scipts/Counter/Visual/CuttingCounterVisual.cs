@@ -1,40 +1,51 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Kitchen
 {
+    /// <summary>
+    /// 切菜柜视觉：挂在 *_Visual 上，订阅父级 CuttingCounter 的切剁事件驱动 Animator。
+    /// </summary>
     public class CuttingCounterVisual : MonoBehaviour
     {
         private CuttingCounter _cuttingCounter;
         private Animator _animator;
-        private static readonly int _isCuttingParam = Animator.StringToHash("isCutting");
+        private static readonly int IsCuttingParam = Animator.StringToHash("isCutting");
 
         private void Awake()
         {
             _cuttingCounter = GetComponentInParent<CuttingCounter>();
             _animator = GetComponent<Animator>();
+            if (_animator == null)
+                _animator = GetComponentInChildren<Animator>(true);
         }
 
         private void OnEnable()
         {
-            _cuttingCounter.OnCuttingStart += _OnCuttingStart;
-            _cuttingCounter.OnCuttingStop += _OnCuttingStop;
+            if (_cuttingCounter == null)
+                _cuttingCounter = GetComponentInParent<CuttingCounter>();
+            if (_cuttingCounter == null) return;
+
+            _cuttingCounter.OnCuttingStart += OnCuttingStart;
+            _cuttingCounter.OnCuttingStop += OnCuttingStop;
         }
 
         private void OnDisable()
         {
-            _cuttingCounter.OnCuttingStart -= _OnCuttingStart;
-            _cuttingCounter.OnCuttingStop -= _OnCuttingStop;
+            if (_cuttingCounter == null) return;
+            _cuttingCounter.OnCuttingStart -= OnCuttingStart;
+            _cuttingCounter.OnCuttingStop -= OnCuttingStop;
         }
 
-        private void _OnCuttingStart()
+        private void OnCuttingStart()
         {
-            _animator.SetBool(_isCuttingParam, true);
+            if (_animator != null)
+                _animator.SetBool(IsCuttingParam, true);
         }
 
-        private void _OnCuttingStop()
+        private void OnCuttingStop()
         {
-            _animator.SetBool(_isCuttingParam, false);
+            if (_animator != null)
+                _animator.SetBool(IsCuttingParam, false);
         }
     }
 }

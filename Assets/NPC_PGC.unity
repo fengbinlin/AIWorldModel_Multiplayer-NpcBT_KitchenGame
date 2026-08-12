@@ -15383,7 +15383,7 @@ MonoBehaviour:
   _aiChefPrefab: {fileID: 3810951076065167919, guid: 59dbb8532a4e8b141962476aa84df7aa,
     type: 3}
   _spawnPoints: []
-  _aiMoveSpeed: 3.5
+  _aiMoveSpeed: 4.2
   _aiInteractionRange: 2.5
   _aiArrivalThreshold: 0.4
   _aiStuckTimeout: 8
@@ -17620,7 +17620,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 5cd9c4cb641f84d44a3f09754979864b, type: 2}
+  - {fileID: 2100000, guid: 94ca6fb95f978974996d798222afa5e0, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

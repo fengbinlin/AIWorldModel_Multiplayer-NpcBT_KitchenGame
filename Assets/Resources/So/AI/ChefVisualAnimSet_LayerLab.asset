@@ -18,4 +18,4 @@ MonoBehaviour:
   pickup: {fileID: 1827226128182048838, guid: ae74b0d61ef020f42a08c3dbf3363329, type: 3}
   putDown: {fileID: 1827226128182048838, guid: ae74b0d61ef020f42a08c3dbf3363329, type: 3}
   work: {fileID: 1827226128182048838, guid: a3bb977fd1d581141afdbfd0790bbdd7, type: 3}
-  wait: {fileID: 1827226128182048838, guid: 0be2664cabc1521488ef4dab81a22479, type: 3}
+  wait: {fileID: 1827226128182048838, guid: a3bb977fd1d581141afdbfd0790bbdd7, type: 3}

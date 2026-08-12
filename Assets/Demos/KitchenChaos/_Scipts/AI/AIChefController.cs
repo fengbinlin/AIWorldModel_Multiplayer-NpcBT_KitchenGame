@@ -28,7 +28,7 @@ namespace Kitchen.AI
         public int agentId = -1;
 
         [Header("Movement")]
-        [SerializeField] private float _moveSpeed = 3.5f;
+        [SerializeField] private float _moveSpeed = 4.2f;
         public float moveSpeed
         {
             get => _moveSpeed;

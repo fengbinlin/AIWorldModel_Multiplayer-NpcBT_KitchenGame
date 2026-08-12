@@ -31,7 +31,7 @@ namespace Kitchen.AI
         [Header("AI Chef Spawning")]
         [SerializeField] private GameObject _aiChefPrefab;
         [SerializeField] private List<Transform> _spawnPoints = new();
-        [SerializeField] private float _aiMoveSpeed = 3.5f;
+        [SerializeField] private float _aiMoveSpeed = 4.2f;
         [SerializeField] private float _aiInteractionRange = 2f;
         [Range(0.1f, 1f)][SerializeField] private float _aiArrivalThreshold = 0.4f;
         [SerializeField] private float _aiStuckTimeout = 8f;

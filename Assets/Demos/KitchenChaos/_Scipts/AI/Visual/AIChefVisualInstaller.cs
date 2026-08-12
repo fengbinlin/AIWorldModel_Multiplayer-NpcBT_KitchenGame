@@ -44,7 +44,7 @@ namespace Kitchen.AI.Visual
                     animancer = animator.gameObject.AddComponent<Animancer.AnimancerComponent>();
                 animancer.Animator = animator;
 
-            ApplyVisualScale(animator.transform, DefaultVisualLocalScale);
+                ApplyVisualScale(animator.transform, DefaultVisualLocalScale);
             }
 
             if (chef != null)

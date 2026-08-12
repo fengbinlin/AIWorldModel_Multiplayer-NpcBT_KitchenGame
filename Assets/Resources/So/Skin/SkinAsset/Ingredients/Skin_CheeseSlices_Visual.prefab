@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3812876574508226176}
   m_Layer: 0
-  m_Name: CheeseSlices_Visual
+  m_Name: Skin_CheeseSlices_Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -23,6 +23,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3812876574508226177}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -32,7 +33,6 @@ Transform:
   - {fileID: 4121857745434089371}
   - {fileID: 6572846481745301892}
   m_Father: {fileID: 0}
-  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &4519783040888074352
 PrefabInstance:
@@ -117,6 +117,11 @@ PrefabInstance:
       propertyPath: m_ConstrainProportionsScale
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 87763d49f84b8484a937c64afab69a17,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 1f7df1195cba83a49b79250fd6da055f, type: 2}
     - target: {fileID: 919132149155446097, guid: 87763d49f84b8484a937c64afab69a17,
         type: 3}
       propertyPath: m_Name
@@ -216,6 +221,11 @@ PrefabInstance:
       propertyPath: m_ConstrainProportionsScale
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 87763d49f84b8484a937c64afab69a17,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 1f7df1195cba83a49b79250fd6da055f, type: 2}
     - target: {fileID: 919132149155446097, guid: 87763d49f84b8484a937c64afab69a17,
         type: 3}
       propertyPath: m_Name
@@ -315,6 +325,11 @@ PrefabInstance:
       propertyPath: m_ConstrainProportionsScale
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 87763d49f84b8484a937c64afab69a17,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 1f7df1195cba83a49b79250fd6da055f, type: 2}
     - target: {fileID: 919132149155446097, guid: 87763d49f84b8484a937c64afab69a17,
         type: 3}
       propertyPath: m_Name

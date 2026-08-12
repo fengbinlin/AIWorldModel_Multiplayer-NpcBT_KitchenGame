@@ -1,0 +1,63 @@
+[2026-08-13 00:47:13] Convert SkinAssets → TCP2 Toon
+TEMPLATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Robot Hybrid Crisp.mat  shader=Toony Colors Pro 2/Hybrid Shader 2 (Outline)
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Kitchen_Counter_40e8132e.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Counter_solid.fbx
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Kitchen_Counter_6a12b8b9.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Counter_hole.fbx
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Kitchen_Counter_5274ac0c.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Single door.fbx
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Sprites-Default_9c0125e9.mat  ←  Resources/unity_builtin_extra
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Counters/Skin_ContainerCounter_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Chopping_board_3412b834.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Chopping Board.fbx
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Knife_278dfcab.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Knife.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Counters/Skin_CuttingCounter_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_tripo_mat_4bb9e1a7_bbfaeab9.mat  ←  Assets/tripo_convert_4bb9e1a7-7bda-4268-b0c5-ff13f59393a2.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Counters/Skin_OvenCounter_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Counters/Skin_PlatesCounter_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Frying_pan_95102788.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Frying Pan.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Counters/Skin_StoveCounter_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Trash_bin_09f00925.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Trash bin.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Counters/Skin_TrashCounter_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Color_01d67906.mat  ←  Assets/ithappy/Casual_Food/Materials/Color.mat
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_BeefBurger_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Bread_ab1d0de9.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Bread bottom.fbx
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Bread_dc9a1c33.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Bread top.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_Bread_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Lettuce_5e2f0c65.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Cabbage slice_shaped.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_CabbageSalad_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_CabbageShake_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_CabbageSlices_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Cheese_7aae0b1a.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Cheese block.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_CheeseBlock_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Cheese_157f799f.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Cheese slice.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_CheeseSlices_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_ChickenBurger_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_ChickenBurned_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_ChickenCooked_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_ChickenRaw_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_Cream_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_Fish_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_FishSlices_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_FishSushi_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Meat_b98bec8b.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Burned meat patty.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_MeatPattyBurned_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Meat_a1a51032.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Cooked meat patty.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_MeatPattyCooked_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Meat_cbfe1d39.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Uncooked meat patty.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_MeatPattyUncooked_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_Nori_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Color_a0b1ccab.mat  ←  Assets/Resources/So/Skin/SkinAsset/Ingredients/Materials/Color.mat
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_PizzaBaked_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_tripo_mat_69edbff8_59a5340d.mat  ←  Assets/tripo_convert_69edbff8-55e8-48af-bb8e-c503abdb6093.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_PizzaDough_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_PizzaUnbaked_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Plate_add3cc9c.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Plate.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_Plate_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_Shrimp_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_ShrimpSlices_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_ShrimpSushi_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Tomato_a923ce20.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Tomato.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_Tomato_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_TomatoCabbageSalad_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_TomatoCabbageShake_Visual.prefab
+CREATE  Assets/Resources/So/Skin/SkinAsset/ToonMaterials/Toon_Tomato_b2b1f112.mat  ←  Assets/Demos/KitchenChaos/_Assets/Meshes/Tomato slice.fbx
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_TomatoSalad_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_TomatoShake_Visual.prefab
+PREFAB  Assets/Resources/So/Skin/SkinAsset/Ingredients/Skin_TomatoSlices_Visual.prefab

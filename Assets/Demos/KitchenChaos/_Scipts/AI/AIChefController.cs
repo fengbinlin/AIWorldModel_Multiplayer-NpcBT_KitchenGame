@@ -134,6 +134,70 @@ namespace Kitchen.AI
         public bool IsIdle => _currentTask == null || _currentTask.status == "completed";
         public KitchenObj HeldItem => _heldItem;
 
+        /// <summary>
+        /// World-space look interest for FP pitch bias (task-phase priority).
+        /// Does not affect body yaw — camera pitch controller only.
+        /// </summary>
+        public bool TryGetLookInterestWorldPoint(out Vector3 worldPoint)
+        {
+            const float counterAimHeight = 1.05f;
+            const float itemAimHeight = 0.35f;
+
+            // 1) Fetching an item
+            if (_execPhase == ExecPhase.GotoItem && _carryTargetItem != null)
+            {
+                var holder = FindCounterHolding(_carryTargetItem);
+                if (holder != null)
+                {
+                    worldPoint = holder.transform.position + Vector3.up * counterAimHeight;
+                    return true;
+                }
+
+                worldPoint = _carryTargetItem.transform.position;
+                if (_carryTargetItem.transform.parent == null)
+                    worldPoint += Vector3.up * itemAimHeight;
+                return true;
+            }
+
+            // 2) Processing — watch the cooker
+            if (_currentTask != null
+                && _currentTask.type == TaskType.PROCESS
+                && (_substate == "waiting" || _substate == "working"))
+            {
+                BaseCounter fac = _timedProcessFacility != null
+                    ? _timedProcessFacility
+                    : _targetCounter;
+                if (fac != null)
+                {
+                    worldPoint = fac.transform.position + Vector3.up * counterAimHeight;
+                    return true;
+                }
+            }
+
+            // 3) Going to / interacting with a facility or drop counter
+            if (_targetCounter != null
+                && _currentTask != null
+                && _currentTask.status != "completed"
+                && _currentTask.status != "abandoned")
+            {
+                worldPoint = _targetCounter.transform.position + Vector3.up * counterAimHeight;
+                return true;
+            }
+
+            // 4) Carrying with no counter yet — glance at held item
+            if (_heldItem != null
+                && (_substate == "moving"
+                    || _execPhase == ExecPhase.GotoDest
+                    || _execPhase == ExecPhase.GotoFacility))
+            {
+                worldPoint = _heldItem.transform.position;
+                return true;
+            }
+
+            worldPoint = default;
+            return false;
+        }
+
         /// <summary>Fired when the chef performs an interact action (maps to E key in recordings).</summary>
         public event System.Action OnInteractionPerformed;
 
@@ -327,6 +391,30 @@ namespace Kitchen.AI
 
             // Start wandering soon after spawn when idle
             _wanderTimer = _wanderInterval;
+
+            EnsureCameraPitchController();
+        }
+
+        private void EnsureCameraPitchController()
+        {
+            var camTf = FindChildNamed(transform, Kitchen.AI.Recording.ChefRecordingAgent.AiCameraObjectName);
+            if (camTf == null) return;
+
+            var pitch = GetComponent<Kitchen.AI.Recording.ChefCameraPitchController>();
+            if (pitch == null)
+                pitch = gameObject.AddComponent<Kitchen.AI.Recording.ChefCameraPitchController>();
+            pitch.Bind(this, camTf);
+        }
+
+        private static Transform FindChildNamed(Transform root, string objectName)
+        {
+            if (root.name == objectName) return root;
+            for (int i = 0; i < root.childCount; i++)
+            {
+                var found = FindChildNamed(root.GetChild(i), objectName);
+                if (found != null) return found;
+            }
+            return null;
         }
 
         private void Update()

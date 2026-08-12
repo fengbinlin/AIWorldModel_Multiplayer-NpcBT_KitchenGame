@@ -339,6 +339,8 @@ namespace Kitchen.AI.Recording
             for (int i = 0; i < _agents.Count; i++)
             {
                 var agent = _agents[i];
+                // Pitch bias must be applied before FP render + angle sample.
+                agent.SyncPitchForCapture();
                 string rel = $"agent_{agent.Chef.agentId}/fp_{frame:D6}.png";
                 string abs = Path.Combine(_sessionDir, rel);
                 agent.CaptureImageAsync(abs);

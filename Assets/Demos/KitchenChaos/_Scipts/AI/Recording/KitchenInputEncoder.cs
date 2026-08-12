@@ -14,7 +14,8 @@ namespace Kitchen.AI.Recording
         /// <param name="viewYawDegrees">First-person yaw used as move basis.</param>
         /// <param name="maxSpeed">Used to scale analog move axes into [-1, 1].</param>
         /// <param name="mouseDeltaX">Yaw delta this frame (degrees, + = turn right).</param>
-        /// <param name="mouseDeltaY">Pitch delta this frame (degrees, + = look up).</param>
+        /// <param name="mouseDeltaY">Pitch delta this frame (degrees). Sign follows Unity local pitch
+        /// change: more positive = look further down; more negative = look further up.</param>
         public static ChefKeyboardInput EncodeFirstPerson(
             Vector3 worldVelocity,
             float viewYawDegrees,

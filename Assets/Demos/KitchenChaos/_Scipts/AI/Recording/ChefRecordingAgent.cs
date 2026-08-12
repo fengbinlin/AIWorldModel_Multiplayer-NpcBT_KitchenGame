@@ -23,6 +23,7 @@ namespace Kitchen.AI.Recording
         private AIChefController _chef;
         private IAstarAI _ai;
         private Camera _fpCamera;
+        private ChefCameraPitchController _pitchController;
         private RenderTexture _renderTexture;
         private bool _interactThisFrame;
         private int _frameWidth;
@@ -241,6 +242,27 @@ namespace Kitchen.AI.Recording
             var listener = _fpCamera.GetComponent<AudioListener>();
             if (listener != null)
                 listener.enabled = false;
+
+            EnsurePitchController();
+        }
+
+        private void EnsurePitchController()
+        {
+            if (_chef == null || _fpCamera == null) return;
+            _pitchController = _chef.GetComponent<ChefCameraPitchController>();
+            if (_pitchController == null)
+                _pitchController = _chef.gameObject.AddComponent<ChefCameraPitchController>();
+            _pitchController.Bind(_chef, _fpCamera.transform);
+        }
+
+        /// <summary>
+        /// Force a pitch tick before capture so rotX/mouseY match the image this frame.
+        /// </summary>
+        public void SyncPitchForCapture()
+        {
+            if (_pitchController == null)
+                EnsurePitchController();
+            _pitchController?.Tick(Time.deltaTime);
         }
 
         private static Transform FindChildRecursive(Transform root, string objectName)

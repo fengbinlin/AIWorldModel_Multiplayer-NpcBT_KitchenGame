@@ -180,6 +180,11 @@ namespace Kitchen.AI
             if (_aiChefPrefab != null && _spawnPoints.Count > 0)
             {
                 int colorIdx = 0;
+                int appearanceIdx = 0;
+                // New play → new appearance session (不同 play 形象组合不同)
+                if (SkinManager.Instance != null)
+                    SkinManager.Instance.BeginAppearanceSession();
+
                 foreach (var spawnPoint in _spawnPoints)
                 {
                     if (spawnPoint == null) continue;
@@ -187,8 +192,8 @@ namespace Kitchen.AI
                     chefObj.tag = "Untagged";
                     chefObj.layer = LayerMask.NameToLayer("Default");
 
-                    // 皮肤：替换 PlayerVisual 下的角色表现
-                    CharacterSkinApplier.ApplyOn(chefObj, SkinCharacterKind.AIPlayer);
+                    // 人物形象：预制体 PlayerVisual 下 Layer-lab 角色 + SkinManager 随机 Parts（不读 SO 角色库）
+                    CharacterSkinApplier.ApplyOn(chefObj, SkinCharacterKind.AIPlayer, appearanceIdx++);
 
                     // 先立刻拆掉 Player 预制体上的 NetworkBehaviour（Destroy 是延迟的，
                     // 若先 Spawn 会立刻跑 PlayerAnimator/Player.OnNetworkSpawn → NRE）。
@@ -294,6 +299,10 @@ namespace Kitchen.AI
                 DestroyImmediate(nb);
             }
 
+            // AICamera is for recording only. Leaving it enabled renders the full scene
+            // once per chef every frame → GPU-bound (Gfx.WaitForPresentOnGfxThread).
+            DisableAiCameras(chefObj.transform);
+
             var visual = chefObj.transform.Find("PlayerVisual");
             if (visual != null)
             {
@@ -301,6 +310,21 @@ namespace Kitchen.AI
                 if (anim != null) DestroyImmediate(anim);
                 var pv = visual.GetComponent<PlayerVisual>();
                 if (pv != null) DestroyImmediate(pv);
+            }
+        }
+
+        private static void DisableAiCameras(Transform root)
+        {
+            if (root == null) return;
+            var cams = root.GetComponentsInChildren<Camera>(true);
+            foreach (var cam in cams)
+            {
+                if (cam == null) continue;
+                if (cam.CompareTag("MainCamera")) continue;
+                cam.enabled = false;
+                var listener = cam.GetComponent<AudioListener>();
+                if (listener != null)
+                    listener.enabled = false;
             }
         }
 

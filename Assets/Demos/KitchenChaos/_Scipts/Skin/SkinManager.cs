@@ -1,10 +1,12 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Kitchen.Skin
 {
     /// <summary>
-    /// 场景皮肤管理器单例。优先使用 Catalog SO；没有 SO 时用 Inspector 兜底配置。
+    /// 场景皮肤管理器单例。食材/柜子优先使用 Catalog SO；人物形象不再读 SO 角色库，
+    /// 改为 AIPlayer 上的 Layer-lab 视觉子物体 + 可选随机 Parts（CharacterDemo 风格）。
     /// 只在生成/开局套皮；本地配置，不联网同步。
     /// </summary>
     [DefaultExecutionOrder(-200)]
@@ -19,14 +21,21 @@ namespace Kitchen.Skin
         [SerializeField] private SkinIdGranularity ingredientIdGranularity = SkinIdGranularity.Kind;
         [SerializeField] private SkinIdGranularity counterIdGranularity = SkinIdGranularity.Kind;
         [SerializeField] private SkinIdGranularity characterIdGranularity = SkinIdGranularity.Kind;
-        [Header("皮肤数据包 SO（可选，保留用于持久化配置）")]
+        [Header("皮肤数据包 SO（可选，保留用于食材/柜子）")]
         [SerializeField] private SkinCatalogSo catalogSo;
+
+        [Header("角色形象（不走 SO 角色库）")]
+        [Tooltip("勾选后：同一局内不同 AI 形象不同；重新开局（新 session seed）形象组合也不同。")]
+        [SerializeField] private bool randomizeCharacterAppearance = true;
+        [Tooltip("可选。为空则从 Resources 加载默认 Layer-lab Character_1。若已嵌入 AIPlayer 预制体则优先用预制体子物体。")]
+        [SerializeField] private GameObject layerLabCharacterPrefab;
+        [SerializeField] private float characterVisualLocalScale = 2.5f;
 
         [Header("Inline 食材配置")]
         [SerializeField] private List<IngredientSkinEntry> inlineIngredients = new();
         [Header("Inline 柜子配置")]
         [SerializeField] private List<CounterSkinEntry> inlineCounters = new();
-        [Header("Inline 角色配置")]
+        [Header("Inline 角色配置（已弃用，人物不再读取）")]
         [SerializeField] private List<CharacterSkinEntry> inlineCharacters = new();
         [Header("Inline ID 选择")]
         [SerializeField] private int inlineDefaultSkinId;
@@ -42,12 +51,15 @@ namespace Kitchen.Skin
         private readonly Dictionary<SkinCounterKind, int> _runtimeCounterSkinIds = new();
         private readonly Dictionary<SkinCharacterKind, int> _runtimeCharacterSkinIds = new();
         private readonly Dictionary<KitchenObjEnum, int> _runtimeIngredientSkinIds = new();
+        private int _sessionAppearanceSeed;
 
         public SkinCatalogSo ActiveCatalog => _active;
         public SkinConfigSource ConfigSource => configSource;
         public SkinIdGranularity IngredientIdGranularity => ingredientIdGranularity;
         public SkinIdGranularity CounterIdGranularity => counterIdGranularity;
         public SkinIdGranularity CharacterIdGranularity => characterIdGranularity;
+        public bool RandomizeCharacterAppearance => randomizeCharacterAppearance;
+        public int SessionAppearanceSeed => _sessionAppearanceSeed;
 
         private void Awake()
         {
@@ -59,6 +71,7 @@ namespace Kitchen.Skin
 
             Instance = this;
             ResolveCatalog();
+            BeginAppearanceSession();
         }
 
         private void OnDestroy()
@@ -112,6 +125,56 @@ namespace Kitchen.Skin
             _runtimeIngredientSkinIds.Clear();
             _runtimeCounterSkinIds.Clear();
             _runtimeCharacterSkinIds.Clear();
+        }
+
+        /// <summary>
+        /// New play session seed so randomized outfits differ across plays.
+        /// </summary>
+        public void BeginAppearanceSession()
+        {
+            unchecked
+            {
+                _sessionAppearanceSeed = Environment.TickCount
+                    ^ (Guid.NewGuid().GetHashCode() * 397)
+                    ^ (Time.frameCount * 7919);
+            }
+        }
+
+        /// <summary>
+        /// Embed Layer-lab character under PlayerVisual (if missing) and apply appearance.
+        /// When <see cref="randomizeCharacterAppearance"/> is on, seed = session ⊕ chefIndex
+        /// so different AIs differ within a play, and different plays differ too.
+        /// </summary>
+        public void ApplyCharacterAppearance(GameObject root, int appearanceIndex = 0)
+        {
+            if (root == null) return;
+
+            var character = LayerLabCharacterAppearance.EnsureEmbeddedCharacter(
+                root, layerLabCharacterPrefab, characterVisualLocalScale);
+            if (character == null) return;
+
+            if (randomizeCharacterAppearance)
+            {
+                int seed = MixSeed(_sessionAppearanceSeed, appearanceIndex);
+                LayerLabCharacterAppearance.ApplyRandomAppearance(character, seed);
+            }
+            else
+            {
+                LayerLabCharacterAppearance.ApplyDefaultAppearance(character);
+            }
+        }
+
+        public void SetRandomizeCharacterAppearance(bool enabled) => randomizeCharacterAppearance = enabled;
+
+        private static int MixSeed(int sessionSeed, int appearanceIndex)
+        {
+            unchecked
+            {
+                int h = sessionSeed;
+                h = (h * 486187739) ^ (appearanceIndex + 1) * 16777619;
+                h ^= h >> 16;
+                return h == 0 ? 1 : h;
+            }
         }
 
         /// <summary>

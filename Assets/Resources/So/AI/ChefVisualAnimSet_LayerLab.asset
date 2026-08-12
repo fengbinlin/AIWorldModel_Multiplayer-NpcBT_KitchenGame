@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7a1e2b3d4f546778899001122334455, type: 3}
+  m_Name: ChefVisualAnimSet_LayerLab
+  m_EditorClassIdentifier: 
+  idle: {fileID: 1827226128182048838, guid: 6df69a770397cf84b9b1e86734273b9c, type: 3}
+  walk: {fileID: 1827226128182048838, guid: d57710cdd7d2c3a4298d9344f7391a67, type: 3}
+  run: {fileID: 1827226128182048838, guid: d57710cdd7d2c3a4298d9344f7391a67, type: 3}
+  pickup: {fileID: 1827226128182048838, guid: ae74b0d61ef020f42a08c3dbf3363329, type: 3}
+  putDown: {fileID: 1827226128182048838, guid: ae74b0d61ef020f42a08c3dbf3363329, type: 3}
+  work: {fileID: 1827226128182048838, guid: a3bb977fd1d581141afdbfd0790bbdd7, type: 3}
+  wait: {fileID: 1827226128182048838, guid: 0be2664cabc1521488ef4dab81a22479, type: 3}

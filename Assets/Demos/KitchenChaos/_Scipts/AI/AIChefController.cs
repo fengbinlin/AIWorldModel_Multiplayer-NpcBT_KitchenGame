@@ -49,6 +49,16 @@ namespace Kitchen.AI
         public bool showDebugGizmos = true;
         public string debugState = "idle";
 
+        [Header("Visual Timing")]
+        [Tooltip("Hold in interacting before ExecuteInteraction so pickup/facility anim can play.")]
+        [SerializeField] private float _interactAnimHoldSeconds = 1.35f;
+        [Tooltip("Hold after interact before moving to the next target.")]
+        [SerializeField] private float _postInteractAnimHoldSeconds = 0.85f;
+        [Tooltip("Minimum time in working (cut/cook) before leaving, so Dance_3 can finish a cycle.")]
+        [SerializeField] private float _minWorkAnimSeconds = 2.8f;
+        [Tooltip("Minimum wait time before CanProceed reacts, so wait anim can start.")]
+        [SerializeField] private float _minWaitAnimSeconds = 1.6f;
+
         #endregion
 
         #region Private State
@@ -316,16 +326,13 @@ namespace Kitchen.AI
 
         private void Awake()
         {
-            // Use existing hold point from prefab, or create one
+            // Hold ingredients at the prefab socket only — never invent a different point.
             _holdPoint = transform.Find("KitchenObjHoldPoint");
             if (_holdPoint == null)
-                _holdPoint = transform.Find("topSpawnPoint"); // Player's hold point name
-            if (_holdPoint == null)
             {
-                var holdGo = new GameObject("AI_HoldPoint");
-                holdGo.transform.SetParent(transform);
-                holdGo.transform.localPosition = new Vector3(0, 1.5f, 0.9f);
-                _holdPoint = holdGo.transform;
+                Debug.LogWarning(
+                    $"[{chefName}] Missing child 'KitchenObjHoldPoint'; held items have no socket.",
+                    this);
             }
 
             // Ensure NetworkObject is present
@@ -590,7 +597,7 @@ namespace Kitchen.AI
                 case "interacting":
                     debugState = "interacting";
                     FaceTarget();
-                    if (_stateTimer > 0.15f) // brief delay to simulate interaction
+                    if (_stateTimer > _interactAnimHoldSeconds)
                     {
                         ExecuteInteraction();
                     }
@@ -599,7 +606,8 @@ namespace Kitchen.AI
                 case "working":
                     debugState = $"working {_stateTimer:F1}s";
                     FaceTarget();
-                    if (_stateTimer >= (_currentTask?.duration ?? 1.0f))
+                    float workNeed = Mathf.Max(_currentTask?.duration ?? 1.0f, _minWorkAnimSeconds);
+                    if (_stateTimer >= workNeed)
                     {
                         AIDebugLogger.LogState(chefName, "working", "done",
                             $"duration={_stateTimer:F1}s task={_currentTask?.label}");
@@ -653,7 +661,7 @@ namespace Kitchen.AI
                     FaceTarget();
 
                     // Check if we can proceed (periodic re-check)
-                    if (_waitTimer > 0.3f && CanProceedFromWaiting())
+                    if (_waitTimer > _minWaitAnimSeconds && CanProceedFromWaiting())
                     {
                         // Holding ingredient during PROCESS wait = wrong state.
                         // Occupied → park; never wait for the cooker to free then place.
@@ -802,10 +810,9 @@ namespace Kitchen.AI
                     break;
 
                 case "postInteract":
-                    // Brief pause after interaction (pickup/drop) before moving to next target.
-                    // No FaceTarget here — rotation toward next dest happens naturally in MoveTo.
+                    // Pause after interaction so pickup/facility anim can finish before walking off.
                     debugState = $"post-interact wait {_stateTimer:F2}s";
-                    if (_stateTimer > 0.15f)
+                    if (_stateTimer > _postInteractAnimHoldSeconds)
                     {
                         if (!MoveTo(_pendingMovePos)) { AbandonTask(); return; };
                     }

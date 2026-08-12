@@ -360,7 +360,7 @@ MonoBehaviour:
   characters:
   - kind: 0
     skinId: 0
-    visualPrefab: {fileID: 3660644359193535525, guid: bb4e6e8316ba48879c0c726eafec7523, type: 3}
+    visualPrefab: {fileID: 3268598726127943216, guid: a8c3f1e29b7d4e6a9c0d1f2e3a4b5c6d, type: 3}
   - kind: 1
     skinId: 0
-    visualPrefab: {fileID: 3660644359193535525, guid: 81b8fb54922e416f9d123b1c881b83d8, type: 3}
+    visualPrefab: {fileID: 3268598726127943216, guid: a8c3f1e29b7d4e6a9c0d1f2e3a4b5c6d, type: 3}

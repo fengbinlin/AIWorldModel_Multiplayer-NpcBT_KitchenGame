@@ -24,7 +24,7 @@ EditorBuildSettings:
     path: Assets/Demos/KitchenChaos/Scenes/NPC.unity
     guid: 49cf200167619404096fe76398fe8e7f
   - enabled: 1
-    path: Assets/Demos/KitchenChaos/Scenes/NPC_PGC.unity
+    path: Assets/NPC_PGC.unity
     guid: 72b404d7bd0b9124fb2d01c714bca965
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2c2bed6563432004da1449258bae6ded,

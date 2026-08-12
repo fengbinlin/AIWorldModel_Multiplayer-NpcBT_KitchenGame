@@ -31,7 +31,7 @@ namespace Kitchen.AI
         [Header("AI Chef Spawning")]
         [SerializeField] private GameObject _aiChefPrefab;
         [SerializeField] private List<Transform> _spawnPoints = new();
-        [SerializeField] private float _aiMoveSpeed = 8f;
+        [SerializeField] private float _aiMoveSpeed = 3.5f;
         [SerializeField] private float _aiInteractionRange = 2f;
         [Range(0.1f, 1f)][SerializeField] private float _aiArrivalThreshold = 0.4f;
         [SerializeField] private float _aiStuckTimeout = 8f;
@@ -187,7 +187,7 @@ namespace Kitchen.AI
                     chefObj.tag = "Untagged";
                     chefObj.layer = LayerMask.NameToLayer("Default");
 
-                    // 皮肤：替换 PlayerVisual/VisualPrefab（在拆 Player 组件之前）
+                    // 皮肤：替换 PlayerVisual 下的角色表现
                     CharacterSkinApplier.ApplyOn(chefObj, SkinCharacterKind.AIPlayer);
 
                     // 先立刻拆掉 Player 预制体上的 NetworkBehaviour（Destroy 是延迟的，
@@ -197,6 +197,9 @@ namespace Kitchen.AI
                     var chef = chefObj.GetComponent<AIChefController>();
                     if (chef == null)
                         chef = chefObj.AddComponent<AIChefController>();
+
+                    // Layer-lab 视觉 + Animancer 状态机（与 AI 逻辑解耦）
+                    Kitchen.AI.Visual.AIChefVisualInstaller.EnsureOn(chefObj);
 
                     // 必须 Spawn：柜子 Interact → SpawnKitObjServerRpc 依赖 holder 的 NetworkObjectReference
                     var chefNet = chefObj.GetComponent<NetworkObject>();
@@ -211,15 +214,19 @@ namespace Kitchen.AI
                     chef.stuckTimeout = _aiStuckTimeout;
                     chef.SetSpawnPosition(spawnPoint.position);
 
-                    // Assign distinct color
+                    // Assign distinct color (legacy mesh tint only; skip skinned Layer-lab mats)
                     Color c = _aiColors.Count > 0
                         ? _aiColors[colorIdx % _aiColors.Count]
                         : Color.HSVToRGB((float)colorIdx / _spawnPoints.Count, 0.8f, 0.9f);
                     chef.chefColor = c;
-                    foreach (var r in chefObj.GetComponentsInChildren<Renderer>())
+                    bool hasSkinned = chefObj.GetComponentInChildren<SkinnedMeshRenderer>(true) != null;
+                    if (!hasSkinned)
                     {
-                        foreach (var m in r.materials)
-                            m.color = c;
+                        foreach (var r in chefObj.GetComponentsInChildren<Renderer>())
+                        {
+                            foreach (var m in r.materials)
+                                m.color = c;
+                        }
                     }
                     colorIdx++;
 
@@ -257,6 +264,7 @@ namespace Kitchen.AI
                 chef.SetApproachOffset(_aiApproachOffset);
                 chef.SetAIParams(_aiAgentRadius, _aiMoveSpeed,
                     Mathf.Clamp01(_aiRvoBasePriority + chefIdx * 0.05f), _aiApproachOffset);
+                Kitchen.AI.Visual.AIChefVisualInstaller.EnsureOn(chef.gameObject);
                 chefIdx++;
             }
 

@@ -23,6 +23,14 @@
         "com.unity.ugui": "1.0.0"
       }
     },
+    "com.kybernetik.animancer": {
+      "version": "file:com.kybernetik.animancer",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.modules.animation": "1.0.0"
+      }
+    },
     "com.unity.2d.animation": {
       "version": "9.1.2",
       "depth": 1,

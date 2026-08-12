@@ -330,7 +330,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8192ef75127d4293a2d4c31ca15c8645, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  lookMode: 0
+  lookMode: 1
 --- !u!224 &7315845642049910890 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 4715038530184374249, guid: 1633b629fe1060d439deade7e39b080c,

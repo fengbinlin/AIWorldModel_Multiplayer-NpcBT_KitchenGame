@@ -19,6 +19,11 @@ namespace Kitchen.UI
         [SerializeField] private Sprite successSprite;
         [SerializeField] private Sprite failSprite;
 
+        private void Awake()
+        {
+            KitchenUiVisibilitySetup.ApplyTo(gameObject);
+        }
+
         private void Start()
         {
             DeliveryManager.Instance.OnOrderSuccess += OnOrderSuccess;

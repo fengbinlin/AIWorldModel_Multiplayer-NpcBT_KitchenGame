@@ -1,4 +1,5 @@
 using Pathfinding;
+using Kitchen.UI;
 using UnityEngine;
 
 namespace Kitchen.AI.Recording
@@ -233,6 +234,9 @@ namespace Kitchen.AI.Recording
 
             // Recording only — keep it out of the game view.
             _fpCamera.enabled = false;
+
+            // Never capture HUD / facility progress / delivery UI in FP frames.
+            KitchenUiVisibilitySetup.ExcludeUiFromCamera(_fpCamera);
 
             var listener = _fpCamera.GetComponent<AudioListener>();
             if (listener != null)

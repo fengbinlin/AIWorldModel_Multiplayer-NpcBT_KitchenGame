@@ -163,7 +163,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8192ef75127d4293a2d4c31ca15c8645, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  lookMode: 2
+  lookMode: 3
 --- !u!114 &1602295593065260059
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -899,7 +899,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8192ef75127d4293a2d4c31ca15c8645, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  lookMode: 2
+  lookMode: 3
 --- !u!95 &2108936314938973294
 Animator:
   serializedVersion: 5

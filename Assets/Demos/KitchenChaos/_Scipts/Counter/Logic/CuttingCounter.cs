@@ -23,6 +23,8 @@ namespace Kitchen
         {
             base.Awake();
             _progressBar = transform.Find("ProgressBarUI").GetComponent<ProgressBar>();
+            if (_progressBar != null)
+                Kitchen.UI.KitchenUiVisibilitySetup.ApplyTo(_progressBar.gameObject);
         }
 
         private void OnEnable()

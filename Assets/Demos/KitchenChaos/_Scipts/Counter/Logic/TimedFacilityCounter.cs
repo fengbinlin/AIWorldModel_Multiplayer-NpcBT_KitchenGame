@@ -24,7 +24,10 @@ namespace Kitchen
             base.Awake();
             var bar = transform.Find("ProgressBarUI");
             if (bar != null)
+            {
                 _progressBarUI = bar.GetComponent<ProgressBar>();
+                Kitchen.UI.KitchenUiVisibilitySetup.ApplyTo(bar.gameObject);
+            }
         }
         private bool CanAccept(KitchenObj obj)
         {

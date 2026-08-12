@@ -69,6 +69,15 @@ namespace Kitchen.AI.Recording
             if (_globalCamera == null)
                 _globalCamera = Camera.main;
 
+            // Global top-down cam keeps UI; AI cams strip it in ChefRecordingAgent.
+            Kitchen.UI.KitchenUiVisibilitySetup.ApplyAll();
+            if (_globalCamera != null)
+            {
+                int ui = LayerMask.NameToLayer(Kitchen.UI.KitchenUiVisibilitySetup.UiLayerName);
+                if (ui >= 0)
+                    _globalCamera.cullingMask |= 1 << ui;
+            }
+
             _globalRt = RecordingCameraUtility.CreateRenderTexture(_frameWidth, _frameHeight);
         }
 

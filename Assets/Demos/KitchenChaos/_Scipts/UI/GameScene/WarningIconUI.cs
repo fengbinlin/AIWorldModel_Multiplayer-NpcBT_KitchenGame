@@ -12,7 +12,10 @@ namespace Kitchen.UI
         {
             _cooking = GetComponentInParent<ICookingFacility>();
             if (warningIcon != null)
+            {
+                KitchenUiVisibilitySetup.ApplyTo(warningIcon);
                 warningIcon.SetActive(false);
+            }
         }
 
         private void OnEnable()

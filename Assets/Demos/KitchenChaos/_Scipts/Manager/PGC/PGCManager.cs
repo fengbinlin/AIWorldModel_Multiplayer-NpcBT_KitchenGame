@@ -183,6 +183,7 @@ namespace Kitchen
                 _lastLayout, transform, destroyExistingCounters, net);
 
             ApplySpawnPointsToAIManager();
+            Kitchen.UI.KitchenUiVisibilitySetup.ApplyAll();
 
             // 按新地图尺寸重设 GridGraph，并 Scan（覆盖场景里 A* 的 scanOnStartup 旧图）
             RescanAstar(_lastLayout);

@@ -636,8 +636,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 51364245}
-  - component: {fileID: 51364248}
   - component: {fileID: 51364247}
+  - component: {fileID: 51364248}
   m_Layer: 0
   m_Name: GlobalManager
   m_TagString: Untagged
@@ -14246,7 +14246,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1868c531361dea14ca5443d13a6415ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _autoStartWhenPlaying: 0
+  _autoStartWhenPlaying: 1
   _toggleKey: 290
   _captureFps: 60
   _frameWidth: 426

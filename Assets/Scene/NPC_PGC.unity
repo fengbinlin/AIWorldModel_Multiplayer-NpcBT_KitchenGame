@@ -4225,7 +4225,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   <setting>k__BackingField:
     gameDurationSetting: 0
-    readyCountDown: 3
+    readyCountDown: 1
     maxPlayerCount: 4
   <playerColors>k__BackingField:
   - {r: 1, g: 0.7951523, b: 0, a: 1}
@@ -10475,7 +10475,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   defaultRecipes:
-  - {fileID: 11400000, guid: 4279d54057224b73bc0da418fa619a99, type: 2}
+  - {fileID: 11400000, guid: 8bf4fbc689e8463896ba3bd8eaa2a2d3, type: 2}
   useRandomRecipes: 0
   randomRecipeCount: 5
   randomSourceRecipes: []
@@ -14246,7 +14246,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1868c531361dea14ca5443d13a6415ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _autoStartWhenPlaying: 1
+  _autoStartWhenPlaying: 0
   _toggleKey: 290
   _captureFps: 60
   _frameWidth: 426

@@ -3611,7 +3611,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   <setting>k__BackingField:
     gameDurationSetting: 60
-    readyCountDown: 3
+    readyCountDown: 1
     maxPlayerCount: 4
   <playerColors>k__BackingField:
   - {r: 1, g: 0.7951523, b: 0, a: 1}

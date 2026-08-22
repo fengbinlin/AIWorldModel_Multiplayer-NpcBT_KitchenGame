@@ -196,6 +196,27 @@ namespace Kitchen
             return _waitingOrderCodes;
         }
 
+        /// <summary>Resolve the active recipe for a runtime order id (0 if unknown).</summary>
+        public bool TryGetRecipeForOrderId(int orderId, out RecipeSo recipe)
+        {
+            recipe = null;
+            if (orderId == 0)
+                return false;
+
+            for (int i = 0; i < _waitingQueue.Count; i++)
+            {
+                if (i >= _waitingOrderCodes.Count)
+                    break;
+                if (KitchenOrderIdentity.ToRuntimeId(_waitingOrderCodes[i]) != orderId)
+                    continue;
+
+                recipe = _waitingQueue[i];
+                return recipe != null;
+            }
+
+            return false;
+        }
+
         private string CreateOrderCode()
         {
             // Order identity is independent of recipe type and queue sorting.

@@ -38,8 +38,15 @@ namespace Kitchen
 
         /// <summary>
         /// If <paramref name="ingredients"/> exactly matches an assembly recipe, returns its output.
+        /// When <paramref name="requiredOutput"/> is set, only that assembly may match — this
+        /// prevents partial sets (e.g. tomato + cream) from assembling into a smaller salad
+        /// while a larger order-bound salad is still being built.
         /// </summary>
-        public static bool TryMatch(HashSet<KitchenObjEnum> ingredients, out KitchenObjEnum output, out PlateAssemblySo rule)
+        public static bool TryMatch(
+            HashSet<KitchenObjEnum> ingredients,
+            out KitchenObjEnum output,
+            out PlateAssemblySo rule,
+            KitchenObjEnum? requiredOutput = null)
         {
             EnsureLoaded();
             output = default;
@@ -50,6 +57,8 @@ namespace Kitchen
             foreach (var a in _assemblies)
             {
                 if (a == null || a.inputs == null || a.inputs.Length == 0)
+                    continue;
+                if (requiredOutput.HasValue && a.output != requiredOutput.Value)
                     continue;
                 if (a.inputs.Length != ingredients.Count)
                     continue;
@@ -62,6 +71,25 @@ namespace Kitchen
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Plate assembly target for an order's required item. Blender/oven finals use their
+        /// pre-process assembled input (e.g. shake → salad before blending).
+        /// </summary>
+        public static KitchenObjEnum ResolvePlateAssemblyTarget(KitchenObjEnum requiredItem)
+        {
+            var processes = Resources.LoadAll<KitchenProcessSo>("So/Processes/");
+            foreach (var process in processes)
+            {
+                if (process == null || process.outputEnum != requiredItem)
+                    continue;
+                if (process.requiredFacility == FacilityEnum.OvenCounter
+                    || process.requiredFacility == FacilityEnum.BlenderCounter)
+                    return process.inputEnum;
+            }
+
+            return requiredItem;
         }
 
         /// <summary>Find assembly whose output is the given item (for AI planning).</summary>

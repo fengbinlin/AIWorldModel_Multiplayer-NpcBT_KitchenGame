@@ -62,12 +62,7 @@ namespace Kitchen
             if (!_serverIngredients.Add(objEnum))
                 return;
 
-            if (PlateAssemblyMatcher.TryMatch(
-                    _serverIngredients, out var assembledOutput, out _))
-            {
-                _serverIngredients.Clear();
-                _serverIngredients.Add(assembledOutput);
-            }
+            TryAssembleAuthoritative(_serverIngredients);
             AddIngredientClientRpc(objEnum);
         }
 
@@ -77,7 +72,7 @@ namespace Kitchen
             AddLocal(objEnum);
             onIngredientAdded?.Invoke(this, objEnum);
 
-            if (PlateAssemblyMatcher.TryMatch(_ingredients, out var output, out var rule))
+            if (TryAssembleAuthoritative(_ingredients, out var output, out var rule))
             {
                 Debug.Log($"[Plate] Assembly {rule.assemblyId}: → {output}");
                 ReplaceLocalWith(output);
@@ -90,7 +85,7 @@ namespace Kitchen
 
         public HashSet<KitchenObjEnum> GetIngredients()
         {
-            return _ingredients;
+            return GetAuthoritativeIngredients();
         }
 
         /// <summary>Ingredients in add order (bottom → top for stacking).</summary>
@@ -103,9 +98,7 @@ namespace Kitchen
         public bool TryGetDeliverableItem(out KitchenObjEnum item)
         {
             item = default;
-            var source = IsServer && _serverIngredients.Count > 0
-                ? _serverIngredients
-                : _ingredients;
+            var source = GetAuthoritativeIngredients();
             if (source.Count != 1) return false;
             foreach (var i in source)
             {
@@ -202,6 +195,54 @@ namespace Kitchen
         {
             inspectorContents.Clear();
             inspectorContents.AddRange(_ingredientOrder);
+        }
+
+        private HashSet<KitchenObjEnum> GetAuthoritativeIngredients()
+        {
+            return IsServer && _serverIngredients.Count > 0
+                ? _serverIngredients
+                : _ingredients;
+        }
+
+        private KitchenObjEnum? ResolveExpectedAssemblyOutput()
+        {
+            if (BoundOrderId == 0)
+                return null;
+
+            var delivery = DeliveryManager.Instance;
+            if (delivery == null
+                || !delivery.TryGetRecipeForOrderId(BoundOrderId, out var recipe)
+                || recipe == null)
+                return null;
+
+            var target = PlateAssemblyMatcher.ResolvePlateAssemblyTarget(recipe.requiredItem);
+            return PlateAssemblyMatcher.FindAssemblyProducing(target) != null
+                ? target
+                : (KitchenObjEnum?)null;
+        }
+
+        private bool TryAssembleAuthoritative(HashSet<KitchenObjEnum> ingredients)
+        {
+            return TryAssembleAuthoritative(ingredients, out _, out _);
+        }
+
+        private bool TryAssembleAuthoritative(
+            HashSet<KitchenObjEnum> ingredients,
+            out KitchenObjEnum output,
+            out PlateAssemblySo rule)
+        {
+            output = default;
+            rule = null;
+            if (!PlateAssemblyMatcher.TryMatch(
+                    ingredients,
+                    out output,
+                    out rule,
+                    ResolveExpectedAssemblyOutput()))
+                return false;
+
+            ingredients.Clear();
+            ingredients.Add(output);
+            return true;
         }
 
 #if UNITY_EDITOR

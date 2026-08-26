@@ -1,0 +1,11 @@
+[2026-08-26 23:08:16] Replace SkinAsset visuals ← Tripo3DModel
+OK Skin_TomatoSlices_Visual.prefab ← 番茄片 footprint 0.467 scale=0.494
+OK Skin_TomatoShake_Visual.prefab ← 番茄奶昔 footprint 0.612 scale=0.612
+OK Skin_TomatoCabbageSalad_Visual.prefab ← 番茄包菜沙拉 footprint 0.786 scale=0.786
+OK Skin_TomatoCabbageShake_Visual.prefab ← 番茄包菜奶昔 footprint 0.612 scale=0.612
+OK Skin_Cream_Visual.prefab ← 奶油 footprint 0.272 scale=0.272
+OK Skin_CabbageSalad_Visual.prefab ← 包菜沙拉 footprint 0.786 scale=0.786
+OK Skin_CabbageShake_Visual.prefab ← 包菜奶昔 footprint 0.612 scale=0.612
+OK Skin_ChickenBurger_Visual.prefab ← 鸡腿汉堡 footprint 0.850 scale=0.881
+OK Skin_BeefBurger_Visual.prefab ← 牛肉汉堡 footprint 0.850 scale=0.850
+OK Skin_PlatesCounter_Visual.prefab ← 不锈钢橱柜 counter size 1.528 scale=1.528

@@ -85,21 +85,37 @@ namespace Kitchen
         [ServerRpc(RequireOwnership = false)]
         public void PutKitObjServerRpc(NetworkObjectReference putterRef, NetworkObjectReference recieverRef)
         {
+            if (!ApplyPutKitObj(putterRef, recieverRef))
+                return;
+
             _PutKitObjClientRpc(putterRef, recieverRef);
+        }
+
+        private static bool ApplyPutKitObj(
+            NetworkObjectReference putterRef,
+            NetworkObjectReference recieverRef)
+        {
+            if (!putterRef.TryGet(out NetworkObject putterObj)) return false;
+            if (!recieverRef.TryGet(out NetworkObject recieverObj)) return false;
+
+            var putter = putterObj.GetComponent<ICanHoldKitchenObj>();
+            var reciever = recieverObj.GetComponent<ICanHoldKitchenObj>();
+            if (putter == null || reciever == null) return false;
+
+            var obj = putter.GetKitchenObj();
+            if (obj == null) return false;
+
+            putter.ClearKitchenObj();
+            obj.SetHolder(reciever);
+            reciever.SetKitchenObj(obj);
+            return true;
         }
 
         [ClientRpc]
         private void _PutKitObjClientRpc(NetworkObjectReference putterRef, NetworkObjectReference recieverRef)
         {
-            putterRef.TryGet(out NetworkObject putterObj);
-            recieverRef.TryGet(out NetworkObject recieverObj);
-            var putter = putterObj.GetComponent<ICanHoldKitchenObj>();
-            var reciever = recieverObj.GetComponent<ICanHoldKitchenObj>();
-
-            var obj = putter.GetKitchenObj();
-            putter.ClearKitchenObj();
-            obj.SetHolder(reciever);
-            reciever.SetKitchenObj(obj);
+            if (IsServer) return;
+            ApplyPutKitObj(putterRef, recieverRef);
         }
 
 

@@ -707,24 +707,36 @@ namespace Kitchen.AI
         /// </summary>
         public FacilityState BestFreeFacility(FacilityType type, Vector3 fromPos)
         {
+            return FindBestAvailableFacility(type, fromPos);
+        }
+
+        /// <summary>
+        /// Like <see cref="BestFreeFacility"/> but excludes facilities reserved by
+        /// another agent. Pass <paramref name="forAgentId"/> to include own reservations.
+        /// </summary>
+        public FacilityState FindBestAvailableFacility(
+            FacilityType type,
+            Vector3 fromPos,
+            int forAgentId = -1)
+        {
             static bool IsPhysicallyFree(FacilityState f) =>
                 f?.counter != null && !f.counter.HasKitchenObj();
 
-            var candidates = facilities.FindAll(f =>
-                f.type == type && f.state == "free" && IsPhysicallyFree(f));
-
-            if (candidates.Count == 0)
+            bool CanSelect(FacilityState f)
             {
-                // Reserved-but-empty is OK (reservation may be stale); occupied counters are not.
-                candidates = facilities.FindAll(f =>
-                    f.type == type && IsPhysicallyFree(f));
-                if (candidates.Count == 0)
-                    return null;
+                if (f == null || f.type != type || !IsPhysicallyFree(f))
+                    return false;
+                return !IsFacilityReservedByOther(f.counter, forAgentId);
             }
+
+            var candidates = facilities.FindAll(f => f.type == type && f.state == "free" && CanSelect(f));
+            if (candidates.Count == 0)
+                candidates = facilities.FindAll(CanSelect);
+            if (candidates.Count == 0)
+                return null;
 
             if (candidates.Count == 1) return candidates[0];
 
-            // Prefer the facility with more items nearby
             candidates.Sort((a, b) =>
             {
                 var countA = items.Count(i =>
@@ -738,6 +750,41 @@ namespace Kitchen.AI
                     .CompareTo(Vector3.Distance(b.Center, fromPos));
             });
             return candidates[0];
+        }
+
+        public bool IsFacilityReservedByOther(BaseCounter counter, int agentId)
+        {
+            if (counter == null) return false;
+            var fac = facilities.Find(f => f.counter == counter);
+            return fac != null
+                   && fac.state == "reserved"
+                   && fac.reservedByAgent != agentId
+                   && fac.reservedByAgent != -1;
+        }
+
+        public bool TryReserveFacility(BaseCounter counter, int agentId)
+        {
+            if (counter == null || agentId < 0) return false;
+            if (IsFacilityReservedByOther(counter, agentId))
+                return false;
+
+            var fac = facilities.Find(f => f.counter == counter);
+            if (fac == null) return true;
+
+            fac.state = "reserved";
+            fac.reservedByAgent = agentId;
+            return true;
+        }
+
+        public void ReleaseFacilityReservation(BaseCounter counter, int agentId)
+        {
+            if (counter == null || agentId < 0) return;
+            var fac = facilities.Find(f => f.counter == counter);
+            if (fac == null || fac.reservedByAgent != agentId)
+                return;
+
+            fac.reservedByAgent = -1;
+            fac.state = counter.HasKitchenObj() ? "occupied" : "free";
         }
 
         /// <summary>
@@ -1047,6 +1094,41 @@ namespace Kitchen.AI
                 return null;
             }
             return plate;
+        }
+
+        public RecipeSo FindRecipeForOrder(int orderId)
+        {
+            if (orderId == 0)
+                return null;
+
+            for (int i = 0; i < activeOrderIds.Count; i++)
+            {
+                if (activeOrderIds[i] != orderId)
+                    continue;
+                if (i < activeOrders.Count)
+                    return activeOrders[i];
+            }
+
+            return null;
+        }
+
+        public bool TryGetRecipeSteps(string recipeName, out List<RecipeStep> steps)
+        {
+            steps = null;
+            if (string.IsNullOrEmpty(recipeName))
+                return false;
+            if (!recipeStepChains.TryGetValue(recipeName, out steps) || steps == null)
+                return false;
+            return true;
+        }
+
+        public bool TryGetRecipeStep(string recipeName, string stepId, out RecipeStep step)
+        {
+            step = null;
+            if (!TryGetRecipeSteps(recipeName, out var steps))
+                return false;
+            step = steps.Find(s => s != null && s.id == stepId);
+            return step != null;
         }
 
         #endregion

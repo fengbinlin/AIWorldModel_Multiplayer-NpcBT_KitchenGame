@@ -46,6 +46,11 @@ namespace Kitchen.AI
         // Destination facility (for CARRY tasks)
         public BaseCounter destFacility;
 
+        /// <summary>
+        /// Optional routed delivery that skips clear-counter staging when safe.
+        /// </summary>
+        public KitchenDeliveryIntent deliveryIntent = KitchenDeliveryIntent.Default;
+
         // The item to operate on
         public KitchenObj targetItem;
         public KitchenObjEnum itemType;

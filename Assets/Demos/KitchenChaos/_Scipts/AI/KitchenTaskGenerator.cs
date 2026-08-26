@@ -234,6 +234,12 @@ namespace Kitchen.AI
             task.targetFacility = storage.counter;
             task.outputType = ingredient;
             task.duration = 1.0f; // 1 second to fetch
+            if (KitchenRouteResolver.TryResolveFetchRoute(
+                    bb, order, orderId, step, out var route, out var destination))
+            {
+                task.deliveryIntent = route.Intent;
+                task.destFacility = destination;
+            }
             tasks.Add(task);
         }
 
@@ -264,7 +270,7 @@ namespace Kitchen.AI
 
             // Fallback to a physically empty facility only
             if (facility == null)
-                facility = bb.BestFreeFacility(facilityType, Vector3.zero);
+                facility = bb.FindBestAvailableFacility(facilityType, Vector3.zero);
 
             if (facility == null)
             {
@@ -347,6 +353,12 @@ namespace Kitchen.AI
             task.itemType = step.inputType.Value;
             task.outputType = step.outputType.Value;
             task.duration = duration;
+            if (KitchenRouteResolver.TryResolveProcessOutputRoute(
+                    bb, order, orderId, step, out var route, out var outputDest))
+            {
+                task.deliveryIntent = route.Intent;
+                task.destFacility = outputDest;
+            }
             tasks.Add(task);
         }
 
@@ -358,29 +370,15 @@ namespace Kitchen.AI
             var existingPlate = bb.FindPlateForOrder(orderId);
             if (existingPlate != null) return;
 
-            // Find PlatesCounter with the most plates available,
-            // accounting for agents already en route to fetch plates.
-            FacilityState bestPlatesCounter = null;
-            int bestAvailable = -1;
+            // Plates are infinite — any PlatesCounter can supply a plate immediately.
+            FacilityState platesCounter = null;
             foreach (var f in bb.facilities)
             {
                 if (f.type != FacilityType.PlatesCounter) continue;
-                var pc = f.counter as PlatesCounter;
-                if (pc == null) continue;
-                int reserved = bb.agents.Count(a =>
-                    a.currentTask != null &&
-                    a.currentTask.type == TaskType.FETCH_PLATE &&
-                    a.currentTask.targetFacility == f.counter &&
-                    a.currentTask.status != "completed" &&
-                    a.currentTask.status != "abandoned");
-                int available = pc.plateCount - reserved;
-                if (available > bestAvailable)
-                {
-                    bestAvailable = available;
-                    bestPlatesCounter = f;
-                }
+                platesCounter = f;
+                break;
             }
-            if (bestPlatesCounter == null || bestAvailable <= 0) return;
+            if (platesCounter == null) return;
 
             // Find any free ClearCounter as drop target
             var dropTarget = bb.facilities
@@ -392,7 +390,7 @@ namespace Kitchen.AI
             var task = KitchenTask.Create(TaskType.FETCH_PLATE, $"{order.recipeName}: {step.label}");
             task.stepId = step.id;
             task.orderId = orderId;
-            task.targetFacility = bestPlatesCounter.counter; // source: PlatesCounter with most plates
+            task.targetFacility = platesCounter.counter; // source: any PlatesCounter
             task.destFacility = dropTarget.counter;       // destination: any free ClearCounter
             task.outputType = KitchenObjEnum.Plate;
             task.duration = 1.0f;
@@ -882,25 +880,11 @@ namespace Kitchen.AI
                 bool skipFacilityReserve = task.type == TaskType.FETCH_PLATE
                     || task.type == TaskType.ADD_TO_PLATE
                     || task.type == TaskType.TRASH;
-                if (task.targetFacility != null && !skipFacilityReserve)
+                if (!TryReserveTaskFacilities(task, agent, bb, skipFacilityReserve))
                 {
-                    var facility = bb.facilities.Find(
-                        f => f.counter == task.targetFacility);
-                    if (facility != null
-                        && facility.state == "reserved"
-                        && facility.reservedByAgent != agent.agentId
-                        && facility.reservedByAgent != -1)
-                    {
-                        if (task.type == TaskType.SERVE)
-                            continue;
-                        break;
-                    }
-
-                    if (facility != null)
-                    {
-                        facility.state = "reserved";
-                        facility.reservedByAgent = agent.agentId;
-                    }
+                    if (task.type == TaskType.SERVE)
+                        continue;
+                    break;
                 }
 
                 if (task.targetItem != null)
@@ -1142,15 +1126,10 @@ namespace Kitchen.AI
         /// </summary>
         public static void ReleaseReservations(KitchenTask task, KitchenBlackboard bb)
         {
-            if (task.targetFacility != null)
-            {
-                var fac = bb.facilities.Find(f => f.counter == task.targetFacility);
-                if (fac != null && fac.reservedByAgent == task.assignedAgentId)
-                {
-                    fac.state = "free";
-                    fac.reservedByAgent = -1;
-                }
-            }
+            if (task == null || bb == null) return;
+
+            bb.ReleaseFacilityReservation(task.targetFacility, task.assignedAgentId);
+            bb.ReleaseFacilityReservation(task.destFacility, task.assignedAgentId);
 
             foreach (var itemId in task.reservedItemIds)
             {
@@ -1159,6 +1138,104 @@ namespace Kitchen.AI
                     item.reservedByTask = -1;
             }
             task.reservedItemIds.Clear();
+        }
+
+        private static bool TryReserveTaskFacilities(
+            KitchenTask task,
+            AgentState agent,
+            KitchenBlackboard bb,
+            bool skipTargetReserve)
+        {
+            if (task == null || agent == null || bb == null)
+                return false;
+
+            bool reservedTarget = false;
+            if (!skipTargetReserve && task.targetFacility != null)
+            {
+                if (bb.IsFacilityReservedByOther(task.targetFacility, agent.agentId))
+                    return false;
+                if (!bb.TryReserveFacility(task.targetFacility, agent.agentId))
+                    return false;
+                reservedTarget = true;
+            }
+
+            if (task.destFacility != null
+                && task.deliveryIntent != KitchenDeliveryIntent.Default)
+            {
+                if (!TryReserveDestFacility(task, agent, bb, ref reservedTarget))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool TryReserveDestFacility(
+            KitchenTask task,
+            AgentState agent,
+            KitchenBlackboard bb,
+            ref bool reservedTarget)
+        {
+            const int maxAttempts = 3;
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                if (task.destFacility == null)
+                    return true;
+
+                if (bb.IsFacilityReservedByOther(task.destFacility, agent.agentId))
+                {
+                    if (!TryRefreshDestFacility(task, agent, bb))
+                    {
+                        if (reservedTarget)
+                            bb.ReleaseFacilityReservation(task.targetFacility, agent.agentId);
+                        return false;
+                    }
+                    continue;
+                }
+
+                if (bb.TryReserveFacility(task.destFacility, agent.agentId))
+                    return true;
+
+                if (!TryRefreshDestFacility(task, agent, bb))
+                {
+                    if (reservedTarget)
+                        bb.ReleaseFacilityReservation(task.targetFacility, agent.agentId);
+                    return false;
+                }
+            }
+
+            if (reservedTarget)
+                bb.ReleaseFacilityReservation(task.targetFacility, agent.agentId);
+            return false;
+        }
+
+        private static bool TryRefreshDestFacility(
+            KitchenTask task,
+            AgentState agent,
+            KitchenBlackboard bb)
+        {
+            var previous = task.destFacility;
+            KitchenRouteDecision route = default;
+            BaseCounter destination = null;
+            bool resolved = false;
+
+            switch (task.type)
+            {
+                case TaskType.FETCH:
+                    resolved = KitchenRouteResolver.TryResolveFetchRouteForTask(
+                        bb, task, out route, out destination, agent.agentId);
+                    break;
+                case TaskType.PROCESS:
+                    resolved = KitchenRouteResolver.TryResolveProcessOutputRouteForTask(
+                        bb, task, out route, out destination);
+                    break;
+            }
+
+            if (!resolved || destination == null || destination == previous)
+                return false;
+
+            task.deliveryIntent = route.Intent;
+            task.destFacility = destination;
+            return true;
         }
 
         #endregion

@@ -626,9 +626,8 @@ namespace Kitchen.AI
 
                                 if (_heldItem != null)
                                 {
-                                    // PROCESS output is staged on a clear counter. The explicit
-                                    // ADD_TO_PLATE task is the only path allowed to modify a plate.
-                                    var dropTarget = FindNearestFreeCounter(transform.position);
+                                    var dropTarget = ResolveDeliveryDestination(_currentTask)
+                                        ?? FindNearestFreeCounter(transform.position);
                                     if (dropTarget != null)
                                     {
                                         AIDebugLogger.Log(chefName, $"Delivering {_heldItem.objEnum} to {dropTarget.name}");
@@ -822,9 +821,13 @@ namespace Kitchen.AI
 
         private void OnArrivedAtTarget()
         {
-            // AI rotation stays frozen during interaction — only re-enabled
-            // later in MoveTo() when the agent actually needs to move again.
-            // This ensures: face target → interact → then turn to next target.
+            // Leave the arrival pause immediately so we do not re-enter this
+            // handler every frame while facing the same target.
+            _pauseCallback = "idle";
+
+            AIDebugLogger.Log(chefName,
+                $"OnArrivedAtTarget: phase={_execPhase} held={_heldItem?.objEnum} " +
+                $"target={_targetCounter?.name} task={_currentTask?.type}/{_currentTask?.label}");
 
             switch (_execPhase)
             {
@@ -1263,6 +1266,12 @@ namespace Kitchen.AI
             _waitingForFreeFacility = false;
             _abandonAfterDestinationDrop = false;
 
+            // New task always starts from a clean locomotion state.
+            _substate = "idle";
+            _stateTimer = 0;
+            _pauseCallback = null;
+            if (_aiPath != null) _aiPath.enableRotation = true;
+
             AIDebugLogger.LogAssignment(agentId, chefName, task);
 
             ExecuteTask(task);
@@ -1315,21 +1324,7 @@ namespace Kitchen.AI
                 && _heldItem.BoundOrderId == task.orderId)
             {
                 AIDebugLogger.Log(chefName, $"ExecuteFetch: already holding {_heldItem.objEnum}, finding drop target");
-                // Find destination facility for this ingredient (pass orderId so FETCH→PROCESS fusion works)
-                _targetCounter = FindDropTarget(task.outputType, task.orderId);
-                if (_targetCounter != null && _targetCounter != counter)
-                {
-                    _execPhase = ExecPhase.GotoDest;
-                    if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; }
-                }
-                else
-                {
-                    // Just drop at the source counter or nearby clear counter
-                    var dropTarget = FindNearestFreeCounter(counter.transform.position);
-                    _targetCounter = dropTarget ?? counter;
-                    _execPhase = ExecPhase.GotoDest;
-                    if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; }
-                }
+                BeginFetchedItemDelivery();
                 return;
             }
 
@@ -1340,9 +1335,155 @@ namespace Kitchen.AI
         }
 
         /// <summary>
-        /// Finds a temporary clear counter for an item produced by FETCH or PROCESS.
-        /// Processing and plating are separate, explicit tasks; this method must never
-        /// shortcut an item into a facility or onto a plate.
+        /// Resolves where a carried item should be delivered. Uses explicit route
+        /// metadata from <see cref="KitchenRouteResolver"/> when available, otherwise
+        /// falls back to clear-counter staging.
+        /// </summary>
+        private BaseCounter ResolveDeliveryDestination(KitchenTask task)
+        {
+            if (task == null)
+                return FindDropTarget(default, 0);
+
+            if (task.destFacility != null
+                && task.deliveryIntent != KitchenDeliveryIntent.Default
+                && CanUseRoutedDestination(task.destFacility, task, task.deliveryIntent))
+            {
+                AIDebugLogger.Log(chefName,
+                    $"ResolveDelivery({task.type}) → routed {task.destFacility.name} ({task.deliveryIntent})");
+                return task.destFacility;
+            }
+
+            var bb = _aiManager?.Blackboard;
+            if (bb != null)
+            {
+                if (task.type == TaskType.FETCH
+                    && KitchenRouteResolver.TryResolveFetchRouteForTask(
+                        bb, task, out var fetchRoute, out var fetchDest)
+                    && CanUseRoutedDestination(fetchDest, task, fetchRoute.Intent))
+                {
+                    task.deliveryIntent = fetchRoute.Intent;
+                    task.destFacility = fetchDest;
+                    AIDebugLogger.Log(chefName,
+                        $"ResolveDelivery(FETCH) → runtime {fetchDest.name} ({fetchRoute.Intent})");
+                    return fetchDest;
+                }
+
+                if (task.type == TaskType.PROCESS
+                    && KitchenRouteResolver.TryResolveProcessOutputRouteForTask(
+                        bb, task, out var outputRoute, out var outputDest)
+                    && CanUseRoutedDestination(outputDest, task, outputRoute.Intent))
+                {
+                    task.deliveryIntent = outputRoute.Intent;
+                    task.destFacility = outputDest;
+                    AIDebugLogger.Log(chefName,
+                        $"ResolveDelivery(PROCESS) → runtime {outputDest.name} ({outputRoute.Intent})");
+                    return outputDest;
+                }
+            }
+
+            return FindDropTarget(task.outputType, task.orderId);
+        }
+
+        private void BeginFetchedItemDelivery()
+        {
+            if (_heldItem == null || _currentTask == null)
+                return;
+
+            if (_currentTask.orderId != 0)
+                _aiManager?.Blackboard?.TagItemForOrder(_heldItem, _currentTask.orderId);
+
+            var dropTarget = ResolveDeliveryDestination(_currentTask);
+            if (dropTarget != null)
+            {
+                _targetCounter = dropTarget;
+                float dist = Vector3.Distance(transform.position, dropTarget.transform.position);
+                if (dist <= interactionRange && CanPlaceHeldItemOn(dropTarget))
+                {
+                    AIDebugLogger.Log(chefName,
+                        $"BeginFetchedItemDelivery: drop {_heldItem.objEnum} on {dropTarget.name}");
+                    _execPhase = ExecPhase.GotoDest;
+                    DropItemAtDestination();
+                    return;
+                }
+
+                AIDebugLogger.Log(chefName,
+                    $"BeginFetchedItemDelivery: carry {_heldItem.objEnum} → {dropTarget.name}");
+                _execPhase = ExecPhase.GotoDest;
+                if (!MoveTo(dropTarget.transform.position)) { AbandonTask(); return; }
+                return;
+            }
+
+            var fallback = FindNearestFreeCounter(transform.position);
+            if (fallback != null)
+            {
+                AIDebugLogger.Log(chefName,
+                    $"BeginFetchedItemDelivery: fallback {_heldItem.objEnum} → {fallback.name}");
+                _targetCounter = fallback;
+                _execPhase = ExecPhase.GotoDest;
+                if (!MoveTo(fallback.transform.position)) { AbandonTask(); return; }
+                return;
+            }
+
+            AIDebugLogger.LogWarning(chefName,
+                $"BeginFetchedItemDelivery: no drop target for {_heldItem.objEnum}, dropping on ground");
+            KitchenObjFactory.Instance.DropObjServerRpc(
+                _heldItem.NetworkObject,
+                GetGroundDropPosition(transform.position + transform.forward * 0.5f),
+                Vector3.down,
+                0f,
+                default);
+            ClearKitchenObj();
+            CompleteTask();
+        }
+
+        private bool CanUseRoutedDestination(
+            BaseCounter counter,
+            KitchenTask task,
+            KitchenDeliveryIntent intent)
+        {
+            if (counter == null || task == null)
+                return false;
+
+            var bb = _aiManager?.Blackboard;
+            HashSet<BaseCounter> reservedCounters = null;
+            if (bb != null)
+            {
+                reservedCounters = new HashSet<BaseCounter>(
+                    bb.facilities
+                        .Where(f => f.state == "reserved" && f.reservedByAgent != agentId)
+                        .Select(f => f.counter));
+            }
+
+            if (reservedCounters != null && reservedCounters.Contains(counter))
+                return false;
+
+            switch (intent)
+            {
+                case KitchenDeliveryIntent.BypassToProcessFacility:
+                    if (counter is not CuttingCounter
+                        and not StoveCounter
+                        and not TimedFacilityCounter)
+                        return false;
+                    if (!counter.HasKitchenObj())
+                        return _heldItem == null || CanPlaceHeldItemOn(counter);
+                    var onFacility = counter.GetKitchenObj();
+                    return task.orderId != 0
+                           && onFacility.BoundOrderId == task.orderId
+                           && onFacility.objEnum == task.outputType;
+
+                case KitchenDeliveryIntent.BypassToPlateAssembly:
+                    if (counter is not ClearCounter)
+                        return false;
+                    return counter.GetKitchenObj() is Plate
+                           && (_heldItem == null || CanPlaceHeldItemOn(counter));
+
+                default:
+                    return IsUsableClearCounter(counter) && !counter.HasKitchenObj();
+            }
+        }
+
+        /// <summary>
+        /// Finds a temporary clear counter for items without a routed destination.
         /// </summary>
         private BaseCounter FindDropTarget(KitchenObjEnum ingredient)
         {
@@ -1361,9 +1502,7 @@ namespace Kitchen.AI
                         .Select(f => f.counter));
             }
 
-            // Safe staging only: FETCH always parks on a ClearCounter.
-            // PROCESS tasks own placing on cookers and waiting for output.
-            // (Direct FETCH→facility fusion caused place-and-leave / broken cook.)
+            // Safe staging fallback when no routed destination is available.
             var clear = FindObjectsOfType<ClearCounter>()
                 .FirstOrDefault(c => IsUsableClearCounter(c)
                     && !c.HasKitchenObj()
@@ -1455,16 +1594,123 @@ namespace Kitchen.AI
                                || counter is TimedFacilityCounter;
             if (isProcessor)
             {
-                // Empty processor — OK to place input / plate-for-extract.
-                if (!counter.HasKitchenObj()) return true;
-                // Never treat an occupied cooker as placeable just because we hold a plate.
-                return false;
+                if (counter.HasKitchenObj()) return false;
+                return CanProcessHeldItemOn(counter, _heldItem);
             }
 
             if (!counter.HasKitchenObj()) return true;
             if (counter.GetKitchenObj() is Plate) return true;
             if (_heldItem is Plate) return true;
             return false;
+        }
+
+        private static bool CanProcessHeldItemOn(BaseCounter counter, KitchenObj heldItem)
+        {
+            if (heldItem == null || DataTableManager.Sigleton == null)
+                return false;
+
+            if (heldItem is Plate plate)
+                return plate.CanProcessOn(GetFacilityEnum(counter));
+
+            return DataTableManager.Sigleton.CanPlaceOnFacility(
+                heldItem.objEnum,
+                GetFacilityEnum(counter));
+        }
+
+        private static FacilityEnum GetFacilityEnum(BaseCounter counter)
+        {
+            return counter switch
+            {
+                CuttingCounter => FacilityEnum.CuttingCounter,
+                StoveCounter => FacilityEnum.StoveCounter,
+                OvenCounter => FacilityEnum.OvenCounter,
+                BlenderCounter => FacilityEnum.BlenderCounter,
+                _ => FacilityEnum.CuttingCounter,
+            };
+        }
+
+        private bool TryRecognizeFetchPlacementComplete()
+        {
+            if (_currentTask?.type != TaskType.FETCH || _targetCounter == null)
+                return false;
+
+            if (_heldItem == null)
+                return true;
+
+            if (!_targetCounter.HasKitchenObj())
+                return false;
+
+            var onCounter = _targetCounter.GetKitchenObj();
+            if (onCounter == null)
+                return false;
+
+            if (_currentTask.orderId != 0
+                && onCounter.BoundOrderId != 0
+                && onCounter.BoundOrderId != _currentTask.orderId)
+                return false;
+
+            if (onCounter == _heldItem)
+            {
+                ClearKitchenObj();
+                return true;
+            }
+
+            if (_currentTask.outputType != 0 && onCounter.objEnum == _currentTask.outputType)
+            {
+                ClearKitchenObj();
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryRecognizePlacementComplete()
+        {
+            if (_heldItem == null)
+                return true;
+
+            if (_targetCounter == null || !_targetCounter.HasKitchenObj())
+                return false;
+
+            var onCounter = _targetCounter.GetKitchenObj();
+            if (onCounter == null)
+                return false;
+
+            if (onCounter == _heldItem)
+            {
+                ClearKitchenObj();
+                return true;
+            }
+
+            return TryRecognizeFetchPlacementComplete();
+        }
+
+        private bool IsWithinInteractionRange(BaseCounter counter)
+        {
+            if (counter == null) return false;
+            return Vector3.Distance(transform.position, counter.transform.position) <= interactionRange;
+        }
+
+        private static bool ItemMatchesOrder(KitchenObj obj, int orderId)
+        {
+            if (orderId == 0) return true;
+            if (obj == null) return false;
+            // Unbound items are neutral — only reject explicit foreign orders.
+            return obj.BoundOrderId == 0 || obj.BoundOrderId == orderId;
+        }
+
+        private static bool ItemMatchesTaskInput(KitchenObj obj, KitchenTask task)
+        {
+            if (obj == null || task == null || task.itemType == 0) return false;
+            if (obj.objEnum == task.itemType) return true;
+            return obj is Plate plate && plate.GetIngredients().Contains(task.itemType);
+        }
+
+        private static bool ItemMatchesTaskOutput(KitchenObj obj, KitchenTask task)
+        {
+            if (obj == null || task == null || task.outputType == 0) return false;
+            if (obj.objEnum == task.outputType) return true;
+            return obj is Plate plate && plate.GetIngredients().Contains(task.outputType);
         }
 
         private void ExecuteProcess(KitchenTask task)
@@ -1503,26 +1749,24 @@ namespace Kitchen.AI
 
             Vector3 approachPos = GetApproachPosition(counter);
 
-            // Hard gate: if the cooker is busy with something that is not ours to take,
-            // park held input (if any) and stop. Never self-fetch into a busy facility.
+            // Input/output already on the facility (e.g. FETCH bypass just delivered here).
             if (counter.HasKitchenObj())
             {
                 var onCounter = counter.GetKitchenObj();
-                bool ourOutput = task.outputType != 0
-                    && (onCounter.objEnum == task.outputType
-                        || (onCounter is Plate op
-                            && op.GetIngredients().Contains(task.outputType)));
-                bool ourInput = task.itemType != 0
-                    && task.orderId != 0
-                    && onCounter.BoundOrderId == task.orderId
-                    && (onCounter.objEnum == task.itemType
-                        || (onCounter is Plate ip
-                            && ip.GetIngredients().Contains(task.itemType)));
+                bool ourOutput = ItemMatchesTaskOutput(onCounter, task)
+                    && ItemMatchesOrder(onCounter, task.orderId);
+                bool ourInput = ItemMatchesTaskInput(onCounter, task)
+                    && ItemMatchesOrder(onCounter, task.orderId);
+
+                AIDebugLogger.Log(chefName,
+                    $"ExecuteProcess: {counter.name} has {onCounter.objEnum} " +
+                    $"boundOrder={onCounter.BoundOrderId} taskOrder={task.orderId} " +
+                    $"ourInput={ourInput} ourOutput={ourOutput}");
 
                 if (!ourOutput && !ourInput)
                 {
                     AIDebugLogger.Log(chefName,
-                        $"ExecuteProcess: {counter.name} busy with {onCounter.objEnum} — stop (no chase loop)");
+                        $"ExecuteProcess: {counter.name} busy with foreign {onCounter.objEnum} — stop (no chase loop)");
                     if (_heldItem != null)
                         ParkHeldItemBecauseFacilityBusy();
                     else
@@ -1530,14 +1774,17 @@ namespace Kitchen.AI
                     return;
                 }
 
-                if (ourOutput || ourInput)
+                AIDebugLogger.Log(chefName,
+                    $"ExecuteProcess: {counter.name} ready with our {onCounter.objEnum} — interact");
+                _execPhase = ExecPhase.None;
+                if (IsWithinInteractionRange(counter))
                 {
-                    AIDebugLogger.Log(chefName,
-                        $"ExecuteProcess: {counter.name} has our {onCounter.objEnum} — go interact");
-                    _execPhase = ExecPhase.None;
-                    if (!MoveTo(counter.transform.position)) { AbandonTask(); return; }
+                    HandleProcessInteraction();
                     return;
                 }
+
+                if (!MoveTo(counter.transform.position)) { AbandonTask(); return; }
+                return;
             }
 
             if (_heldItem != null
@@ -1859,50 +2106,7 @@ namespace Kitchen.AI
 
                     if (_heldItem != null)
                     {
-                        // Tag item as belonging to this order (prevents cross-order theft)
-                        if (_currentTask?.orderId != 0)
-                            _aiManager?.Blackboard?.TagItemForOrder(_heldItem, _currentTask.orderId);
-
-                        // Successfully got the item — now deliver it to a processing facility
-                        var dropTarget = FindDropTarget(
-                            _currentTask.outputType,
-                            _currentTask.orderId);
-                        if (dropTarget != null && dropTarget != _targetCounter)
-                        {
-                            Debug.Log($"[{chefName}] FETCH got {_heldItem.objEnum}, delivering to {dropTarget.name}");
-                            AIDebugLogger.Log(chefName, $"FETCH got {_heldItem.objEnum}, delivering to {dropTarget.name}");
-                            _targetCounter = dropTarget;
-                            _execPhase = ExecPhase.GotoDest;
-                            if (!MoveTo(dropTarget.transform.position)) { AbandonTask(); return; };
-                        }
-                        else
-                        {
-                            // No ideal drop target — find any free ClearCounter
-                            var fallback = FindNearestFreeCounter(transform.position);
-                            if (fallback != null)
-                            {
-                                Debug.Log($"[{chefName}] FETCH got {_heldItem.objEnum}, fallback to {fallback.name}");
-                                AIDebugLogger.Log(chefName, $"FETCH got {_heldItem.objEnum}, fallback drop to {fallback.name}");
-                                _targetCounter = fallback;
-                                _execPhase = ExecPhase.GotoDest;
-                                if (!MoveTo(fallback.transform.position)) { AbandonTask(); return; };
-                            }
-                            else
-                            {
-                                // Really no counter — just place on ground via DropItem
-                                Debug.LogWarning($"[{chefName}] FETCH got {_heldItem.objEnum}, no counter — dropping on ground");
-                                AIDebugLogger.LogWarning(chefName, $"FETCH: no drop target for {_heldItem.objEnum}, dropping on ground");
-                                KitchenObjFactory.Instance.DropObjServerRpc(
-                                    _heldItem.NetworkObject,
-                                    GetGroundDropPosition(
-                                        transform.position + transform.forward * 0.5f),
-                                    Vector3.down,
-                                    0f,
-                                    default);
-                                ClearKitchenObj();
-                                CompleteTask();
-                            }
-                        }
+                        BeginFetchedItemDelivery();
                     }
                     else
                     {
@@ -1917,21 +2121,19 @@ namespace Kitchen.AI
                     break;
 
                 case TaskType.FETCH_PLATE:
-                    // Get plate from PlatesCounter
+                    // Get plate from PlatesCounter (infinite supply)
                     if (_heldItem == null)
                     {
-                        if (_targetCounter is PlatesCounter platesCounter
-                            && platesCounter.plateCount > 0
+                        if (_targetCounter is PlatesCounter
                             && _currentTask?.orderId != 0)
                         {
                             KitchenObjOperator.SpawnKitchenObjForOrderRpc(
                                 KitchenObjEnum.Plate,
                                 this,
                                 _currentTask.orderId);
-                            platesCounter.RemovePlateServerRpc();
                             OnInteractionPerformed?.Invoke();
                         }
-                        else
+                        else if (_targetCounter is PlatesCounter)
                         {
                             PerformInteract(_targetCounter);
                         }
@@ -2454,21 +2656,21 @@ namespace Kitchen.AI
                 {
                     PerformInteract(_targetCounter);
 
+                    if (TryRecognizePlacementComplete())
+                    {
+                        AIDebugLogger.Log(chefName, $"DropItemAtFacility: placed on {_targetCounter.name}");
+                        Debug.Log($"[{chefName}] Dropped item at {_targetCounter.name}");
+                        StayForProcessAfterPlace();
+                        return;
+                    }
+
                     // Place failed (race) — still holding: park, do not wait here.
                     if (_heldItem != null)
                     {
-                        if (_targetCounter is TimedFacilityCounter
-                            && _targetCounter.GetKitchenObj() == _heldItem)
-                        {
-                            ClearKitchenObj();
-                        }
-                        else
-                        {
-                            AIDebugLogger.LogWarning(chefName,
-                                $"DropItemAtFacility: still holding {_heldItem.objEnum} after put — park");
-                            ParkHeldItemBecauseFacilityBusy();
-                            return;
-                        }
+                        AIDebugLogger.LogWarning(chefName,
+                            $"DropItemAtFacility: still holding {_heldItem.objEnum} after put — park");
+                        ParkHeldItemBecauseFacilityBusy();
+                        return;
                     }
 
                     AIDebugLogger.Log(chefName, $"DropItemAtFacility: placed on {_targetCounter.name}");
@@ -2602,13 +2804,21 @@ namespace Kitchen.AI
         {
             if (_heldItem == null || _targetCounter == null)
             {
+                AIDebugLogger.Log(chefName,
+                    $"DropItemAtDestination: nothing to drop held={_heldItem?.objEnum} target={_targetCounter?.name}");
                 _execPhase = ExecPhase.None;
                 CompleteTask();
                 return;
             }
 
+            bool canPlace = CanPlaceHeldItemOn(_targetCounter);
+            float dist = Vector3.Distance(transform.position, _targetCounter.transform.position);
+            AIDebugLogger.Log(chefName,
+                $"DropItemAtDestination: {_heldItem.objEnum} → {_targetCounter.name} " +
+                $"dist={dist:F2} canPlace={canPlace} phase={_execPhase} task={_currentTask?.type}");
+
             // 目标可放（空柜 / 可叠盘）才交互
-            if (CanPlaceHeldItemOn(_targetCounter))
+            if (canPlace)
             {
                 var heldBefore = _heldItem;
                 if (_targetCounter.GetKitchenObj() is Plate plate
@@ -2625,6 +2835,11 @@ namespace Kitchen.AI
                 {
                     PerformInteract(_targetCounter);
                 }
+
+                AIDebugLogger.Log(chefName,
+                    $"DropItemAtDestination: after interact held={(_heldItem != null ? _heldItem.objEnum.ToString() : "null")} " +
+                    $"counterHas={_targetCounter.HasKitchenObj()} " +
+                    $"onCounter={(_targetCounter.GetKitchenObj() != null ? _targetCounter.GetKitchenObj().objEnum.ToString() : "null")}");
 
                 // Returning empty plate after oven/blender extract.
                 // Must go back to the facility to wait/grab — waiting at the clear
@@ -2667,7 +2882,8 @@ namespace Kitchen.AI
                 bool stackedOntoPlate = heldBefore is Plate
                     && _heldItem is Plate
                     && !(_targetCounter.GetKitchenObj() is Plate);
-                if (placedEmpty || stackedOntoPlate)
+                bool recognizedPlacement = TryRecognizePlacementComplete();
+                if (placedEmpty || stackedOntoPlate || recognizedPlacement)
                 {
                     Debug.Log($"[{chefName}] Dropped/stacked at destination {_targetCounter.name}");
                     _execPhase = ExecPhase.None;
@@ -2871,22 +3087,34 @@ namespace Kitchen.AI
             }
 
             // Only signal completion AFTER item is successfully placed (or no item to place)
+            string finalStatus = _currentTask?.status;
             if (_currentTask != null)
             {
                 _aiManager?.OnAgentTaskCompleted(this, _currentTask);
                 _currentTask = null;
             }
 
-            _substate = "paused";
-            _stateTimer = 0;
-            _pauseCallback = "idle";
+            if (finalStatus == "abandoned")
+            {
+                _substate = "idle";
+                _stateTimer = 0;
+                _pauseCallback = null;
+                _wanderTimer = _wanderInterval;
+                debugState = "idle";
+            }
+            else
+            {
+                _substate = "paused";
+                _stateTimer = 0;
+                _pauseCallback = "idle";
+                debugState = "paused";
+            }
             _execPhase = ExecPhase.None;
             _targetCounter = null;
             _carryTargetItem = null;
             _moveTimer = 0;
             _waitTimer = 0;
             _ai.isStopped = true;
-            debugState = "paused";
         }
 
         private void CompleteTask()
@@ -2984,11 +3212,9 @@ namespace Kitchen.AI
             switch (_currentTask.type)
             {
                 case TaskType.FETCH_PLATE:
-                    // Check if we got a plate from PlatesCounter
                     if (_heldItem != null && _heldItem.objEnum == KitchenObjEnum.Plate)
                         return true;
-                    // Or check if PlatesCounter now has plates
-                    if (_targetCounter is PlatesCounter pc && pc.plateCount > 0)
+                    if (_targetCounter is PlatesCounter)
                         return true;
                     break;
 

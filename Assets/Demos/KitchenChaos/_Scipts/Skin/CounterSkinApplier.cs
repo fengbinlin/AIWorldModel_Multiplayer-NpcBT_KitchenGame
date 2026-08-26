@@ -75,6 +75,13 @@ namespace Kitchen.Skin
                     // 换肤可能发生在 Start 之后（PGC 在 Spawn 后再 ApplyOn），补一次订阅
                     visual.TrySubscribe();
                 }
+                else if (inst != null && counter is PlatesCounter)
+                {
+                    var visual = inst.GetComponent<PlatesCounterVisual>();
+                    if (visual == null)
+                        visual = inst.AddComponent<PlatesCounterVisual>();
+                    visual.TryBuildStack();
+                }
 
                 _applied = true;
                 return;

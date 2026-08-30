@@ -84,6 +84,19 @@ namespace Kitchen.AI
 
         public bool IsAvailable => carriedByAgent < 0 && reservedByTask < 0;
         public bool IsCarried => carriedByAgent >= 0;
+
+        /// <summary>
+        /// True while the object sits on a cooker / board — only the PROCESS owner
+        /// should take it (ADD must not steal mid-bake while the owner returns a plate).
+        /// </summary>
+        public bool IsOnProcessFacility
+        {
+            get
+            {
+                if (kitchenObj == null) return false;
+                return KitchenBlackboard.IsProcessFacility(kitchenObj.GetHolder() as BaseCounter);
+            }
+        }
     }
 
     /// <summary>
@@ -768,6 +781,14 @@ namespace Kitchen.AI
                    && fac.state == "reserved"
                    && fac.reservedByAgent != agentId
                    && fac.reservedByAgent != -1;
+        }
+
+        /// <summary>Stove / cutting board / oven / blender — PROCESS owns the contents.</summary>
+        public static bool IsProcessFacility(BaseCounter counter)
+        {
+            return counter is StoveCounter
+                   || counter is CuttingCounter
+                   || counter is TimedFacilityCounter;
         }
 
         public bool TryReserveFacility(BaseCounter counter, int agentId)

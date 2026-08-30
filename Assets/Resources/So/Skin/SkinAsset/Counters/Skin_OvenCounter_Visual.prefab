@@ -156,7 +156,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   pulseTarget: {fileID: 4236831889713127744}
   pulseAmplitude: 0.06
-  pulseSpeed: 6
+  pulseSpeed: 12
 --- !u!1 &5220305274835918574
 GameObject:
   m_ObjectHideFlags: 0
@@ -5028,22 +5028,22 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 69c22042ee964964aafc42db59dbead0,
         type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.49119768
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 69c22042ee964964aafc42db59dbead0,
         type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.49119768
+      value: -0.5
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 69c22042ee964964aafc42db59dbead0,
         type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.50865006
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 69c22042ee964964aafc42db59dbead0,
         type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.50865006
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 69c22042ee964964aafc42db59dbead0,
         type: 3}
@@ -5058,7 +5058,7 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 69c22042ee964964aafc42db59dbead0,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 92
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 69c22042ee964964aafc42db59dbead0,
         type: 3}

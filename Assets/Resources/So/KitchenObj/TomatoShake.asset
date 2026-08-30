@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: TomatoShake
   m_EditorClassIdentifier: 
   prefab: {fileID: 7347640811211430993, guid: df3312d8babc4cea8ff9f38fcc7d1103, type: 3}
-  sprite: {fileID: 21300000, guid: 165d3e48e34335d4e8210f14d93c8e96, type: 3}
+  sprite: {fileID: 21300000, guid: 8f57192e719f92b42a56913db22dafe4, type: 3}
   kitchenObjEnum: 31

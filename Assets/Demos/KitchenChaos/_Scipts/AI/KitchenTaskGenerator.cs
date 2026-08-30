@@ -115,12 +115,14 @@ namespace Kitchen.AI
                     }
                     if (step.taskType == TaskType.ADD_TO_PLATE && step.inputType.HasValue)
                     {
-                        // Assembly uses ANY available ingredient — plates are shared, don't lock by orderId
+                        // Do not treat cooker/board contents as ADD-ready — the PROCESS
+                        // owner may still be returning an empty plate (oven/blender race).
                         var inputs = bb.FindItemsOfType(
                             step.inputType.Value,
                             excludeReserved: true,
                             forOrderId: orderId);
-                        if (inputs.Count == 0) continue;
+                        if (!inputs.Any(i => i.IsAvailable && !i.IsCarried && !i.IsOnProcessFacility))
+                            continue;
                     }
 
                     switch (step.taskType)
@@ -401,13 +403,16 @@ namespace Kitchen.AI
             var plateOnCounter = bb.FindPlateForOrder(orderId);
             if (plateOnCounter == null) return;
 
-            // Assembly uses ANY available ingredient — don't filter by orderId
+            // Assembly uses ANY available ingredient — don't filter by orderId.
+            // Never pick ingredients still sitting on stove/board/oven/blender:
+            // those belong to the PROCESS agent (may be returning an empty plate).
             var ingredient = bb.FindItemsOfType(
                     step.inputType.Value,
                     excludeReserved: true,
                     forOrderId: orderId)
                 .FirstOrDefault(i => i.IsAvailable && !i.IsCarried
-                    && i.orderId == orderId);
+                    && i.orderId == orderId
+                    && !i.IsOnProcessFacility);
             if (ingredient == null) return;
 
             // Find which counter holds this order's plate

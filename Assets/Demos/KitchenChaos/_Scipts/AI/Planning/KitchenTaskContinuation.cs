@@ -175,8 +175,8 @@ namespace Kitchen.AI
 
         /// <summary>
         /// Hard exclusivity while someone <b>holds</b> the input, or an exclusive
-        /// deliverer is <b>idle</b> and can take the task. If the deliverer is busy
-        /// with unrelated work, do not block other idle agents (avoids stuck ADD).
+        /// deliverer owns an item still on a process facility. Idle exclusive
+        /// deliverers also gate ADD/PROCESS so the same agent continues the chain.
         /// </summary>
         public static int FindExclusiveHolderAgentId(KitchenBlackboard bb, KitchenTask task)
         {
@@ -209,8 +209,16 @@ namespace Kitchen.AI
                     continue;
 
                 var deliverer = bb.agents.Find(a => a.agentId == item.exclusiveDelivererAgentId);
-                // Only exclusive while deliverer is idle and free to take the follow-up.
-                if (deliverer != null && deliverer.IsIdle)
+                if (deliverer == null)
+                    continue;
+
+                // Hard exclusive while item is still on oven/blender/stove/board —
+                // owner may be away returning an empty plate (not Idle).
+                if (item.IsOnProcessFacility)
+                    return deliverer.agentId;
+
+                // Soft exclusive when deliverer is idle and free to take the follow-up.
+                if (deliverer.IsIdle)
                     return deliverer.agentId;
             }
 

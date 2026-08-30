@@ -10,7 +10,7 @@ namespace Kitchen
     {
         [SerializeField] private Transform pulseTarget;
         [SerializeField] private float pulseAmplitude = 0.06f;
-        [SerializeField] private float pulseSpeed = 6f;
+        [SerializeField] private float pulseSpeed = 12f;
 
         private ICookingFacility _cooking;
         private Vector3 _baseScale;

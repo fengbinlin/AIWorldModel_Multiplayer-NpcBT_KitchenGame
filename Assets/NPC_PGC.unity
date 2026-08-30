@@ -10475,10 +10475,29 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   defaultRecipes:
+  - {fileID: 11400000, guid: b29ce62fc19944c58bbb00b23769d91a, type: 2}
+  - {fileID: 11400000, guid: 4279d54057224b73bc0da418fa619a99, type: 2}
+  - {fileID: 11400000, guid: cc108cde3041465095efd826500369cb, type: 2}
+  useRandomRecipes: 1
+  randomRecipeCount: 3
+  randomSourceRecipes:
+  - {fileID: 11400000, guid: b29ce62fc19944c58bbb00b23769d91a, type: 2}
   - {fileID: 11400000, guid: 763de7404cef40ac9441998312af6def, type: 2}
-  useRandomRecipes: 0
-  randomRecipeCount: 5
-  randomSourceRecipes: []
+  - {fileID: 11400000, guid: bac8932140d343b584835d8fd0c6ffd1, type: 2}
+  - {fileID: 11400000, guid: 9973526f688340778258ea9f0f0f00ea, type: 2}
+  - {fileID: 11400000, guid: 04612479cdda43febdc95ecacbe5ee3c, type: 2}
+  - {fileID: 11400000, guid: 06ab44e7649c4ed185149a5a37d08301, type: 2}
+  - {fileID: 11400000, guid: 1cd469f6287a4e038cdbebb2372bb929, type: 2}
+  - {fileID: 11400000, guid: f7ed92caee33411fbe1fe505f7bdb712, type: 2}
+  - {fileID: 11400000, guid: 4435d9a306c743459507e95c14b92684, type: 2}
+  - {fileID: 11400000, guid: 4279d54057224b73bc0da418fa619a99, type: 2}
+  - {fileID: 11400000, guid: 23c54131b26344238469793eed9f01dd, type: 2}
+  - {fileID: 11400000, guid: 7cab88c263454402807e06f1599f9fc5, type: 2}
+  - {fileID: 11400000, guid: 5fcfcbc3a56c4500a5177ef2b6338aa8, type: 2}
+  - {fileID: 11400000, guid: cc108cde3041465095efd826500369cb, type: 2}
+  - {fileID: 11400000, guid: cb088ba172b14b6fbe8cc3445e6112b4, type: 2}
+  - {fileID: 11400000, guid: 2e8e61168dbc4eb8a1d100ddb081be3a, type: 2}
+  - {fileID: 11400000, guid: 8bf4fbc689e8463896ba3bd8eaa2a2d3, type: 2}
   playW: 16
   playH: 10
   dilateKernel: 0
@@ -14246,7 +14265,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1868c531361dea14ca5443d13a6415ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _autoStartWhenPlaying: 0
+  _autoStartWhenPlaying: 1
   _toggleKey: 290
   _captureFps: 60
   _frameWidth: 426

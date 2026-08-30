@@ -41,13 +41,16 @@ namespace Kitchen.PGC
 
             DilatePaths(grid, totalW, playW, playH, facilities, kernel);
 
-            int clearCount = SpawnClearsFromPathWalls(
-                grid, totalW, totalH, playW, playH, facilities);
+            // 通路旁墙格继续补空台（在推断保底数量之上）
+            SpawnClearsFromPathWalls(grid, totalW, totalH, playW, playH, facilities);
 
             // 剩余墙格（含外围圈）全部用空柜占位
             int wallCount = SpawnWallPlaceholders(grid, totalW, totalH, facilities);
 
             MarkFacilities(grid, totalW, facilities);
+
+            int clearCount = facilities.Count(f =>
+                f.type == Kitchen.AI.FacilityType.AssemblyTable && !f.isWallPlaceholder);
 
             float cell = p.cellSize;
             // 居中：以地盘中心为世界原点附近

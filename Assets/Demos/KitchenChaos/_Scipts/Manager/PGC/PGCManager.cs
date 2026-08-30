@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Kitchen.AI;
@@ -5,6 +6,7 @@ using Kitchen.PGC;
 using Pathfinding;
 using Unity.Netcode;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace Kitchen
 {
@@ -41,7 +43,9 @@ namespace Kitchen
         [SerializeField] private float pathRandomness = 1.4f;
         [SerializeField] private int extraEdges = 1;
         [SerializeField] private float cellSize = 1.5f;
+        [Tooltip("仅当「Randomize Layout Seed」关闭时使用，便于复现同一张图。")]
         [SerializeField] private int layoutSeed = 42;
+        [Tooltip("开启后每次管线用地图新种子；关闭则固定用 Layout Seed。")]
         [SerializeField] private bool randomizeLayoutSeed = true;
 
         [Header("出生点")]
@@ -149,9 +153,15 @@ namespace Kitchen
         /// </summary>
         public PGCLayoutResult RunFullPipeline()
         {
+            // 每次开局用时间戳重播 Unity.Random，保证随机菜谱 + 地图种子互不相同。
+            // （复现布局时关掉 randomizeLayoutSeed，仍会先抽菜谱再固定 layoutSeed。）
+            int runSeed = unchecked(Environment.TickCount ^ (int)DateTime.UtcNow.Ticks);
+            Random.InitState(runSeed);
+
             BuildRoundPool(force: true);
 
-            RecipeFacilityInferencer.Infer(_roundRecipes, out var facilities, out var edges);
+            RecipeFacilityInferencer.Infer(
+                _roundRecipes, out var facilities, out var edges, chefCount: spawnCount);
 
             int seed = randomizeLayoutSeed
                 ? Random.Range(0, int.MaxValue)
@@ -192,9 +202,9 @@ namespace Kitchen
 
             Debug.Log(
                 $"[PGCManager] Pipeline done: recipes={_roundRecipes.Count}, " +
-                $"facilities={_lastLayout.facilities.Count}, clears={_lastLayout.clearCount}, " +
+                $"facilities={_lastLayout.facilities.Count}, usableClears={_lastLayout.clearCount}, " +
                 $"walls={_lastLayout.wallCount}, spawns={_lastLayout.spawnPoints.Count}, " +
-                $"map={_lastLayout.playW}x{_lastLayout.playH}, seed={seed}");
+                $"map={_lastLayout.playW}x{_lastLayout.playH}, runSeed={runSeed}, layoutSeed={seed}");
 
             return _lastLayout;
         }

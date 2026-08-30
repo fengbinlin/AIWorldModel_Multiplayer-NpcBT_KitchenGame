@@ -14268,8 +14268,8 @@ MonoBehaviour:
   _autoStartWhenPlaying: 1
   _toggleKey: 290
   _captureFps: 60
-  _frameWidth: 426
-  _frameHeight: 240
+  _frameWidth: 1920
+  _frameHeight: 1080
   _outputRootFolder: KitchenTrainingRecordings
   _maxPendingWrites: 64
   _globalCamera: {fileID: 601737668}

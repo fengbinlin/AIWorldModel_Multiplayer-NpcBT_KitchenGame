@@ -192,7 +192,7 @@ namespace Kitchen.AI
                     chefObj.tag = "Untagged";
                     chefObj.layer = LayerMask.NameToLayer("Default");
 
-                    // 人物形象：预制体 PlayerVisual 下 Layer-lab 角色 + SkinManager 随机 Parts（不读 SO 角色库）
+                    // CharacterSimple + lilToon；不同 AI 仅用颜色区分（无换装/无动画）
                     CharacterSkinApplier.ApplyOn(chefObj, SkinCharacterKind.AIPlayer, appearanceIdx++);
 
                     // 先立刻拆掉 Player 预制体上的 NetworkBehaviour（Destroy 是延迟的，
@@ -203,7 +203,6 @@ namespace Kitchen.AI
                     if (chef == null)
                         chef = chefObj.AddComponent<AIChefController>();
 
-                    // Layer-lab 视觉 + Animancer 状态机（与 AI 逻辑解耦）
                     Kitchen.AI.Visual.AIChefVisualInstaller.EnsureOn(chefObj);
 
                     // 必须 Spawn：柜子 Interact → SpawnKitObjServerRpc 依赖 holder 的 NetworkObjectReference
@@ -219,20 +218,16 @@ namespace Kitchen.AI
                     chef.stuckTimeout = _aiStuckTimeout;
                     chef.SetSpawnPosition(spawnPoint.position);
 
-                    // Assign distinct color (legacy mesh tint only; skip skinned Layer-lab mats)
                     Color c = _aiColors.Count > 0
                         ? _aiColors[colorIdx % _aiColors.Count]
                         : Color.HSVToRGB((float)colorIdx / _spawnPoints.Count, 0.8f, 0.9f);
                     chef.chefColor = c;
-                    bool hasSkinned = chefObj.GetComponentInChildren<SkinnedMeshRenderer>(true) != null;
-                    if (!hasSkinned)
-                    {
-                        foreach (var r in chefObj.GetComponentsInChildren<Renderer>())
-                        {
-                            foreach (var m in r.materials)
-                                m.color = c;
-                        }
-                    }
+                    // Tint via skin component (eyes stay black inside CharacterSkinVisual).
+                    var skinApplier = chefObj.GetComponent<CharacterSkinApplier>();
+                    if (skinApplier != null)
+                        skinApplier.SetTint(c);
+                    else
+                        SimpleCharacterAppearance.ApplyTint(chefObj, c);
                     colorIdx++;
 
                     _aiChefs.Add(chef);
@@ -270,6 +265,14 @@ namespace Kitchen.AI
                 chef.SetAIParams(_aiAgentRadius, _aiMoveSpeed,
                     Mathf.Clamp01(_aiRvoBasePriority + chefIdx * 0.05f), _aiApproachOffset);
                 Kitchen.AI.Visual.AIChefVisualInstaller.EnsureOn(chef.gameObject);
+                if (chef.chefColor.a > 0.01f)
+                {
+                    var skinApplier = chef.GetComponent<CharacterSkinApplier>();
+                    if (skinApplier != null)
+                        skinApplier.SetTint(chef.chefColor);
+                    else
+                        SimpleCharacterAppearance.ApplyTint(chef.gameObject, chef.chefColor);
+                }
                 chefIdx++;
             }
 

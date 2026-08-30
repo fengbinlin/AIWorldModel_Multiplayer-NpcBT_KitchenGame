@@ -1,5 +1,4 @@
 #if UNITY_EDITOR
-using Layer_lab._3D_Casual_Character;
 using Kitchen.Skin;
 using UnityEditor;
 using UnityEngine;
@@ -7,20 +6,22 @@ using UnityEngine;
 namespace Kitchen.EditorTools
 {
     /// <summary>
-    /// Embeds Layer-lab Character into AIPlayer.prefab under PlayerVisual
-    /// so runtime no longer depends on SO character library entries.
+    /// Embeds CharacterSimple (+ CharacterSkinVisual) into AIPlayer.prefab under PlayerVisual.
     /// </summary>
     public static class EmbedLayerLabCharacterIntoAiPlayer
     {
         private const string AiPlayerPrefabPath = "Assets/Resources/Prefab/AIPlayer.prefab";
         private const string CharacterPrefabPath =
-            "Assets/Resources/So/Skin/SkinAsset/Characters/Character_1.prefab";
+            "Assets/Resources/So/Skin/SkinAsset/Characters/CharacterSimple.prefab";
+        private const string MaterialPath =
+            "Assets/Resources/So/Skin/SkinAsset/Characters/lilToonMaterialDemo 1.mat";
 
-        [MenuItem("Kitchen/Skin/Embed LayerLab Character Into AIPlayer Prefab")]
+        [MenuItem("Kitchen/Skin/Embed CharacterSimple Into AIPlayer Prefab")]
         public static void Embed()
         {
             var aiPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(AiPlayerPrefabPath);
             var charPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterPrefabPath);
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(MaterialPath);
             if (aiPrefab == null)
             {
                 EditorUtility.DisplayDialog("Embed Character", $"Missing {AiPlayerPrefabPath}", "OK");
@@ -32,36 +33,82 @@ namespace Kitchen.EditorTools
                 return;
             }
 
+            EnsureCharacterSkinVisualOnPrefab(charPrefab, mat);
+
             string assetPath = AssetDatabase.GetAssetPath(aiPrefab);
             var root = PrefabUtility.LoadPrefabContents(assetPath);
             try
             {
-                var playerVisual = root.transform.Find(LayerLabCharacterAppearance.PlayerVisualPath);
+                var playerVisual = root.transform.Find(SimpleCharacterAppearance.PlayerVisualPath);
                 if (playerVisual == null)
                 {
                     EditorUtility.DisplayDialog("Embed Character", "AIPlayer missing PlayerVisual child.", "OK");
                     return;
                 }
 
-                // Remove legacy VisualPrefab / old CharacterVisual.
                 for (int i = playerVisual.childCount - 1; i >= 0; i--)
                     Object.DestroyImmediate(playerVisual.GetChild(i).gameObject);
 
                 var inst = (GameObject)PrefabUtility.InstantiatePrefab(charPrefab, playerVisual);
-                inst.name = LayerLabCharacterAppearance.EmbeddedCharacterName;
+                inst.name = SimpleCharacterAppearance.EmbeddedCharacterName;
                 inst.transform.localPosition = Vector3.zero;
                 inst.transform.localRotation = Quaternion.identity;
                 inst.transform.localScale = Vector3.one * Kitchen.AI.Visual.AIChefVisualInstaller.DefaultVisualLocalScale;
 
-                if (inst.GetComponent<CharacterBase>() == null)
-                    inst.AddComponent<CharacterBase>();
+                var visual = inst.GetComponent<CharacterSkinVisual>();
+                if (visual == null)
+                    visual = inst.AddComponent<CharacterSkinVisual>();
+                visual.Prepare();
 
                 PrefabUtility.SaveAsPrefabAsset(root, assetPath);
                 EditorUtility.DisplayDialog(
                     "Embed Character",
-                    "Embedded CharacterVisual under AIPlayer/PlayerVisual.\n" +
-                    "SkinManager.randomizeCharacterAppearance controls random Parts at spawn.",
+                    "Embedded CharacterSimple under AIPlayer/PlayerVisual.\n" +
+                    "CharacterSkinVisual owns materials/eyes/tint (catalog characters = empty).",
                     "OK");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        [MenuItem("Kitchen/Skin/Ensure CharacterSkinVisual On CharacterSimple")]
+        public static void EnsureOnCharacterSimple()
+        {
+            var charPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterPrefabPath);
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(MaterialPath);
+            if (charPrefab == null)
+            {
+                EditorUtility.DisplayDialog("CharacterSkinVisual", $"Missing {CharacterPrefabPath}", "OK");
+                return;
+            }
+
+            EnsureCharacterSkinVisualOnPrefab(charPrefab, mat);
+            EditorUtility.DisplayDialog(
+                "CharacterSkinVisual",
+                "CharacterSimple now has CharacterSkinVisual (eyes Sphere* stay black).",
+                "OK");
+        }
+
+        private static void EnsureCharacterSkinVisualOnPrefab(GameObject charPrefab, Material bodyMat)
+        {
+            string path = AssetDatabase.GetAssetPath(charPrefab);
+            var root = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                var visual = root.GetComponent<CharacterSkinVisual>();
+                if (visual == null)
+                    visual = root.AddComponent<CharacterSkinVisual>();
+
+                var so = new SerializedObject(visual);
+                if (bodyMat != null)
+                    so.FindProperty("bodyMaterial").objectReferenceValue = bodyMat;
+                so.FindProperty("disableAnimation").boolValue = true;
+                so.FindProperty("subscribeToSkinManagerTint").boolValue = false;
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                PrefabUtility.SaveAsPrefabAsset(root, path);
             }
             finally
             {

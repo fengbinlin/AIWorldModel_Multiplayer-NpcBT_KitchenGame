@@ -74,7 +74,8 @@ namespace Kitchen.Skin
     }
 
     /// <summary>
-    /// 一套皮肤数据包。场景 SkinManager 优先引用此 SO；可做多套切换。
+    /// 一套皮肤数据包（食材 / 柜子）。角色表现不在此 SO —— 由 CharacterSimple 上的
+    /// CharacterSkinVisual 自包含；与 SkinManager 仅在需要时用事件订阅通讯。
     /// </summary>
     [CreateAssetMenu(menuName = "Kitchen/Skin/Skin Catalog", fileName = "SkinCatalog")]
     public class SkinCatalogSo : ScriptableObject
@@ -85,11 +86,13 @@ namespace Kitchen.Skin
         [Header("按种类覆盖（可选）")]
         public List<IngredientSkinOverride> ingredientOverrides = new();
         public List<CounterSkinOverride> counterOverrides = new();
+        [Tooltip("已弃用：角色不走 Catalog。保留字段仅兼容旧资产。")]
         public List<CharacterSkinOverride> characterOverrides = new();
 
         [Header("皮肤资源库")]
         public List<IngredientSkinEntry> ingredients = new();
         public List<CounterSkinEntry> counters = new();
+        [Tooltip("已弃用：角色不走 Catalog。请保持为空。")]
         public List<CharacterSkinEntry> characters = new();
 
         public int ResolveIngredientSkinId(KitchenObjEnum kind)

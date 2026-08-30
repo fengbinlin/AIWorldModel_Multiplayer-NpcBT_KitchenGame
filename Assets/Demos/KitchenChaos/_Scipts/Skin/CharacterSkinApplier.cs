@@ -3,23 +3,22 @@ using UnityEngine;
 namespace Kitchen.Skin
 {
     /// <summary>
-    /// Applies Layer-lab character appearance under PlayerVisual.
-    /// Character looks are no longer resolved from SkinCatalog SO character entries;
-    /// SkinManager controls embed + optional per-chef / per-session randomization.
+    /// Host-side bootstrap: embeds CharacterSimple under PlayerVisual.
+    /// Presentation (material / eyes / tint / no-anim) lives on <see cref="CharacterSkinVisual"/>.
+    /// Does not read SkinCatalog character entries.
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-40)]
     public class CharacterSkinApplier : MonoBehaviour
     {
-        [Header("Character kind (legacy; appearance no longer uses SO library)")]
         [SerializeField] private SkinCharacterKind characterKind = SkinCharacterKind.AIPlayer;
-
-        [Tooltip("Stable index for this chef within a play session (AI0, AI1, …). Player can use 0.")]
         [SerializeField] private int appearanceIndex;
-
         [SerializeField] private bool applyOnAwake;
 
         private bool _applied;
+        private CharacterSkinVisual _visual;
+
+        public CharacterSkinVisual Visual => _visual;
 
         private void Awake()
         {
@@ -32,16 +31,18 @@ namespace Kitchen.Skin
             if (_applied) return;
 
             var mgr = SkinManager.Instance ?? SkinManager.EnsureExists();
-            mgr.ApplyCharacterAppearance(gameObject, appearanceIndex);
-
-            var playerVisual = transform.Find(LayerLabCharacterAppearance.PlayerVisualPath);
-            var pv = playerVisual != null
-                ? playerVisual.GetComponent<Kitchen.Visual.PlayerVisual>()
-                : null;
-            if (pv != null)
-                pv.RebindFromHierarchy();
-
+            _visual = mgr.ApplyCharacterAppearance(gameObject, appearanceIndex);
             _applied = true;
+        }
+
+        public void SetTint(Color color)
+        {
+            if (_visual == null)
+                _visual = SimpleCharacterAppearance.FindVisual(gameObject);
+            if (_visual != null)
+                _visual.SetTint(color);
+            else
+                (SkinManager.Instance ?? SkinManager.EnsureExists()).ApplyCharacterTint(gameObject, color);
         }
 
         public static void ApplyOn(GameObject go, SkinCharacterKind kind)

@@ -40,7 +40,8 @@ namespace Kitchen.EditorTools
             catalog.characterOverrides = new List<CharacterSkinOverride>();
             catalog.ingredients = BuildIngredients();
             catalog.counters = BuildCounters();
-            catalog.characters = BuildCharacters();
+            // Characters are owned by CharacterSimple / CharacterSkinVisual — keep empty.
+            catalog.characters = new List<CharacterSkinEntry>();
 
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
@@ -49,7 +50,8 @@ namespace Kitchen.EditorTools
 
             EditorUtility.DisplayDialog("SkinCatalog",
                 $"Filled {AssetPath}\n" +
-                $"ingredients={catalog.ingredients.Count}, counters={catalog.counters.Count}, characters={catalog.characters.Count}\n" +
+                $"ingredients={catalog.ingredients.Count}, counters={catalog.counters.Count}\n" +
+                "characters=[] (character skin is self-contained on CharacterSimple).\n" +
                 "preferMode=PreferPrefab (current visuals).",
                 "OK");
         }
@@ -204,12 +206,8 @@ namespace Kitchen.EditorTools
 
         private static List<CharacterSkinEntry> BuildCharacters()
         {
-            var playerVisual = LoadPrefab(PlayerVisualPath);
-            return new List<CharacterSkinEntry>
-            {
-                new() { kind = SkinCharacterKind.Player, skinId = 0, visualPrefab = playerVisual },
-                new() { kind = SkinCharacterKind.AIPlayer, skinId = 0, visualPrefab = playerVisual },
-            };
+            // Intentionally empty: character visuals are not catalog-driven.
+            return new List<CharacterSkinEntry>();
         }
 
         private static GameObject LoadPrefab(string path)

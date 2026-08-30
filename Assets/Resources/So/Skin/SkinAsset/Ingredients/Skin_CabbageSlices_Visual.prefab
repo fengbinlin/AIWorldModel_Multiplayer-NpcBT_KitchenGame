@@ -29,6 +29,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 5868796706970703673}
   - {fileID: 5962527748132873322}
   - {fileID: 5874388039862533027}
   - {fileID: 7261066202784074632}
@@ -128,6 +129,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: Lattuce slice_shaped (4)
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 7eb63741781409844a3767795957ed58,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -233,6 +239,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lattuce slice_shaped
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 7eb63741781409844a3767795957ed58,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -336,6 +347,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: Lattuce slice_shaped (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 7eb63741781409844a3767795957ed58,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -441,6 +457,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lattuce slice_shaped (3)
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 7eb63741781409844a3767795957ed58,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -451,6 +472,85 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 7eb63741781409844a3767795957ed58,
     type: 3}
   m_PrefabInstance: {fileID: 6261591457602024137}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &6266933702748926162
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 3812876574508226176}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 63038d54bc9a3c34a91e89b103b3e899,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 63038d54bc9a3c34a91e89b103b3e899,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.092
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 63038d54bc9a3c34a91e89b103b3e899,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 63038d54bc9a3c34a91e89b103b3e899,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 63038d54bc9a3c34a91e89b103b3e899,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 63038d54bc9a3c34a91e89b103b3e899,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 63038d54bc9a3c34a91e89b103b3e899,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 63038d54bc9a3c34a91e89b103b3e899,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 63038d54bc9a3c34a91e89b103b3e899,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 63038d54bc9a3c34a91e89b103b3e899,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 63038d54bc9a3c34a91e89b103b3e899,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: cda867a96f1692c49bb32861a642c8f1, type: 2}
+    - target: {fileID: 919132149155446097, guid: 63038d54bc9a3c34a91e89b103b3e899,
+        type: 3}
+      propertyPath: m_Name
+      value: tripo_convert_25998a49-80e7-445f-b12f-700952c9a7f1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 63038d54bc9a3c34a91e89b103b3e899, type: 3}
+--- !u!4 &5868796706970703673 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 63038d54bc9a3c34a91e89b103b3e899,
+    type: 3}
+  m_PrefabInstance: {fileID: 6266933702748926162}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &7155872640940862563
 PrefabInstance:
@@ -544,6 +644,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: Lattuce slice_shaped (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 7eb63741781409844a3767795957ed58,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

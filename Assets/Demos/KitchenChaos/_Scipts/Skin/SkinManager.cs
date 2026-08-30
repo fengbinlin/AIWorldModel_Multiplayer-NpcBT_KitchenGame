@@ -5,9 +5,9 @@ using UnityEngine;
 namespace Kitchen.Skin
 {
     /// <summary>
-    /// 场景皮肤管理器单例。食材/柜子优先使用 Catalog SO；人物形象不再读 SO 角色库，
-    /// 改为 AIPlayer 上的 Layer-lab 视觉子物体 + 可选随机 Parts（CharacterDemo 风格）。
-    /// 只在生成/开局套皮；本地配置，不联网同步。
+    /// 场景皮肤管理器：食材/柜子走 Catalog SO。
+    /// 角色不走 Catalog —— 表现逻辑在 CharacterSimple 的 CharacterSkinVisual 上；
+    /// 仅在需要广播染色时通过 <see cref="CharacterTintRequested"/> 订阅通讯。
     /// </summary>
     [DefaultExecutionOrder(-200)]
     public class SkinManager : MonoBehaviour
@@ -24,18 +24,18 @@ namespace Kitchen.Skin
         [Header("皮肤数据包 SO（可选，保留用于食材/柜子）")]
         [SerializeField] private SkinCatalogSo catalogSo;
 
-        [Header("角色形象（不走 SO 角色库）")]
-        [Tooltip("勾选后：同一局内不同 AI 形象不同；重新开局（新 session seed）形象组合也不同。")]
-        [SerializeField] private bool randomizeCharacterAppearance = true;
-        [Tooltip("可选。为空则从 Resources 加载默认 Layer-lab Character_1。若已嵌入 AIPlayer 预制体则优先用预制体子物体。")]
-        [SerializeField] private GameObject layerLabCharacterPrefab;
+        [Header("角色形象（不走 Catalog SO；表现在 CharacterSkinVisual 上）")]
+        [Tooltip("留空则从 Resources 加载 CharacterSimple。")]
+        [SerializeField] private GameObject characterPrefab;
         [SerializeField] private float characterVisualLocalScale = 2.5f;
+        [Tooltip("关闭后不再挂 Animancer（默认关闭）。")]
+        [SerializeField] private bool enableCharacterAnimation;
 
         [Header("Inline 食材配置")]
         [SerializeField] private List<IngredientSkinEntry> inlineIngredients = new();
         [Header("Inline 柜子配置")]
         [SerializeField] private List<CounterSkinEntry> inlineCounters = new();
-        [Header("Inline 角色配置（已弃用，人物不再读取）")]
+        [Header("Inline 角色配置（已弃用，Catalog/Inline 角色库不再使用）")]
         [SerializeField] private List<CharacterSkinEntry> inlineCharacters = new();
         [Header("Inline ID 选择")]
         [SerializeField] private int inlineDefaultSkinId;
@@ -53,12 +53,18 @@ namespace Kitchen.Skin
         private readonly Dictionary<KitchenObjEnum, int> _runtimeIngredientSkinIds = new();
         private int _sessionAppearanceSeed;
 
+        /// <summary>
+        /// Optional broadcast for character tint. CharacterSkinVisual may subscribe;
+        /// preferred path is host calling CharacterSkinVisual.SetTint directly.
+        /// </summary>
+        public event Action<GameObject, Color> CharacterTintRequested;
+
         public SkinCatalogSo ActiveCatalog => _active;
         public SkinConfigSource ConfigSource => configSource;
         public SkinIdGranularity IngredientIdGranularity => ingredientIdGranularity;
         public SkinIdGranularity CounterIdGranularity => counterIdGranularity;
         public SkinIdGranularity CharacterIdGranularity => characterIdGranularity;
-        public bool RandomizeCharacterAppearance => randomizeCharacterAppearance;
+        public bool EnableCharacterAnimation => enableCharacterAnimation;
         public int SessionAppearanceSeed => _sessionAppearanceSeed;
 
         private void Awake()
@@ -141,41 +147,32 @@ namespace Kitchen.Skin
         }
 
         /// <summary>
-        /// Embed Layer-lab character under PlayerVisual (if missing) and apply appearance.
-        /// When <see cref="randomizeCharacterAppearance"/> is on, seed = session ⊕ chefIndex
-        /// so different AIs differ within a play, and different plays differ too.
+        /// Embed CharacterSimple under PlayerVisual. Tint/materials live on CharacterSkinVisual.
+        /// Catalog SO character list is ignored.
         /// </summary>
-        public void ApplyCharacterAppearance(GameObject root, int appearanceIndex = 0)
+        public CharacterSkinVisual ApplyCharacterAppearance(GameObject root, int appearanceIndex = 0)
+        {
+            if (root == null) return null;
+            _ = appearanceIndex;
+
+            return SimpleCharacterAppearance.EnsureEmbeddedCharacter(
+                root,
+                characterPrefab,
+                characterVisualLocalScale);
+        }
+
+        /// <summary>
+        /// Prefer calling CharacterSkinVisual.SetTint on the skin itself.
+        /// This helper also raises <see cref="CharacterTintRequested"/> for subscribers.
+        /// </summary>
+        public void ApplyCharacterTint(GameObject root, Color color)
         {
             if (root == null) return;
-
-            var character = LayerLabCharacterAppearance.EnsureEmbeddedCharacter(
-                root, layerLabCharacterPrefab, characterVisualLocalScale);
-            if (character == null) return;
-
-            if (randomizeCharacterAppearance)
-            {
-                int seed = MixSeed(_sessionAppearanceSeed, appearanceIndex);
-                LayerLabCharacterAppearance.ApplyRandomAppearance(character, seed);
-            }
-            else
-            {
-                LayerLabCharacterAppearance.ApplyDefaultAppearance(character);
-            }
+            SimpleCharacterAppearance.ApplyTint(root, color);
+            CharacterTintRequested?.Invoke(root, color);
         }
 
-        public void SetRandomizeCharacterAppearance(bool enabled) => randomizeCharacterAppearance = enabled;
-
-        private static int MixSeed(int sessionSeed, int appearanceIndex)
-        {
-            unchecked
-            {
-                int h = sessionSeed;
-                h = (h * 486187739) ^ (appearanceIndex + 1) * 16777619;
-                h ^= h >> 16;
-                return h == 0 ? 1 : h;
-            }
-        }
+        public void SetEnableCharacterAnimation(bool enabled) => enableCharacterAnimation = enabled;
 
         /// <summary>
         /// Re-applies currently resolved ids to already spawned objects.

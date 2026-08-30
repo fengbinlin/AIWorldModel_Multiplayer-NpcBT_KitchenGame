@@ -401,8 +401,4 @@ MonoBehaviour:
     visualPrefab: {fileID: 4589716710238282922, guid: 1c467e721d5d4b7496b78a28092bee87,
       type: 3}
     preferMode: 1
-  characters:
-  - kind: 0
-    skinId: 0
-    visualPrefab: {fileID: 3268598726127943216, guid: a8c3f1e29b7d4e6a9c0d1f2e3a4b5c6d,
-      type: 3}
+  characters: []

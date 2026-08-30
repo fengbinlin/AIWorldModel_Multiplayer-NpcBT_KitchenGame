@@ -20,6 +20,17 @@ namespace Kitchen.AI.Visual
         {
             if (chefRoot == null) return null;
 
+            // CharacterSimple is static — no Animancer / Layer-lab clips.
+            var skin = Kitchen.Skin.SkinManager.Instance;
+            bool animEnabled = skin != null && skin.EnableCharacterAnimation;
+            if (!animEnabled)
+            {
+                var existing = chefRoot.GetComponent<AIChefVisualPresenter>();
+                if (existing != null)
+                    Object.Destroy(existing);
+                return null;
+            }
+
             var chef = chefRoot.GetComponent<AIChefController>();
             if (chef == null)
                 chef = chefRoot.GetComponentInChildren<AIChefController>();

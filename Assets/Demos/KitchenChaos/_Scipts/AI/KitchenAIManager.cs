@@ -324,6 +324,8 @@ namespace Kitchen.AI
             {
                 if (cam == null) continue;
                 if (cam.CompareTag("MainCamera")) continue;
+                // Order HUD / facility chrome must never appear in AI follow / FP cams.
+                Kitchen.UI.KitchenUiVisibilitySetup.ExcludeUiFromCamera(cam);
                 cam.enabled = false;
                 var listener = cam.GetComponent<AudioListener>();
                 if (listener != null)

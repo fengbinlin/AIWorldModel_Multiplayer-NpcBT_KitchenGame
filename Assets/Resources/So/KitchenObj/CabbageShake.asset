@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: CabbageShake
   m_EditorClassIdentifier: 
   prefab: {fileID: 7347640811211430993, guid: 289c1ed58d4942ca912b36b3424c6212, type: 3}
-  sprite: {fileID: 21300000, guid: 91e8fe3de9249fc44b7bdd8050062896, type: 3}
+  sprite: {fileID: 21300000, guid: 7eae6a26d5eedc1479229ca9a81368c6, type: 3}
   kitchenObjEnum: 32

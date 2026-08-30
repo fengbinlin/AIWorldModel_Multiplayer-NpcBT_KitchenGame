@@ -184,6 +184,8 @@ namespace Kitchen
 
             ApplySpawnPointsToAIManager();
             Kitchen.UI.KitchenUiVisibilitySetup.ApplyAll();
+            // After AI chefs exist, strip UI from their cameras again.
+            Kitchen.UI.KitchenUiVisibilitySetup.ExcludeUiFromAllNonMainCameras();
 
             // 按新地图尺寸重设 GridGraph，并 Scan（覆盖场景里 A* 的 scanOnStartup 旧图）
             RescanAstar(_lastLayout);

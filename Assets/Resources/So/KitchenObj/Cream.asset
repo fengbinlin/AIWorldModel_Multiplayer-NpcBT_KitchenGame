@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: Cream
   m_EditorClassIdentifier: 
   prefab: {fileID: 7347640811211430993, guid: d3626a5cb9304fc4b873c4eb9451bf03, type: 3}
-  sprite: {fileID: 21300000, guid: 91e8fe3de9249fc44b7bdd8050062896, type: 3}
+  sprite: {fileID: 21300000, guid: 38d409ebbc54b3f4892635059cfee5f0, type: 3}
   kitchenObjEnum: 20

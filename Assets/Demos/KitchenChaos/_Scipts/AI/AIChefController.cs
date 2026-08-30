@@ -413,6 +413,10 @@ namespace Kitchen.AI
             var camTf = FindChildNamed(transform, Kitchen.AI.Recording.ChefRecordingAgent.AiCameraObjectName);
             if (camTf == null) return;
 
+            var cam = camTf.GetComponent<Camera>();
+            if (cam != null)
+                Kitchen.UI.KitchenUiVisibilitySetup.ExcludeUiFromCamera(cam);
+
             var pitch = GetComponent<Kitchen.AI.Recording.ChefCameraPitchController>();
             if (pitch == null)
                 pitch = gameObject.AddComponent<Kitchen.AI.Recording.ChefCameraPitchController>();
@@ -1540,6 +1544,7 @@ namespace Kitchen.AI
 
         /// <summary>
         /// Finds a temporary clear counter for items without a routed destination.
+        /// Always prefers the nearest free usable clear counter.
         /// </summary>
         private BaseCounter FindDropTarget(KitchenObjEnum ingredient)
         {
@@ -1558,18 +1563,73 @@ namespace Kitchen.AI
                         .Select(f => f.counter));
             }
 
-            // Safe staging fallback when no routed destination is available.
-            var clear = FindObjectsOfType<ClearCounter>()
-                .FirstOrDefault(c => IsUsableClearCounter(c)
-                    && !c.HasKitchenObj()
-                    && (reservedCounters == null || !reservedCounters.Contains(c)));
+            var clear = FindNearestFreeCounter(transform.position, reservedCounters);
             if (clear != null)
             {
                 AIDebugLogger.Log(chefName, $"FindDropTarget({ingredient}) → ClearCounter {clear.name}");
                 return clear;
             }
-            AIDebugLogger.LogWarning(chefName, $"FindDropTarget({ingredient}) → fallback nearest free");
-            return FindNearestFreeCounter(transform.position, reservedCounters);
+            AIDebugLogger.LogWarning(chefName, $"FindDropTarget({ingredient}) → no free counter");
+            return null;
+        }
+
+        /// <summary>
+        /// Place held item on a free clear counter. Immediate Interact only when in range;
+        /// otherwise start a walk. Never remote-teleports items across the kitchen.
+        /// Returns true when hands are empty after this call.
+        /// </summary>
+        private bool TryStageHeldOnNearestClear(
+            BaseCounter exclude,
+            bool abandonAfterWalk,
+            out bool startedWalk)
+        {
+            startedWalk = false;
+            if (_heldItem == null)
+                return true;
+
+            var clear = FindNearestFreeCounter(transform.position, exclude: exclude);
+            if (clear == null)
+            {
+                AIDebugLogger.LogWarning(chefName,
+                    $"TryStageHeld: no free counter — ground-drop {_heldItem.objEnum}");
+                KitchenObjFactory.Instance.DropObjServerRpc(
+                    _heldItem.NetworkObject,
+                    GetGroundDropPosition(transform.position + transform.forward * 0.5f),
+                    Vector3.down,
+                    0f,
+                    default);
+                ClearKitchenObj();
+                return true;
+            }
+
+            float dist = Vector3.Distance(transform.position, clear.transform.position);
+            if (dist <= interactionRange && CanPlaceHeldItemOn(clear))
+            {
+                AIDebugLogger.Log(chefName,
+                    $"TryStageHeld: in-range place {_heldItem.objEnum} → {clear.name} (dist={dist:F2})");
+                PerformInteract(clear);
+                return _heldItem == null;
+            }
+
+            AIDebugLogger.Log(chefName,
+                $"TryStageHeld: walk place {_heldItem.objEnum} → {clear.name} (dist={dist:F2})");
+            _targetCounter = clear;
+            _execPhase = ExecPhase.GotoDest;
+            _abandonAfterDestinationDrop = abandonAfterWalk;
+            if (!MoveTo(clear.transform.position))
+            {
+                KitchenObjFactory.Instance.DropObjServerRpc(
+                    _heldItem.NetworkObject,
+                    GetGroundDropPosition(transform.position + transform.forward * 0.5f),
+                    Vector3.down,
+                    0f,
+                    default);
+                ClearKitchenObj();
+                return true;
+            }
+
+            startedWalk = true;
+            return false;
         }
 
         private BaseCounter FindNearestFreeCounter(
@@ -1783,25 +1843,26 @@ namespace Kitchen.AI
 
             _targetCounter = counter;
 
-            // If holding an unrelated item, drop it first at nearest free counter
+            // If holding an unrelated item, stage it first (walk if needed — never teleport).
             if (_heldItem != null &&
                 _heldItem.objEnum != task.itemType &&
                 _heldItem.objEnum != task.outputType)
             {
-                AIDebugLogger.Log(chefName, $"ExecuteProcess: dropping unrelated {_heldItem.objEnum} before PROCESS");
-                var freeCounter = FindNearestFreeCounter(transform.position);
-                if (freeCounter != null)
+                AIDebugLogger.Log(chefName,
+                    $"ExecuteProcess: staging unrelated {_heldItem.objEnum} before PROCESS");
+                if (!TryStageHeldOnNearestClear(_targetCounter, abandonAfterWalk: true, out var walking)
+                    && walking)
                 {
-                    PerformInteract(freeCounter);
+                    // Walking to stage; abandon PROCESS after drop so scheduler can reassign.
+                    return;
                 }
-                else
+
+                if (_heldItem != null)
                 {
-                    // Drop on ground
-                    KitchenObjFactory.Instance.DropObjServerRpc(
-                        _heldItem.NetworkObject, GetGroundDropPosition(
-                            transform.position + transform.forward * 0.5f),
-                        Vector3.down, 0f, default);
-                    ClearKitchenObj();
+                    AIDebugLogger.LogWarning(chefName,
+                        $"ExecuteProcess: still holding {_heldItem.objEnum} after stage attempt — abandon");
+                    AbandonTask();
+                    return;
                 }
             }
 
@@ -2365,10 +2426,17 @@ namespace Kitchen.AI
                 if (_heldItem != null && _heldItem.objEnum != _currentTask.outputType
                     && !(_heldItem is Plate))
                 {
-                    AIDebugLogger.Log(chefName, $"HandleProcess: dropping held {_heldItem.objEnum} to take ready output");
-                    var dropSpot = FindNearestFreeCounter(transform.position);
-                    if (dropSpot != null) PerformInteract(dropSpot);
-                    else { ClearKitchenObj(); }
+                    AIDebugLogger.Log(chefName,
+                        $"HandleProcess: staging held {_heldItem.objEnum} before taking ready output");
+                    if (!TryStageHeldOnNearestClear(counter, abandonAfterWalk: true, out var walking)
+                        && walking)
+                        return;
+
+                    if (_heldItem != null)
+                    {
+                        AbandonTask();
+                        return;
+                    }
                 }
                 AIDebugLogger.LogState(chefName, "taking output", _currentTask.outputType.ToString(), $"from {counter.name}");
                 PerformInteract(counter);
@@ -2462,37 +2530,30 @@ namespace Kitchen.AI
                     // Burned items block stoves and are waste — clearing is justified.
                     AIDebugLogger.LogWarning(chefName, $"HandleProcess: clearing burned {counterItem.objEnum} from {counter.name}");
 
-                    // Drop held item first if carrying it
+                    // Drop held item first if carrying it (walk if needed — never teleport).
                     if (_heldItem != null)
                     {
-                        var tempDrop = FindNearestFreeCounter(transform.position);
-                        if (tempDrop != null) PerformInteract(tempDrop);
-                        else
+                        if (!TryStageHeldOnNearestClear(counter, abandonAfterWalk: true, out var walking)
+                            && walking)
+                            return;
+                        if (_heldItem != null)
                         {
-                            KitchenObjFactory.Instance.DropObjServerRpc(
-                                _heldItem.NetworkObject, GetGroundDropPosition(
-                                    transform.position + transform.forward * 0.5f),
-                                Vector3.down, 0f, default);
-                            ClearKitchenObj();
+                            AbandonTask();
+                            return;
                         }
                     }
 
                     // Take the burned item off
                     PerformInteract(counter);
 
-                    // Drop burned item on nearest free counter or ground
+                    // Stage burned waste on nearest free counter (walk if needed).
                     if (_heldItem != null)
                     {
-                        var freeDrop = FindNearestFreeCounter(transform.position);
-                        if (freeDrop != null) PerformInteract(freeDrop);
-                        else
-                        {
-                            KitchenObjFactory.Instance.DropObjServerRpc(
-                                _heldItem.NetworkObject, GetGroundDropPosition(
-                                    transform.position + transform.forward * 0.5f),
-                                Vector3.down, 0f, default);
+                        if (!TryStageHeldOnNearestClear(counter, abandonAfterWalk: true, out var walkingBurn)
+                            && walkingBurn)
+                            return;
+                        if (_heldItem != null)
                             ClearKitchenObj();
-                        }
                     }
 
                     // Counter is now free — re-fetch input if we had one set aside
@@ -2535,14 +2596,15 @@ namespace Kitchen.AI
                 return;
             }
 
-            // === CASE 6: Other edge case → drop held item and abandon ===
+            // === CASE 6: Other edge case → stage held item and abandon ===
             // (e.g., agent holding unrelated item)
             if (_heldItem != null)
             {
-                AIDebugLogger.LogWarning(chefName, $"HandleProcess edge case: dropping unrelated {_heldItem.objEnum}");
-                var freeCounter = FindNearestFreeCounter(transform.position);
-                if (freeCounter != null) PerformInteract(freeCounter);
-                else { ClearKitchenObj(); }
+                AIDebugLogger.LogWarning(chefName,
+                    $"HandleProcess edge case: staging unrelated {_heldItem.objEnum}");
+                if (!TryStageHeldOnNearestClear(counter, abandonAfterWalk: true, out var walking)
+                    && walking)
+                    return;
             }
             AIDebugLogger.LogWarning(chefName, $"HandleProcess: edge case — abandoning");
             AbandonTask();
@@ -2876,9 +2938,18 @@ namespace Kitchen.AI
                 $"DropItemAtDestination: {_heldItem.objEnum} → {_targetCounter.name} " +
                 $"dist={dist:F2} canPlace={canPlace} phase={_execPhase} task={_currentTask?.type}");
 
-            // 目标可放（空柜 / 可叠盘）才交互
+            // 目标可放（空柜 / 可叠盘）才交互 — must be in range (no remote place).
             if (canPlace)
             {
+                if (dist > interactionRange)
+                {
+                    AIDebugLogger.Log(chefName,
+                        $"DropItemAtDestination: too far from {_targetCounter.name} (dist={dist:F2}) — walk closer");
+                    _execPhase = ExecPhase.GotoDest;
+                    if (!MoveTo(_targetCounter.transform.position)) { AbandonTask(); return; }
+                    return;
+                }
+
                 var heldBefore = _heldItem;
                 if (_targetCounter.GetKitchenObj() is Plate plate
                     && _heldItem is not Plate

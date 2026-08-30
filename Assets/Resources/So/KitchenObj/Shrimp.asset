@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: Shrimp
   m_EditorClassIdentifier: 
   prefab: {fileID: 7347640811211430993, guid: c4b71870f97748ecb16762e43b146a47, type: 3}
-  sprite: {fileID: 21300000, guid: 91e8fe3de9249fc44b7bdd8050062896, type: 3}
+  sprite: {fileID: 21300000, guid: de71c46a9825bdc47b80ffbd5cbfe9b4, type: 3}
   kitchenObjEnum: 16

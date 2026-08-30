@@ -115,8 +115,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Mesh
       value: 
-      objectReference: {fileID: -3614059939822635642, guid: faf3b84fe00d0bb4cb76d9dfe5c9d35a,
-        type: 3}
+      objectReference: {fileID: 4300000, guid: 4422c5385daec5e438e94f2213ef8858, type: 2}
     - target: {fileID: 919132149155446097, guid: faf3b84fe00d0bb4cb76d9dfe5c9d35a,
         type: 3}
       propertyPath: m_Name
@@ -126,10 +125,6 @@ PrefabInstance:
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: faf3b84fe00d0bb4cb76d9dfe5c9d35a,
-        type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 7267717104069598943}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: faf3b84fe00d0bb4cb76d9dfe5c9d35a,
         type: 3}
       insertIndex: -1
@@ -147,37 +142,6 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 81271347732195341}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &7267717104069598943
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1000311549152433500}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 100bcc9db4f7fc64e95ecc1abca8c97d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_originalMesh: {fileID: -3614059939822635642, guid: faf3b84fe00d0bb4cb76d9dfe5c9d35a,
-    type: 3}
-  m_simplifiedMesh: {fileID: 0}
-  m_bEnablePrefabUsage: 1
-  m_fVertexAmount: 0.3
-  m_strAssetPath: Assets/mesh_tripo_convert_f1a9843b-adbd-4132-802b-fdb3f173373c79504.asset
-  m_meshSimplifyRoot: {fileID: 0}
-  m_listDependentChildren: []
-  m_bExpandRelevanceSpheres: 1
-  m_aRelevanceSpheres: []
-  m_meshSimplifier: {fileID: 5709403771976955494}
-  m_bGenerateIncludeChildren: 1
-  m_bOverrideRootSettings: 0
-  m_bUseEdgeLength: 1
-  m_bUseCurvature: 1
-  m_bProtectTexture: 1
-  m_bLockBorder: 1
-  m_bDataDirty: 0
-  m_bExcludedFromTree: 0
 --- !u!114 &5709403771976955494
 MonoBehaviour:
   m_ObjectHideFlags: 0

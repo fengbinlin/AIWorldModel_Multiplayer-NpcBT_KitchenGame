@@ -309,10 +309,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: eaf7d1266ab7bb44c813fb1f5f536660,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: 9097620220668729460}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: eaf7d1266ab7bb44c813fb1f5f536660,
-        type: 3}
-      insertIndex: -1
       addedObject: {fileID: 2265324084693486943}
   m_SourcePrefab: {fileID: 100100000, guid: eaf7d1266ab7bb44c813fb1f5f536660, type: 3}
 --- !u!1 &1163856377578708849 stripped
@@ -321,37 +317,6 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 2082827847712104992}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &9097620220668729460
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1163856377578708849}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 100bcc9db4f7fc64e95ecc1abca8c97d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_originalMesh: {fileID: 8469724730702940846, guid: eaf7d1266ab7bb44c813fb1f5f536660,
-    type: 3}
-  m_simplifiedMesh: {fileID: 4300000, guid: c7ae6987311ce364ab1933fe6f084c26, type: 2}
-  m_bEnablePrefabUsage: 1
-  m_fVertexAmount: 0.3
-  m_strAssetPath: Assets/mesh_tripo_convert_7e96a6a1-145d-4314-8a3b-037bab42553c89620.asset
-  m_meshSimplifyRoot: {fileID: 0}
-  m_listDependentChildren: []
-  m_bExpandRelevanceSpheres: 1
-  m_aRelevanceSpheres: []
-  m_meshSimplifier: {fileID: 2265324084693486943}
-  m_bGenerateIncludeChildren: 1
-  m_bOverrideRootSettings: 0
-  m_bUseEdgeLength: 1
-  m_bUseCurvature: 1
-  m_bProtectTexture: 1
-  m_bLockBorder: 1
-  m_bDataDirty: 0
-  m_bExcludedFromTree: 0
 --- !u!114 &2265324084693486943
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -101453,8 +101418,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Mesh
       value: 
-      objectReference: {fileID: 7796007647659827495, guid: 890b75e9f9fb4ce4f9220534e0b30fe1,
-        type: 3}
+      objectReference: {fileID: 4300000, guid: b2f4cf2d001ed9e42af35562671b9080, type: 2}
     - target: {fileID: 919132149155446097, guid: 890b75e9f9fb4ce4f9220534e0b30fe1,
         type: 3}
       propertyPath: m_Name
@@ -101471,10 +101435,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 890b75e9f9fb4ce4f9220534e0b30fe1,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8677798079022518625}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 890b75e9f9fb4ce4f9220534e0b30fe1,
-        type: 3}
-      insertIndex: -1
       addedObject: {fileID: 4685063412153324316}
   m_SourcePrefab: {fileID: 100100000, guid: 890b75e9f9fb4ce4f9220534e0b30fe1, type: 3}
 --- !u!1 &4928692883643541081 stripped
@@ -101483,37 +101443,6 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 5235247381886049032}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &8677798079022518625
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4928692883643541081}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 100bcc9db4f7fc64e95ecc1abca8c97d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_originalMesh: {fileID: 7796007647659827495, guid: 890b75e9f9fb4ce4f9220534e0b30fe1,
-    type: 3}
-  m_simplifiedMesh: {fileID: 0}
-  m_bEnablePrefabUsage: 1
-  m_fVertexAmount: 0.3
-  m_strAssetPath: Assets/mesh_tripo_convert_e1ba52f5-e9c7-42b2-ad29-abf6968b48e989638.asset
-  m_meshSimplifyRoot: {fileID: 0}
-  m_listDependentChildren: []
-  m_bExpandRelevanceSpheres: 1
-  m_aRelevanceSpheres: []
-  m_meshSimplifier: {fileID: 4685063412153324316}
-  m_bGenerateIncludeChildren: 1
-  m_bOverrideRootSettings: 0
-  m_bUseEdgeLength: 1
-  m_bUseCurvature: 1
-  m_bProtectTexture: 1
-  m_bLockBorder: 1
-  m_bDataDirty: 0
-  m_bExcludedFromTree: 0
 --- !u!114 &4685063412153324316
 MonoBehaviour:
   m_ObjectHideFlags: 0

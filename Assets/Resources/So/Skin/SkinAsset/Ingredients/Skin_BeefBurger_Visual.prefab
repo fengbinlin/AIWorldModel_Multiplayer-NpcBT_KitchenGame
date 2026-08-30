@@ -114,8 +114,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Mesh
       value: 
-      objectReference: {fileID: 550152595434244183, guid: b859450cf31641f4d9add4d3a4a67fcd,
-        type: 3}
+      objectReference: {fileID: 4300000, guid: 8f91404a24db14c4bb917b5d9b91c692, type: 2}
     - target: {fileID: 919132149155446097, guid: b859450cf31641f4d9add4d3a4a67fcd,
         type: 3}
       propertyPath: m_Name
@@ -125,10 +124,6 @@ PrefabInstance:
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b859450cf31641f4d9add4d3a4a67fcd,
-        type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2101641061666121201}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b859450cf31641f4d9add4d3a4a67fcd,
         type: 3}
       insertIndex: -1
@@ -146,37 +141,6 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 4700885855569272264}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &2101641061666121201
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5619805237277647001}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 100bcc9db4f7fc64e95ecc1abca8c97d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_originalMesh: {fileID: 550152595434244183, guid: b859450cf31641f4d9add4d3a4a67fcd,
-    type: 3}
-  m_simplifiedMesh: {fileID: 0}
-  m_bEnablePrefabUsage: 1
-  m_fVertexAmount: 0.2
-  m_strAssetPath: Assets/mesh_TripoModel67256.asset
-  m_meshSimplifyRoot: {fileID: 0}
-  m_listDependentChildren: []
-  m_bExpandRelevanceSpheres: 1
-  m_aRelevanceSpheres: []
-  m_meshSimplifier: {fileID: 4441229936524693754}
-  m_bGenerateIncludeChildren: 1
-  m_bOverrideRootSettings: 0
-  m_bUseEdgeLength: 1
-  m_bUseCurvature: 1
-  m_bProtectTexture: 1
-  m_bLockBorder: 1
-  m_bDataDirty: 0
-  m_bExcludedFromTree: 0
 --- !u!114 &4441229936524693754
 MonoBehaviour:
   m_ObjectHideFlags: 0

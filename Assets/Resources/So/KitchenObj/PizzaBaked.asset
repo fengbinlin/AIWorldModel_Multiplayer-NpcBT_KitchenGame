@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: PizzaBaked
   m_EditorClassIdentifier: 
   prefab: {fileID: 7347640811211430993, guid: 881e2035a8074cd0b36e05f2f75dfb56, type: 3}
-  sprite: {fileID: 21300000, guid: 91e8fe3de9249fc44b7bdd8050062896, type: 3}
+  sprite: {fileID: 21300000, guid: 7acfc2a379f28e74ba1df6a4b7ebb2cf, type: 3}
   kitchenObjEnum: 23

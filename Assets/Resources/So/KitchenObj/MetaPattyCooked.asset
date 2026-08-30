@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: MetaPattyCooked
   m_EditorClassIdentifier: 
   prefab: {fileID: 7347640811211430993, guid: 56c7f6fea946c454fa9cf8769f02de14, type: 3}
-  sprite: {fileID: 21300000, guid: f1f50c7ef90b19741b26f2040806cf56, type: 3}
+  sprite: {fileID: 21300000, guid: fe436f9ffeace984b9f9e446e30cecfa, type: 3}
   kitchenObjEnum: 7

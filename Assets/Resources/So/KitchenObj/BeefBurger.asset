@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: BeefBurger
   m_EditorClassIdentifier: 
   prefab: {fileID: 7347640811211430993, guid: 2df52a372d0744e19a860c889d3fae75, type: 3}
-  sprite: {fileID: 21300000, guid: 91e8fe3de9249fc44b7bdd8050062896, type: 3}
+  sprite: {fileID: 21300000, guid: 79c154d41ec84854297f9de4e2199f53, type: 3}
   kitchenObjEnum: 25

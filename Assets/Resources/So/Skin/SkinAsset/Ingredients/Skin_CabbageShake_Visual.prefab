@@ -119,8 +119,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Mesh
       value: 
-      objectReference: {fileID: -7742235410951468792, guid: 25296b3ca7268f640a4635e9411a9ea4,
-        type: 3}
+      objectReference: {fileID: 4300000, guid: dc5fe5bb449dcbd46a333c9ee06ded0f, type: 2}
     - target: {fileID: 919132149155446097, guid: 25296b3ca7268f640a4635e9411a9ea4,
         type: 3}
       propertyPath: m_Name
@@ -129,11 +128,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 25296b3ca7268f640a4635e9411a9ea4,
-        type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 824422800490011835}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 25296b3ca7268f640a4635e9411a9ea4, type: 3}
 --- !u!4 &4871391806887633582 stripped
 Transform:
@@ -141,40 +136,3 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 4904438087258752325}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &5247108792486295572 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 25296b3ca7268f640a4635e9411a9ea4,
-    type: 3}
-  m_PrefabInstance: {fileID: 4904438087258752325}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &824422800490011835
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5247108792486295572}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 100bcc9db4f7fc64e95ecc1abca8c97d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_originalMesh: {fileID: -7742235410951468792, guid: 25296b3ca7268f640a4635e9411a9ea4,
-    type: 3}
-  m_simplifiedMesh: {fileID: 0}
-  m_bEnablePrefabUsage: 1
-  m_fVertexAmount: 0.3
-  m_strAssetPath: Assets/mesh_TripoModel67582.asset
-  m_meshSimplifyRoot: {fileID: 0}
-  m_listDependentChildren: []
-  m_bExpandRelevanceSpheres: 1
-  m_aRelevanceSpheres: []
-  m_meshSimplifier: {fileID: 0}
-  m_bGenerateIncludeChildren: 1
-  m_bOverrideRootSettings: 0
-  m_bUseEdgeLength: 1
-  m_bUseCurvature: 1
-  m_bProtectTexture: 1
-  m_bLockBorder: 1
-  m_bDataDirty: 1
-  m_bExcludedFromTree: 0

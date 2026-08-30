@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: RiceBall
   m_EditorClassIdentifier: 
   prefab: {fileID: 7347640811211430993, guid: cb3f50af5ea0464c812c18cf44a4cf2d, type: 3}
-  sprite: {fileID: 21300000, guid: 91e8fe3de9249fc44b7bdd8050062896, type: 3}
+  sprite: {fileID: 21300000, guid: 65e64cdc3e9bb2449b76375667606442, type: 3}
   kitchenObjEnum: 18

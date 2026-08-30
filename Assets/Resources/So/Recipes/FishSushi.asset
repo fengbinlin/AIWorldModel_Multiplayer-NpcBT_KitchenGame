@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8, type: 3}
   m_Name: FishSushi
   m_EditorClassIdentifier: 
-  recipeName: 鱼肉寿司
+  recipeName: Fish Sushi
   requiredItem: 26

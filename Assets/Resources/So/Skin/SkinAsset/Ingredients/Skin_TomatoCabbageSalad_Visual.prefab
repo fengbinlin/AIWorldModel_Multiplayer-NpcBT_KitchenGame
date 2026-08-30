@@ -114,8 +114,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Mesh
       value: 
-      objectReference: {fileID: 3798259041943538564, guid: 3c84e8cd289262f4ab4817022df13863,
-        type: 3}
+      objectReference: {fileID: 4300000, guid: 3d215241e771ec54c926d499f90fc0fb, type: 2}
     - target: {fileID: 919132149155446097, guid: 3c84e8cd289262f4ab4817022df13863,
         type: 3}
       propertyPath: m_Name
@@ -128,10 +127,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3c84e8cd289262f4ab4817022df13863,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: 5904209628827601527}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3c84e8cd289262f4ab4817022df13863,
-        type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1614841325017426218}
   m_SourcePrefab: {fileID: 100100000, guid: 3c84e8cd289262f4ab4817022df13863, type: 3}
 --- !u!1 &6252502124279360267 stripped
@@ -140,37 +135,6 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 6486362551910585946}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &5904209628827601527
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6252502124279360267}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 100bcc9db4f7fc64e95ecc1abca8c97d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_originalMesh: {fileID: 3798259041943538564, guid: 3c84e8cd289262f4ab4817022df13863,
-    type: 3}
-  m_simplifiedMesh: {fileID: 0}
-  m_bEnablePrefabUsage: 1
-  m_fVertexAmount: 0.3
-  m_strAssetPath: Assets/mesh_TripoModel79658.asset
-  m_meshSimplifyRoot: {fileID: 0}
-  m_listDependentChildren: []
-  m_bExpandRelevanceSpheres: 1
-  m_aRelevanceSpheres: []
-  m_meshSimplifier: {fileID: 1614841325017426218}
-  m_bGenerateIncludeChildren: 1
-  m_bOverrideRootSettings: 0
-  m_bUseEdgeLength: 1
-  m_bUseCurvature: 1
-  m_bProtectTexture: 1
-  m_bLockBorder: 1
-  m_bDataDirty: 0
-  m_bExcludedFromTree: 0
 --- !u!114 &1614841325017426218
 MonoBehaviour:
   m_ObjectHideFlags: 0

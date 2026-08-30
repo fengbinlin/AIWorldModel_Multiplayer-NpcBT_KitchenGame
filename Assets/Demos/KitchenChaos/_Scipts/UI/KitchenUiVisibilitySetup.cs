@@ -4,8 +4,8 @@ using UnityEngine.SceneManagement;
 namespace Kitchen.UI
 {
     /// <summary>
-    /// Ensures all UI (screen HUD + world-space facility/delivery chrome) is only
-    /// visible to the main top-down camera. AI first-person cameras exclude the UI layer.
+    /// Screen HUD + world facility chrome: visible only to the top-down main camera.
+    /// AI follow / first-person cameras never see the UI layer.
     /// </summary>
     public static class KitchenUiVisibilitySetup
     {
@@ -23,7 +23,8 @@ namespace Kitchen.UI
         }
 
         /// <summary>
-        /// Bind every canvas in the scene to the main camera and put world UI on the UI layer.
+        /// Bind HUD canvases to the main camera, put UI on the UI layer,
+        /// and strip that layer from every non-main camera (AI follow cams).
         /// </summary>
         public static void ApplyAll()
         {
@@ -31,6 +32,9 @@ namespace Kitchen.UI
             int uiLayer = LayerMask.NameToLayer(UiLayerName);
             if (main != null && uiLayer >= 0)
                 main.cullingMask |= 1 << uiLayer;
+
+            // AI / secondary cameras must never render the order HUD.
+            ExcludeUiFromAllNonMainCameras(main);
 
             var canvases = Object.FindObjectsOfType<Canvas>(true);
             for (int i = 0; i < canvases.Length; i++)
@@ -53,7 +57,7 @@ namespace Kitchen.UI
         }
 
         /// <summary>
-        /// Strip the UI layer from an AI / recording camera so it never sees HUD chrome.
+        /// Strip the UI layer from an AI / recording / follow camera.
         /// </summary>
         public static void ExcludeUiFromCamera(Camera camera)
         {
@@ -63,6 +67,23 @@ namespace Kitchen.UI
             camera.cullingMask &= ~(1 << uiLayer);
         }
 
+        /// <summary>
+        /// Strip UI from every camera that is not the top-down main camera.
+        /// </summary>
+        public static void ExcludeUiFromAllNonMainCameras(Camera main = null)
+        {
+            main ??= Camera.main;
+            var cams = Object.FindObjectsOfType<Camera>(true);
+            for (int i = 0; i < cams.Length; i++)
+            {
+                var cam = cams[i];
+                if (cam == null || cam == main) continue;
+                // Never strip the tagged MainCamera even if Camera.main is briefly null/wrong.
+                if (cam.CompareTag("MainCamera")) continue;
+                ExcludeUiFromCamera(cam);
+            }
+        }
+
         private static void ApplyCanvas(Canvas canvas, Camera main, int uiLayer)
         {
             if (canvas == null) return;
@@ -70,7 +91,6 @@ namespace Kitchen.UI
             switch (canvas.renderMode)
             {
                 case RenderMode.WorldSpace:
-                    // Facility progress / warning / delivery result — layer UI so AI cams cull them.
                     if (uiLayer >= 0)
                         SetLayerRecursive(canvas.gameObject, uiLayer);
                     if (main != null)
@@ -78,20 +98,37 @@ namespace Kitchen.UI
                     break;
 
                 case RenderMode.ScreenSpaceOverlay:
-                    // Overlay draws on every display; bind to main camera so only that cam composites it.
+                    // Overlay composites onto every camera view — convert so AI cams can cull UI.
+                    if (main == null)
+                        break;
+
                     canvas.renderMode = RenderMode.ScreenSpaceCamera;
                     canvas.worldCamera = main;
-                    if (canvas.planeDistance < 0.1f)
-                        canvas.planeDistance = 1f;
+                    canvas.planeDistance = SafePlaneDistance(main);
                     if (uiLayer >= 0)
                         SetLayerRecursive(canvas.gameObject, uiLayer);
                     break;
 
                 case RenderMode.ScreenSpaceCamera:
                     if (main != null)
+                    {
                         canvas.worldCamera = main;
+                        canvas.planeDistance = SafePlaneDistance(main);
+                    }
+                    if (uiLayer >= 0)
+                        SetLayerRecursive(canvas.gameObject, uiLayer);
                     break;
             }
+        }
+
+        private static float SafePlaneDistance(Camera cam)
+        {
+            if (cam == null) return 1f;
+            float near = Mathf.Max(cam.nearClipPlane, 0.01f);
+            float far = cam.farClipPlane;
+            if (far <= near + 0.1f)
+                return near + 0.05f;
+            return Mathf.Clamp(1f, near + 0.05f, far - 0.05f);
         }
 
         private static void SetLayerRecursive(GameObject go, int layer)

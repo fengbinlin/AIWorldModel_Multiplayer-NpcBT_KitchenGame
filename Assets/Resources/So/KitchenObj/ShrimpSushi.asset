@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: ShrimpSushi
   m_EditorClassIdentifier: 
   prefab: {fileID: 7347640811211430993, guid: 08ff32bccd3c4a55adcf3fd99fbca3ee, type: 3}
-  sprite: {fileID: 21300000, guid: 91e8fe3de9249fc44b7bdd8050062896, type: 3}
+  sprite: {fileID: 21300000, guid: 01282a60d247477479430f2d0b48c0a5, type: 3}
   kitchenObjEnum: 27

@@ -253,6 +253,28 @@ namespace Kitchen.AI
             if (pool == null || pool.Count == 0)
                 return null;
 
+            var held = agent.controller?.HeldItem;
+
+            // Holding an item: only continue into a task that consumes THAT item.
+            // Otherwise we steal a ready PROCESS elsewhere and dump the held item
+            // via remote Interact (looks like teleport to a far clear counter).
+            if (held != null)
+            {
+                var addForHeld = pool.FirstOrDefault(t =>
+                    t.type == TaskType.ADD_TO_PLATE
+                    && t.orderId == from.orderId
+                    && InputReadyForAdd(agent, t));
+                if (addForHeld != null)
+                    return addForHeld;
+
+                var processForHeld = pool.FirstOrDefault(t =>
+                    t.type == TaskType.PROCESS
+                    && t.orderId == from.orderId
+                    && t.itemType == held.objEnum
+                    && InputReadyForProcess(bb, agent, t, preferredSink));
+                return processForHeld;
+            }
+
             var processCandidates = pool
                 .Where(t =>
                     t.type == TaskType.PROCESS

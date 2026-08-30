@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: Fish
   m_EditorClassIdentifier: 
   prefab: {fileID: 7347640811211430993, guid: e0627ae4a13c4b3b8d7641825f79f008, type: 3}
-  sprite: {fileID: 21300000, guid: 91e8fe3de9249fc44b7bdd8050062896, type: 3}
+  sprite: {fileID: 21300000, guid: ae8953c06f09bed408b7de144737912d, type: 3}
   kitchenObjEnum: 14

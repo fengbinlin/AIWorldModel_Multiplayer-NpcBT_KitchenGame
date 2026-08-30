@@ -224,8 +224,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Mesh
       value: 
-      objectReference: {fileID: 19896488268803704, guid: 446939ad4a425ef4c9fe2c3690380045,
-        type: 3}
+      objectReference: {fileID: 4300000, guid: bba487b6b000c1f45b1214465ce45cc2, type: 2}
     - target: {fileID: 919132149155446097, guid: 446939ad4a425ef4c9fe2c3690380045,
         type: 3}
       propertyPath: m_Name
@@ -238,10 +237,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 446939ad4a425ef4c9fe2c3690380045,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6165531320260910351}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 446939ad4a425ef4c9fe2c3690380045,
-        type: 3}
-      insertIndex: -1
       addedObject: {fileID: 490638902371326193}
   m_SourcePrefab: {fileID: 100100000, guid: 446939ad4a425ef4c9fe2c3690380045, type: 3}
 --- !u!1 &7073870790281640355 stripped
@@ -250,37 +245,6 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 7992228873585722610}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &6165531320260910351
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7073870790281640355}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 100bcc9db4f7fc64e95ecc1abca8c97d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_originalMesh: {fileID: 19896488268803704, guid: 446939ad4a425ef4c9fe2c3690380045,
-    type: 3}
-  m_simplifiedMesh: {fileID: 0}
-  m_bEnablePrefabUsage: 1
-  m_fVertexAmount: 0.3
-  m_strAssetPath: Assets/mesh_tripo_convert_6b3741ee-fbe4-40f9-a30e-ac4914e14e3579144.asset
-  m_meshSimplifyRoot: {fileID: 0}
-  m_listDependentChildren: []
-  m_bExpandRelevanceSpheres: 1
-  m_aRelevanceSpheres: []
-  m_meshSimplifier: {fileID: 490638902371326193}
-  m_bGenerateIncludeChildren: 1
-  m_bOverrideRootSettings: 0
-  m_bUseEdgeLength: 1
-  m_bUseCurvature: 1
-  m_bProtectTexture: 1
-  m_bLockBorder: 1
-  m_bDataDirty: 0
-  m_bExcludedFromTree: 0
 --- !u!114 &490638902371326193
 MonoBehaviour:
   m_ObjectHideFlags: 0

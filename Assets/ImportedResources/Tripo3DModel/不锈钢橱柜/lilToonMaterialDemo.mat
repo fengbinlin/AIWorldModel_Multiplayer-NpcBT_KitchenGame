@@ -21,12 +21,11 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: lilToonMaterialDemo
-  m_Shader: {fileID: 4800000, guid: 51b2dee0ab07bd84d8147601ff89e511, type: 3}
+  m_Shader: {fileID: 4800000, guid: 9294844b15dca184d914a632279b24e1, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - AUTO_KEY_VALUE
-  - _REQUIRE_UV2
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -662,7 +661,7 @@ Material:
     - _UseReflection: 0
     - _UseRim: 0
     - _UseRimShade: 1
-    - _UseShadow: 1
+    - _UseShadow: 0
     - _VertexLightStrength: 0
     - _WorkflowMode: 1
     - _ZClip: 1

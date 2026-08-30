@@ -568,9 +568,9 @@ Material:
     - _RimIndirRange: 0
     - _RimMainStrength: 0
     - _RimNormalStrength: 1
-    - _RimShadeBlur: 0.79
+    - _RimShadeBlur: 0.678
     - _RimShadeBorder: 0.635
-    - _RimShadeFresnelPower: 2.7
+    - _RimShadeFresnelPower: 0.9
     - _RimShadeNormalStrength: 1
     - _RimShadowMask: 0.5
     - _RimVRParallaxStrength: 1

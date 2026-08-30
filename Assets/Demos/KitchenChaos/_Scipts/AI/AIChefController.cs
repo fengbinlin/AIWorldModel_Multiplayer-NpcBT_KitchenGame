@@ -50,14 +50,14 @@ namespace Kitchen.AI
         public string debugState = "idle";
 
         [Header("Visual Timing")]
-        [Tooltip("Hold in interacting before ExecuteInteraction so pickup/facility anim can play.")]
-        [SerializeField] private float _interactAnimHoldSeconds = 1.35f;
-        [Tooltip("Hold after interact before moving to the next target.")]
-        [SerializeField] private float _postInteractAnimHoldSeconds = 0.85f;
-        [Tooltip("Minimum time in working (cut/cook) before leaving, so Dance_3 can finish a cycle.")]
-        [SerializeField] private float _minWorkAnimSeconds = 2.8f;
-        [Tooltip("Minimum wait time before CanProceed reacts, so wait anim can start.")]
-        [SerializeField] private float _minWaitAnimSeconds = 1.6f;
+        [Tooltip("Hold in interacting before ExecuteInteraction (0 = no anim wait).")]
+        [SerializeField] private float _interactAnimHoldSeconds = 0f;
+        [Tooltip("Hold after interact before moving to the next target (0 = no anim wait).")]
+        [SerializeField] private float _postInteractAnimHoldSeconds = 0f;
+        [Tooltip("Minimum time in working before leaving (0 = use task duration only).")]
+        [SerializeField] private float _minWorkAnimSeconds = 0f;
+        [Tooltip("Minimum wait time before CanProceed reacts (0 = no anim wait).")]
+        [SerializeField] private float _minWaitAnimSeconds = 0f;
 
         #endregion
 
@@ -345,6 +345,12 @@ namespace Kitchen.AI
             foreach (var col in GetComponentsInChildren<Collider>())
                 col.enabled = false;
 
+            // Prefab may still serialize old anim-hold values; force off (no action anims).
+            _interactAnimHoldSeconds = 0f;
+            _postInteractAnimHoldSeconds = 0f;
+            _minWorkAnimSeconds = 0f;
+            _minWaitAnimSeconds = 0f;
+
             // --- A* Pathfinding Project setup ---
             _aiPath = GetComponent<AIPath>();
             if (_aiPath == null) _aiPath = gameObject.AddComponent<AIPath>();
@@ -606,7 +612,27 @@ namespace Kitchen.AI
                 case "working":
                     debugState = $"working {_stateTimer:F1}s";
                     FaceTarget();
-                    float workNeed = Mathf.Max(_currentTask?.duration ?? 1.0f, _minWorkAnimSeconds);
+
+                    // Cutting/cooking may finish before task.duration — take output ASAP (no anim pad).
+                    if (_currentTask?.type == TaskType.PROCESS
+                        && _targetCounter != null
+                        && _targetCounter.HasKitchenObj())
+                    {
+                        var earlyOut = _targetCounter.GetKitchenObj();
+                        if (earlyOut != null
+                            && (earlyOut.objEnum == _currentTask.outputType
+                                || (earlyOut is Plate earlyPlate
+                                    && earlyPlate.GetIngredients().Contains(_currentTask.outputType))))
+                        {
+                            AIDebugLogger.Log(chefName,
+                                $"Taking processed output {earlyOut.objEnum} from {_targetCounter.name} (early)");
+                            PerformInteract(_targetCounter);
+                            CompleteTaskAndMaybeContinue();
+                            break;
+                        }
+                    }
+
+                    float workNeed = Mathf.Max(_currentTask?.duration ?? 0f, _minWorkAnimSeconds);
                     if (_stateTimer >= workNeed)
                     {
                         AIDebugLogger.LogState(chefName, "working", "done",
@@ -620,24 +646,11 @@ namespace Kitchen.AI
                             var counterItem = _targetCounter.GetKitchenObj();
                             if (counterItem.objEnum == _currentTask.outputType)
                             {
-                                // Output ready — take it and deliver to ClearCounter
+                                // Output ready — take it, finish PROCESS, maybe claim ADD while holding
                                 AIDebugLogger.Log(chefName, $"Taking processed output {counterItem.objEnum} from {_targetCounter.name}");
                                 PerformInteract(_targetCounter);
 
-                                if (_heldItem != null)
-                                {
-                                    var dropTarget = ResolveDeliveryDestination(_currentTask)
-                                        ?? FindNearestFreeCounter(transform.position);
-                                    if (dropTarget != null)
-                                    {
-                                        AIDebugLogger.Log(chefName, $"Delivering {_heldItem.objEnum} to {dropTarget.name}");
-                                        _execPhase = ExecPhase.GotoDest;
-                                        _targetCounter = dropTarget;
-                                        if (!MoveTo(dropTarget.transform.position)) { AbandonTask(); return; };
-                                        break;
-                                    }
-                                }
-                                CompleteTask();
+                                CompleteTaskAndMaybeContinue();
                                 break;
                             }
                             else
@@ -650,7 +663,7 @@ namespace Kitchen.AI
                             }
                         }
 
-                        CompleteTask();
+                        CompleteTaskAndMaybeContinue();
                     }
                     break;
 
@@ -754,7 +767,7 @@ namespace Kitchen.AI
                         // Check if we're facing the target closely enough
                         float angleToTarget = GetAngleToTarget();
                         const float faceThreshold = 5f;  // degrees — consider "facing" when within 5°
-                        const float minPostFaceWait = 0.12f; // extra wait after rotation completes
+                        const float minPostFaceWait = 0f; // no anim face-hold; proceed as soon as facing
                         const float maxPauseTimeout = 3f;    // safety net
 
                         if (!_facingComplete && angleToTarget < faceThreshold)
@@ -835,7 +848,7 @@ namespace Kitchen.AI
                     // Arrived at item position — pick it up.
                     // If the original item reference became stale (consumed by another agent),
                     // fall back to finding any available item of the required type.
-                    if (_carryTargetItem == null && _currentTask?.itemType != 0)
+                    if (_carryTargetItem == null && _currentTask != null)
                     {
                         AIDebugLogger.Log(chefName, $"GotoItem: original item gone, searching for {_currentTask.itemType}");
                         _carryTargetItem = FindItemAnywhere(
@@ -1392,7 +1405,7 @@ namespace Kitchen.AI
             if (_currentTask.orderId != 0)
                 _aiManager?.Blackboard?.TagItemForOrder(_heldItem, _currentTask.orderId);
 
-            var dropTarget = ResolveDeliveryDestination(_currentTask);
+            var dropTarget = ResolveLookAheadOrRoutedDestination(_currentTask);
             if (dropTarget != null)
             {
                 _targetCounter = dropTarget;
@@ -1434,6 +1447,49 @@ namespace Kitchen.AI
                 default);
             ClearKitchenObj();
             CompleteTask();
+        }
+
+        /// <summary>
+        /// Prefer opportunistic look-ahead sinks (process / plate) over clear staging.
+        /// </summary>
+        private BaseCounter ResolveLookAheadOrRoutedDestination(KitchenTask task)
+        {
+            var bb = _aiManager?.Blackboard;
+            var agent = bb?.agents.Find(a => a.agentId == agentId);
+
+            if (bb != null && agent != null && _heldItem != null && task != null)
+            {
+                agent.position = transform.position;
+
+                if (task.type == TaskType.FETCH
+                    && KitchenTaskContinuation.TryLookAheadProcessSink(
+                        bb, agent, task, _heldItem, out var processSink, out _))
+                {
+                    if (bb.TryReserveFacility(processSink, agentId))
+                    {
+                        KitchenTaskContinuation.BeginOrGetChainSession(agent);
+                        task.deliveryIntent = KitchenDeliveryIntent.BypassToProcessFacility;
+                        task.destFacility = processSink;
+                        AIDebugLogger.Log(chefName,
+                            $"LookAhead PROCESS sink → {processSink.name}");
+                        return processSink;
+                    }
+                }
+
+                if ((task.type == TaskType.FETCH || task.type == TaskType.PROCESS)
+                    && KitchenTaskContinuation.TryLookAheadPlateSink(
+                        bb, task, _heldItem, out var plateSink))
+                {
+                    KitchenTaskContinuation.BeginOrGetChainSession(agent);
+                    task.deliveryIntent = KitchenDeliveryIntent.BypassToPlateAssembly;
+                    task.destFacility = plateSink;
+                    AIDebugLogger.Log(chefName,
+                        $"LookAhead PLATE sink → {plateSink.name}");
+                    return plateSink;
+                }
+            }
+
+            return ResolveDeliveryDestination(task);
         }
 
         private bool CanUseRoutedDestination(
@@ -1701,14 +1757,16 @@ namespace Kitchen.AI
 
         private static bool ItemMatchesTaskInput(KitchenObj obj, KitchenTask task)
         {
-            if (obj == null || task == null || task.itemType == 0) return false;
+            // NOTE: KitchenObjEnum.Tomato == 0, so never use itemType==0 as "unset".
+            if (obj == null || task == null) return false;
             if (obj.objEnum == task.itemType) return true;
             return obj is Plate plate && plate.GetIngredients().Contains(task.itemType);
         }
 
         private static bool ItemMatchesTaskOutput(KitchenObj obj, KitchenTask task)
         {
-            if (obj == null || task == null || task.outputType == 0) return false;
+            // NOTE: KitchenObjEnum.Tomato == 0, so never use outputType==0 as "unset".
+            if (obj == null || task == null) return false;
             if (obj.objEnum == task.outputType) return true;
             return obj is Plate plate && plate.GetIngredients().Contains(task.outputType);
         }
@@ -1788,7 +1846,6 @@ namespace Kitchen.AI
             }
 
             if (_heldItem != null
-                && task.itemType != 0
                 && (_heldItem.objEnum == task.itemType
                     || (_heldItem is Plate holdPl && holdPl.GetIngredients().Contains(task.itemType))))
             {
@@ -1882,7 +1939,8 @@ namespace Kitchen.AI
                 correctPlateCounter = task.targetFacility;
 
             // Check if already holding the right ingredient
-            if (_heldItem != null && task.itemType != 0 && _heldItem.objEnum == task.itemType)
+            // NOTE: Tomato == 0 — do not use itemType != 0 as a validity check.
+            if (_heldItem != null && _heldItem.objEnum == task.itemType)
             {
                 AIDebugLogger.Log(chefName, $"ExecuteAddToPlate: already holding {_heldItem.objEnum}, going to plate at {(correctPlateCounter != null ? correctPlateCounter.name : "?")}");
                 _targetCounter = correctPlateCounter;
@@ -2181,7 +2239,7 @@ namespace Kitchen.AI
 
                             Debug.Log($"[{chefName}] Adding {_heldItem.objEnum} to plate #{orderId}");
                             if (KitchenObjOperator.PutToPlate(_heldItem, plate, orderId))
-                                CompleteTask();
+                                CompleteTaskAndMaybeContinue();
                             else
                                 AbandonTask();
                         }
@@ -2271,7 +2329,8 @@ namespace Kitchen.AI
                 _heldItem is Plate hp && hp.GetIngredients().Contains(t);
 
             // === CASE 1: Holding input (or plate with input), counter empty → place ===
-            if (_heldItem != null && _currentTask.itemType != 0 && !hasItem
+            // NOTE: Tomato == 0 — never use itemType != 0 as a validity check.
+            if (_heldItem != null && !hasItem
                 && (_heldItem.objEnum == _currentTask.itemType || HeldPlateHas(_currentTask.itemType)))
             {
                 AIDebugLogger.LogState(chefName, "placing", _heldItem.objEnum.ToString(), $"→ {counter.name}");
@@ -2320,7 +2379,7 @@ namespace Kitchen.AI
                     else
                         _aiManager?.Blackboard?.TagItemForOrder(_heldItem, _currentTask.orderId);
                 }
-                CompleteTask();
+                CompleteTaskAndMaybeContinue();
                 return;
             }
 
@@ -2357,7 +2416,7 @@ namespace Kitchen.AI
                     {
                         AIDebugLogger.Log(chefName, $"Output {_currentTask.outputType} already ready, taking it now");
                         PerformInteract(counter);
-                        CompleteTask();
+                        CompleteTaskAndMaybeContinue();
                         return;
                     }
 
@@ -2894,7 +2953,7 @@ namespace Kitchen.AI
                         return;
                     }
 
-                    CompleteTask();
+                    CompleteTaskAndMaybeContinue();
                     return;
                 }
 
@@ -3119,9 +3178,219 @@ namespace Kitchen.AI
 
         private void CompleteTask()
         {
-            AIDebugLogger.LogTaskComplete(agentId, chefName, _currentTask, "completed");
-            if (_currentTask != null) _currentTask.status = "completed";
+            CompleteTaskAndMaybeContinue(allowContinue: false);
+        }
+
+        /// <summary>
+        /// Mark the current unit task complete; when <paramref name="allowContinue"/>,
+        /// immediately claim the next PROCESS/ADD if exclusivity + facilities allow.
+        /// Claim happens <b>before</b> CleanupTask so held items are not dropped first
+        /// (required for PROCESS→ADD chaining while still holding slices).
+        /// </summary>
+        private void CompleteTaskAndMaybeContinue(bool allowContinue = true)
+        {
+            var completed = _currentTask;
+            var preferredSink = _targetCounter;
+            var placedObj = preferredSink != null && preferredSink.HasKitchenObj()
+                ? preferredSink.GetKitchenObj()
+                : null;
+            var deliveryIntent = completed?.deliveryIntent ?? KitchenDeliveryIntent.Default;
+            bool wasHolding = _heldItem != null;
+
+            // Tag exclusive deliverer when we just staged/placed an order item.
+            if (completed != null
+                && completed.orderId != 0
+                && placedObj != null
+                && _heldItem == null
+                && (completed.type == TaskType.FETCH || completed.type == TaskType.PROCESS))
+            {
+                var bbTag = _aiManager?.Blackboard;
+                bbTag?.SyncItems();
+                KitchenTaskContinuation.TagExclusiveDeliverer(bbTag, placedObj, agentId);
+            }
+
+            AIDebugLogger.LogTaskComplete(agentId, chefName, completed, "completed");
+            if (_currentTask != null)
+                _currentTask.status = "completed";
+
+            if (!allowContinue || completed == null)
+            {
+                CleanupTask();
+                return;
+            }
+
+            bool isStagingHold = completed.label == "stage-hold";
+
+            if (!isStagingHold
+                && completed.type != TaskType.FETCH
+                && completed.type != TaskType.PROCESS
+                && completed.type != TaskType.ADD_TO_PLATE)
+            {
+                CleanupTask();
+                return;
+            }
+
+            var bb = _aiManager?.Blackboard;
+            var agent = bb?.agents.Find(a => a.agentId == agentId);
+            if (bb == null || agent == null)
+            {
+                CleanupTask();
+                return;
+            }
+
+            // If FETCH/PROCESS delivered onto the order plate, mark matching ADD done.
+            if (deliveryIntent == KitchenDeliveryIntent.BypassToPlateAssembly
+                && placedObj != null
+                && preferredSink != null
+                && preferredSink.GetKitchenObj() is Plate)
+            {
+                TryMarkAddStepCompleted(bb, completed.orderId, placedObj.objEnum);
+            }
+
+            // Claim while still holding (CleanupTask would drop first and break PROCESS→ADD).
+            if (KitchenTaskContinuation.TryClaimContinuation(
+                    bb, agent, completed, preferredSink, out var next)
+                && next != null)
+            {
+                SoftCleanupKeepHeld(completed);
+                AIDebugLogger.Log(chefName,
+                    $"Continuation claim → {next.type} {next.label}");
+                AssignTask(next);
+                return;
+            }
+
+            if (!isStagingHold
+                && wasHolding
+                && _heldItem != null
+                && (completed.type == TaskType.PROCESS || completed.type == TaskType.FETCH))
+            {
+                SoftCleanupKeepHeld(completed);
+                BeginHeldItemStagingAfterUnitComplete(completed);
+                return;
+            }
+
+            KitchenTaskContinuation.ClearChainSession(agent);
             CleanupTask();
+        }
+
+        /// <summary>
+        /// Finish a unit task without dropping the held item, so a claimed continuation
+        /// (or staging) can keep carrying it.
+        /// </summary>
+        private void SoftCleanupKeepHeld(KitchenTask completed)
+        {
+            if (_targetCounter is StoveCounter sc)
+                sc.OnCookingStageChange -= OnStoveStageChanged;
+            if (_targetCounter is TimedFacilityCounter tfc)
+                tfc.OnCookingStageChange -= OnStoveStageChanged;
+            if (_timedProcessFacility != null)
+            {
+                _timedProcessFacility.OnCookingStageChange -= OnStoveStageChanged;
+                _timedProcessFacility = null;
+            }
+            _returningPlateAfterTimedProcess = false;
+            _waitingForFreeFacility = false;
+            _abandonAfterDestinationDrop = false;
+
+            if (completed != null)
+                _aiManager?.OnAgentTaskCompleted(this, completed);
+
+            _currentTask = null;
+            _execPhase = ExecPhase.None;
+            _targetCounter = null;
+            _carryTargetItem = null;
+            _moveTimer = 0;
+            _waitTimer = 0;
+            // Keep _heldItem / _substate — AssignTask or staging will take over.
+        }
+
+        private void BeginHeldItemStagingAfterUnitComplete(KitchenTask completed)
+        {
+            if (_heldItem == null)
+                return;
+
+            var phantom = KitchenTask.Create(
+                completed?.type ?? TaskType.PROCESS,
+                "stage-hold");
+            if (completed != null)
+            {
+                phantom.orderId = completed.orderId;
+                // Do not copy stepId — staging must not re-complete recipe steps.
+                phantom.outputType = _heldItem.objEnum;
+                phantom.itemType = _heldItem.objEnum;
+            }
+
+            var dropTarget = ResolveLookAheadOrRoutedDestination(phantom)
+                ?? FindNearestFreeCounter(transform.position);
+
+            if (dropTarget == null)
+            {
+                KitchenObjFactory.Instance.DropObjServerRpc(
+                    _heldItem.NetworkObject,
+                    GetGroundDropPosition(transform.position + transform.forward * 0.5f),
+                    Vector3.down,
+                    0f,
+                    default);
+                ClearKitchenObj();
+                return;
+            }
+
+            _currentTask = phantom;
+            _currentTask.status = "executing";
+            _currentTask.assignedAgentId = agentId;
+            if (agentId >= 0)
+            {
+                var agent = _aiManager?.Blackboard?.agents.Find(a => a.agentId == agentId);
+                if (agent != null)
+                    agent.currentTask = _currentTask;
+            }
+
+            _substate = "moving";
+            _pauseCallback = null;
+            _stateTimer = 0f;
+            debugState = $"stage-hold → {dropTarget.name}";
+
+            _targetCounter = dropTarget;
+            _execPhase = ExecPhase.GotoDest;
+            float dist = Vector3.Distance(transform.position, dropTarget.transform.position);
+            if (dist <= interactionRange && CanPlaceHeldItemOn(dropTarget))
+            {
+                DropItemAtDestination();
+                return;
+            }
+
+            if (!MoveTo(dropTarget.transform.position))
+            {
+                AbandonTask();
+            }
+        }
+
+        private void TryMarkAddStepCompleted(
+            KitchenBlackboard bb,
+            int orderId,
+            KitchenObjEnum ingredient)
+        {
+            if (bb == null || orderId == 0)
+                return;
+
+            var recipe = bb.FindRecipeForOrder(orderId);
+            if (recipe == null || !bb.TryGetRecipeSteps(recipe.recipeName, out var steps))
+                return;
+
+            var addStep = steps.FirstOrDefault(s =>
+                s.taskType == TaskType.ADD_TO_PLATE
+                && s.inputType.HasValue
+                && s.inputType.Value == ingredient);
+            if (addStep == null)
+                return;
+
+            bb.SetStepState(orderId, addStep.id, "completed");
+            var plan = bb.GetOrderPlan(orderId);
+            var node = plan?.nodes?.Find(n => n.stepId == addStep.id);
+            if (node != null)
+                node.status = "completed";
+            AIDebugLogger.Log(chefName,
+                $"Marked ADD step {addStep.id} completed (ingredient already on plate)");
         }
 
         private void AbandonTask()
@@ -3129,6 +3398,12 @@ namespace Kitchen.AI
             AIDebugLogger.LogTaskAbandon(agentId, chefName, _currentTask,
                 $"substate={_substate} phase={_execPhase} timer={_stateTimer:F1}");
             if (_currentTask != null) _currentTask.status = "abandoned";
+
+            var bb = _aiManager?.Blackboard;
+            var agent = bb?.agents.Find(a => a.agentId == agentId);
+            KitchenTaskContinuation.ClearChainSession(agent);
+            KitchenTaskContinuation.ClearExclusiveDelivererForAgent(bb, agentId);
+
             CleanupTask();
         }
 
@@ -3152,6 +3427,11 @@ namespace Kitchen.AI
             _returningPlateAfterTimedProcess = false;
             _waitingForFreeFacility = false;
             _abandonAfterDestinationDrop = false;
+
+            var bbForce = _aiManager?.Blackboard;
+            var agentForce = bbForce?.agents.Find(a => a.agentId == agentId);
+            KitchenTaskContinuation.ClearChainSession(agentForce);
+            KitchenTaskContinuation.ClearExclusiveDelivererForAgent(bbForce, agentId);
 
             // Drop held item so scheduler can find it — must walk to free counter, no neighbor dump
             if (_heldItem != null)
@@ -3240,7 +3520,6 @@ namespace Kitchen.AI
                         }
 
                         if (_heldItem == null
-                            && _currentTask.itemType != 0
                             && (objOnCounter.objEnum == _currentTask.itemType
                                 || (objOnCounter is Plate inPlate
                                     && inPlate.GetIngredients().Contains(_currentTask.itemType))))

@@ -518,7 +518,7 @@ Material:
     - _OutlineDstBlendAlphaFA: 1
     - _OutlineDstBlendFA: 1
     - _OutlineEnableLighting: 1
-    - _OutlineFixWidth: 0.5
+    - _OutlineFixWidth: 0.533
     - _OutlineLitApplyTex: 0
     - _OutlineLitOffset: -8
     - _OutlineLitScale: 10

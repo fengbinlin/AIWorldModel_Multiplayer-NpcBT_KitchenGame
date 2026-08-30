@@ -234,12 +234,7 @@ namespace Kitchen.AI
             task.targetFacility = storage.counter;
             task.outputType = ingredient;
             task.duration = 1.0f; // 1 second to fetch
-            if (KitchenRouteResolver.TryResolveFetchRoute(
-                    bb, order, orderId, step, out var route, out var destination))
-            {
-                task.deliveryIntent = route.Intent;
-                task.destFacility = destination;
-            }
+            // Destination is chosen at execute-time via KitchenTaskContinuation look-ahead.
             tasks.Add(task);
         }
 
@@ -853,7 +848,7 @@ namespace Kitchen.AI
                 .ThenBy(x => x.index)
                 .Select(x => x.task)
                 .ToList();
-            var remainingAgents = new Queue<AgentState>(idleAgents);
+            var remainingAgents = new List<AgentState>(idleAgents);
             var assignedTaskIds = new HashSet<int>();
 
             foreach (var task in availableTasks)
@@ -869,20 +864,40 @@ namespace Kitchen.AI
                         || (itemState.reservedByTask >= 0
                             && itemState.reservedByTask != task.id))
                     {
-                        if (task.type == TaskType.SERVE)
+                        // Don't stall the whole panel on one bad ADD/SERVE item.
+                        if (task.type == TaskType.SERVE || task.type == TaskType.ADD_TO_PLATE)
                             continue;
                         break;
                     }
                 }
 
-                var agent = remainingAgents.Peek();
+                AgentState agent = null;
+                int exclusiveId = KitchenTaskContinuation.FindExclusiveHolderAgentId(bb, task);
+                if (exclusiveId >= 0)
+                {
+                    agent = remainingAgents.Find(a => a.agentId == exclusiveId);
+                    // Exclusive holder/deliverer not in the idle pool this tick
+                    // (busy, or already assigned another task) → do not stall; give to others.
+                    if (agent == null)
+                        agent = remainingAgents[0];
+                }
+                else
+                {
+                    agent = remainingAgents[0];
+                }
+
+                if (agent == null)
+                    continue;
 
                 bool skipFacilityReserve = task.type == TaskType.FETCH_PLATE
                     || task.type == TaskType.ADD_TO_PLATE
                     || task.type == TaskType.TRASH;
                 if (!TryReserveTaskFacilities(task, agent, bb, skipFacilityReserve))
                 {
-                    if (task.type == TaskType.SERVE)
+                    if (task.type == TaskType.SERVE || task.type == TaskType.ADD_TO_PLATE)
+                        continue;
+                    // Exclusive holder cannot reserve yet — keep waiting, don't give to others.
+                    if (exclusiveId >= 0 && agent.agentId == exclusiveId)
                         continue;
                     break;
                 }
@@ -899,7 +914,7 @@ namespace Kitchen.AI
 
                 task.status = "assigned";
                 task.assignedAgentId = agent.agentId;
-                remainingAgents.Dequeue();
+                remainingAgents.Remove(agent);
                 agent.currentTask = task;
                 agent.substate = "moving";
 
@@ -1139,6 +1154,13 @@ namespace Kitchen.AI
             }
             task.reservedItemIds.Clear();
         }
+
+        public static bool TryReserveTaskFacilitiesPublic(
+            KitchenTask task,
+            AgentState agent,
+            KitchenBlackboard bb,
+            bool skipTargetReserve)
+            => TryReserveTaskFacilities(task, agent, bb, skipTargetReserve);
 
         private static bool TryReserveTaskFacilities(
             KitchenTask task,

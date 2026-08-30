@@ -67,13 +67,15 @@ namespace Kitchen.Skin
             if (mode == SkinResolvedMode.Prefab)
             {
                 var inst = SkinMeshUtil.ReplaceVisualChild(transform, entry.visualPrefab);
-                if (inst != null && counter is ContainerCounter)
+                if (inst != null && counter is ContainerCounter container)
                 {
                     var visual = inst.GetComponent<ContainerCounterVisual>();
                     if (visual == null)
                         visual = inst.AddComponent<ContainerCounterVisual>();
                     // 换肤可能发生在 Start 之后（PGC 在 Spawn 后再 ApplyOn），补一次订阅
                     visual.TrySubscribe();
+                    // TopPoint 样品在换肤后重建（图标已弃用）
+                    container.RefreshSampleDisplay();
                 }
                 else if (inst != null && counter is PlatesCounter)
                 {

@@ -85,7 +85,10 @@ namespace Kitchen.PGC
                 {
                     var container = go.GetComponent<ContainerCounter>();
                     if (container != null)
+                    {
                         container.objEnum = node.ingredient;
+                        // ApplyOn below will also refresh; call after Apply for safety.
+                    }
                 }
 
                 if (networkSpawn)
@@ -100,6 +103,12 @@ namespace Kitchen.PGC
 
                 // 显式套皮（不依赖 Start 时序）
                 CounterSkinApplier.ApplyOn(go);
+
+                if (node.type == FacilityType.Storage && node.hasIngredient && !node.isWallPlaceholder)
+                {
+                    var container = go.GetComponent<ContainerCounter>();
+                    container?.RefreshSampleDisplay();
+                }
             }
 
             Debug.Log(

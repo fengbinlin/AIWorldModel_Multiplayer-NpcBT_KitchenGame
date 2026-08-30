@@ -70,6 +70,11 @@ namespace Kitchen.AI
         public int carriedByAgent;   // -1 if on ground
         public int reservedByTask;   // -1 if not reserved
         public int orderId;          // 0 if not bound to an order
+        /// <summary>
+        /// Agent who just delivered this item for an upcoming PROCESS/ADD; -1 = none.
+        /// Used for holder exclusivity (hard assign gate).
+        /// </summary>
+        public int exclusiveDelivererAgentId = -1;
 
         public Vector3 Position => kitchenObj != null && kitchenObj.IsFree
             ? kitchenObj.transform.position
@@ -95,6 +100,9 @@ namespace Kitchen.AI
         public float waitTimer;
 
         public float stuckTimer; // For deadlock detection
+
+        /// <summary>0 = not in an opportunistic continuous run.</summary>
+        public int chainSessionId;
 
         public bool IsIdle => currentTask == null
             || currentTask.status == "completed"

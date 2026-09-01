@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Kitchen.AI;
+using Kitchen.Config;
 using Kitchen.PGC;
 using Pathfinding;
 using Unity.Netcode;
@@ -63,6 +64,8 @@ namespace Kitchen
         private bool _roundBuilt;
         private PGCLayoutResult _lastLayout;
         private Transform _spawnedRoot;
+        private bool _hasConfiguredRunSeed;
+        private int _configuredRunSeed;
 
         public bool UseRandomRecipes => useRandomRecipes;
         public int RandomRecipeCount => randomRecipeCount;
@@ -96,6 +99,54 @@ namespace Kitchen
         {
             if (Instance == this)
                 Instance = null;
+        }
+
+        public void ApplyTaskConfig(WorldTaskConfig config, int agentCount, int runSeed)
+        {
+            useRandomRecipes = config.useRandomRecipes;
+            randomRecipeCount = config.randomRecipeCount;
+            playW = config.width;
+            playH = config.height;
+            dilateKernel = config.dilateKernel;
+            pathRandomness = config.pathRandomness;
+            extraEdges = config.extraEdges;
+            cellSize = config.cellSize;
+            layoutSeed = config.layoutSeed;
+            randomizeLayoutSeed = config.randomizeLayoutSeed;
+            spawnCount = agentCount;
+            destroyExistingCounters = config.destroyExistingCounters;
+            networkSpawnCounters = config.networkSpawnCounters;
+            runOnStart = false;
+            _configuredRunSeed = runSeed;
+            _hasConfiguredRunSeed = true;
+
+            if (config.recipeNames.Length > 0)
+            {
+                var resolved = ResolveRecipes(config.recipeNames);
+                if (resolved.Count == 0)
+                    throw new ArgumentException("world.recipeNames did not resolve to any recipe assets");
+                defaultRecipes = resolved;
+                randomSourceRecipes = new List<RecipeSo>(resolved);
+            }
+        }
+
+        private static List<RecipeSo> ResolveRecipes(IEnumerable<string> recipeNames)
+        {
+            var available = Resources.LoadAll<RecipeSo>(DefaultRecipeResourcePath);
+            var result = new List<RecipeSo>();
+            foreach (string requested in recipeNames)
+            {
+                if (string.IsNullOrWhiteSpace(requested)) continue;
+                RecipeSo match = Array.Find(available, recipe =>
+                    recipe != null &&
+                    (string.Equals(recipe.name, requested, StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(recipe.recipeName, requested, StringComparison.OrdinalIgnoreCase)));
+                if (match == null)
+                    throw new ArgumentException($"Unknown recipe in world.recipeNames: '{requested}'");
+                if (!result.Contains(match))
+                    result.Add(match);
+            }
+            return result;
         }
 
         /// <summary>
@@ -153,9 +204,11 @@ namespace Kitchen
         /// </summary>
         public PGCLayoutResult RunFullPipeline()
         {
-            // 每次开局用时间戳重播 Unity.Random，保证随机菜谱 + 地图种子互不相同。
-            // （复现布局时关掉 randomizeLayoutSeed，仍会先抽菜谱再固定 layoutSeed。）
-            int runSeed = unchecked(Environment.TickCount ^ (int)DateTime.UtcNow.Ticks);
+            // Task mode seeds Unity.Random from run.seed for reproducible recipe/layout sampling.
+            // Interactive mode keeps the historical time-based seed.
+            int runSeed = _hasConfiguredRunSeed
+                ? _configuredRunSeed
+                : unchecked(Environment.TickCount ^ (int)DateTime.UtcNow.Ticks);
             Random.InitState(runSeed);
 
             BuildRoundPool(force: true);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using Kitchen.Config;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -27,6 +28,8 @@ namespace Kitchen.AI.Recording
         [SerializeField] private string _outputRootFolder = "KitchenTrainingRecordings";
         [Tooltip("Max background PNG writes queued. Blocks (freezes sim via waiting) until under limit.")]
         [SerializeField] private int _maxPendingWrites = 64;
+        [SerializeField] private bool _captureGlobalCamera = true;
+        [SerializeField] private bool _captureAgentCameras = true;
 
         [Header("Cameras")]
         [SerializeField] private Camera _globalCamera;
@@ -49,10 +52,35 @@ namespace Kitchen.AI.Recording
         /// </summary>
         private RecordingFrameData _pendingFrame;
         private bool _hasPendingFrame;
+        private bool _recordingEnabled = true;
+        private string _taskId = "interactive";
+        private string _workerId = "0";
+        private int _taskSeed;
+        private string _taskConfigPath;
 
         public bool IsRecording => _isRecording;
         public string SessionDirectory => _sessionDir;
         public int PendingAsyncWrites => RecordingCameraUtility.PendingAsyncWrites;
+
+        public void ApplyTaskConfig(
+            RecordingTaskConfig recording,
+            RunTaskConfig run,
+            string taskConfigPath)
+        {
+            _recordingEnabled = recording.enabled;
+            _autoStartWhenPlaying = recording.enabled && recording.autoStart;
+            _captureFps = recording.captureFps;
+            _frameWidth = recording.width;
+            _frameHeight = recording.height;
+            _outputRootFolder = recording.outputDirectory;
+            _maxPendingWrites = recording.maxPendingWrites;
+            _captureGlobalCamera = recording.captureGlobalCamera;
+            _captureAgentCameras = recording.captureAgentCameras;
+            _taskId = run.taskId;
+            _workerId = run.workerId;
+            _taskSeed = run.seed;
+            _taskConfigPath = taskConfigPath;
+        }
 
         private void Awake()
         {
@@ -78,7 +106,8 @@ namespace Kitchen.AI.Recording
                     _globalCamera.cullingMask |= 1 << ui;
             }
 
-            _globalRt = RecordingCameraUtility.CreateRenderTexture(_frameWidth, _frameHeight);
+            if (_recordingEnabled && _captureGlobalCamera)
+                _globalRt = RecordingCameraUtility.CreateRenderTexture(_frameWidth, _frameHeight);
         }
 
         private void Update()
@@ -151,6 +180,11 @@ namespace Kitchen.AI.Recording
 
         public void StartRecording(bool manual)
         {
+            if (!_recordingEnabled)
+            {
+                Debug.LogWarning("[KitchenSessionRecorder] Recording is disabled by task config.");
+                return;
+            }
             if (_isRecording) return;
             if (manual)
                 _manualStopRequested = false;
@@ -162,13 +196,24 @@ namespace Kitchen.AI.Recording
                 return;
             }
 
-            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            _sessionDir = Path.Combine(Application.dataPath, "..", _outputRootFolder, $"session_{stamp}");
+            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+            string sessionId = $"session_{SafePathSegment(_taskId)}_w{SafePathSegment(_workerId)}_{stamp}";
+            string outputRoot = Path.IsPathRooted(_outputRootFolder)
+                ? _outputRootFolder
+                : Path.Combine(Application.dataPath, "..", _outputRootFolder);
+            _sessionDir = Path.Combine(outputRoot, sessionId);
             _sessionDir = Path.GetFullPath(_sessionDir);
             Directory.CreateDirectory(_sessionDir);
-            Directory.CreateDirectory(Path.Combine(_sessionDir, "global"));
-            foreach (var agent in _agents)
-                Directory.CreateDirectory(Path.Combine(_sessionDir, $"agent_{agent.Chef.agentId}"));
+            if (_captureGlobalCamera)
+                Directory.CreateDirectory(Path.Combine(_sessionDir, "global"));
+            if (_captureAgentCameras)
+            {
+                foreach (var agent in _agents)
+                    Directory.CreateDirectory(Path.Combine(_sessionDir, $"agent_{agent.Chef.agentId}"));
+            }
+
+            if (!string.IsNullOrEmpty(_taskConfigPath) && File.Exists(_taskConfigPath))
+                File.Copy(_taskConfigPath, Path.Combine(_sessionDir, "task.json"), overwrite: true);
 
             _framesJsonlPath = Path.Combine(_sessionDir, "frames.jsonl");
             _frameIndex = 0;
@@ -180,14 +225,17 @@ namespace Kitchen.AI.Recording
 
             foreach (var agent in _agents)
             {
-                agent.Initialize(_frameWidth, _frameHeight, _recordStartTime);
+                agent.Initialize(_frameWidth, _frameHeight, _recordStartTime, _captureAgentCameras);
                 agent.BeginFrame();
             }
 
             float simDt = GetSimDelta();
             _manifest = new RecordingSessionManifest
             {
-                sessionId = $"session_{stamp}",
+                sessionId = sessionId,
+                taskId = _taskId,
+                workerId = _workerId,
+                seed = _taskSeed,
                 gameName = KitchenCameraInfoUtility.DefaultGameName,
                 unityTimeStart = _recordStartTime,
                 frameWidth = _frameWidth,
@@ -325,10 +373,10 @@ namespace Kitchen.AI.Recording
                 FlushPendingWrites(timeoutSeconds: 30f);
 
             int frame = _frameIndex;
-            string globalRel = $"global/frame_{frame:D6}.png";
-            string globalAbs = Path.Combine(_sessionDir, globalRel);
+            string globalRel = _captureGlobalCamera ? $"global/frame_{frame:D6}.png" : "";
+            string globalAbs = _captureGlobalCamera ? Path.Combine(_sessionDir, globalRel) : "";
 
-            if (_globalCamera != null)
+            if (_captureGlobalCamera && _globalCamera != null)
             {
                 var pixels = RecordingCameraUtility.CapturePixels(_globalCamera, _globalRt);
                 RecordingCameraUtility.SavePixelsAsync(pixels, _frameWidth, _frameHeight, globalAbs);
@@ -341,9 +389,11 @@ namespace Kitchen.AI.Recording
                 var agent = _agents[i];
                 // Pitch bias must be applied before FP render + angle sample.
                 agent.SyncPitchForCapture();
-                string rel = $"agent_{agent.Chef.agentId}/fp_{frame:D6}.png";
-                string abs = Path.Combine(_sessionDir, rel);
-                agent.CaptureImageAsync(abs);
+                string rel = _captureAgentCameras
+                    ? $"agent_{agent.Chef.agentId}/fp_{frame:D6}.png"
+                    : "";
+                if (_captureAgentCameras)
+                    agent.CaptureImageAsync(Path.Combine(_sessionDir, rel));
                 playerFrames[i] = agent.CaptureState(rel);
                 // Action that moved prev→current; belongs on the previous frame.
                 transitionActions[i] = agent.ConsumeTransitionAction();
@@ -381,6 +431,14 @@ namespace Kitchen.AI.Recording
             _hasPendingFrame = true;
 
             _frameIndex++;
+        }
+
+        private static string SafePathSegment(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return "unnamed";
+            foreach (char c in Path.GetInvalidFileNameChars())
+                value = value.Replace(c, '_');
+            return value.Replace(' ', '_');
         }
     }
 }

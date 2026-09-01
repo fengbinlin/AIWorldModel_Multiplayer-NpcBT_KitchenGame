@@ -1,4 +1,5 @@
 using Cysharp.Threading.Tasks;
+using Kitchen.Config;
 using Kitchen.Skin;
 using Unity.Netcode;
 using Unity.Services.Authentication;
@@ -33,6 +34,20 @@ namespace Kitchen
         [SerializeField] private bool autoReady = true;
         [SerializeField] private float autoReadyDelay = 1.5f;
 
+        private bool _initializeUnityServices = true;
+
+        public void ApplyTaskConfig(
+            RunTaskConfig run,
+            EpisodeTaskConfig episode,
+            AgentTaskConfig agents)
+        {
+            _initializeUnityServices = run.initializeUnityServices;
+            enableAIChefs = agents.enabled;
+            disableHumanInput = agents.enabled;
+            autoReady = episode.autoReady;
+            autoReadyDelay = episode.autoReadyDelaySeconds;
+        }
+
         private async void Start()
         {
             // 等待一帧，确保所有 Awake/Start 执行完毕
@@ -49,14 +64,14 @@ namespace Kitchen
             // Step 1: 初始化 Unity Services + 匿名认证
             // GameManager 的客户端连接回调需要 AuthenticationService.PlayerId
             // ============================================================
-            if (UnityServices.State != ServicesInitializationState.Initialized)
+            if (_initializeUnityServices && UnityServices.State != ServicesInitializationState.Initialized)
             {
                 var options = new InitializationOptions();
                 options.SetProfile($"dev_{Random.Range(0, 100000)}");
                 await UnityServices.InitializeAsync(options);
             }
 
-            if (!AuthenticationService.Instance.IsSignedIn)
+            if (_initializeUnityServices && !AuthenticationService.Instance.IsSignedIn)
             {
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();
             }

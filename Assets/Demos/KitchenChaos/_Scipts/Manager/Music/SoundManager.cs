@@ -1,7 +1,6 @@
 ﻿using System;
 using Cysharp.Threading.Tasks;
 using Nico.Design;
-using Nico.Exception;
 using UnityEngine;
 
 namespace Kitchen.Music
@@ -9,19 +8,23 @@ namespace Kitchen.Music
     public class SoundManager : SceneSingleton<SoundManager>
     {
         [SerializeField] AudioClipData audioClipData;
+        private DeliveryManager _deliveryManager;
+        private GameManager _gameManager;
+        private Player.Player _localPlayer;
 
         protected override void OnEnable()
         {
             base.OnEnable();
-            var deliveryManager = DeliveryManager.Instance;
-            deliveryManager.OnOrderSuccess += _OnOrderSuccess;
-            deliveryManager.OnOrderFailed += _OnOrderFailed;
+            _deliveryManager = DeliveryManager.Instance;
+            _deliveryManager.OnOrderSuccess += _OnOrderSuccess;
+            _deliveryManager.OnOrderFailed += _OnOrderFailed;
             CuttingCounter.OnAnyCut += _CuttingCounter_OnAnyCut;
 
             Player.Player.OnAnyPickUpSomeThing += _On_PickUpSomeThing;
             if (Player.Player.LocalInstance != null)
             {
-                Player.Player.LocalInstance.MoveController.onMoving += _Player_OnMoving;
+                _localPlayer = Player.Player.LocalInstance;
+                _localPlayer.MoveController.onMoving += _Player_OnMoving;
             }
             else
             {
@@ -31,14 +34,16 @@ namespace Kitchen.Music
 
             BaseCounter.OnAnyObjPlaceOnCounter += _BaseCounter_OnAnyObjPlaceOnCounter;
             TrashCounter.OnAnyObjTrashed += _TrashCounter_OnAnyObjTrashed;
-            GameManager.Instance.OnCountDownChange += _OnCountDownChanged;
+            _gameManager = GameManager.Instance;
+            _gameManager.OnCountDownChange += _OnCountDownChanged;
         }
 
         private void _OnAnyPlayerSpawned()
         {
             if (Player.Player.LocalInstance != null)
             {
-                Player.Player.LocalInstance.MoveController.onMoving += _Player_OnMoving;
+                _localPlayer = Player.Player.LocalInstance;
+                _localPlayer.MoveController.onMoving += _Player_OnMoving;
                 Player.Player.OnAnyPlayerSpawned -= _OnAnyPlayerSpawned;
             }
         }
@@ -46,33 +51,23 @@ namespace Kitchen.Music
 
         private void OnDisable()
         {
-            try
+            if (_deliveryManager != null)
             {
-                DeliveryManager.Instance.OnOrderSuccess -= _OnOrderSuccess;
-                DeliveryManager.Instance.OnOrderFailed -= _OnOrderFailed;
-            }
-            catch (SingletonException)
-            {
+                _deliveryManager.OnOrderSuccess -= _OnOrderSuccess;
+                _deliveryManager.OnOrderFailed -= _OnOrderFailed;
             }
 
 
             CuttingCounter.OnAnyCut -= _CuttingCounter_OnAnyCut;
             Player.Player.OnAnyPickUpSomeThing -= _On_PickUpSomeThing;
-            try
-            {
-                Player.Player.LocalInstance.MoveController.onMoving -= _Player_OnMoving;
-            }
-            catch (NullReferenceException)
-            {
-            }
+            if (_localPlayer != null)
+                _localPlayer.MoveController.onMoving -= _Player_OnMoving;
 
             BaseCounter.OnAnyObjPlaceOnCounter -= _BaseCounter_OnAnyObjPlaceOnCounter;
             TrashCounter.OnAnyObjTrashed -= _TrashCounter_OnAnyObjTrashed;
 
-            if (GameManager.Instance is not null)
-            {
-                GameManager.Instance.OnCountDownChange -= _OnCountDownChanged;
-            }
+            if (_gameManager != null)
+                _gameManager.OnCountDownChange -= _OnCountDownChanged;
         }
 
 

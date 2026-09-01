@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Kitchen.Config;
 using Kitchen.Player;
 using Kitchen.Skin;
 using Kitchen.Visual;
@@ -64,10 +65,42 @@ namespace Kitchen.AI
         private int _schedulerCycle;
         private float _zeroTaskTimer; // Time spent with 0 tasks available
         private float _lastBlackboardDumpTime; // Throttle blackboard dumps
+        private AgentTaskConfig _taskAgentConfig;
 
         public IReadOnlyList<AIChefController> GetChefs() => _aiChefs;
 
         public IReadOnlyList<AgentState> GetAgentStates() => _agentStates;
+
+        public void ApplyTaskConfig(AgentTaskConfig agents, LoggingTaskConfig logging)
+        {
+            _autoStart = agents.enabled;
+            _scheduleInterval = agents.scheduleIntervalSeconds;
+            _aiMoveSpeed = agents.moveSpeed;
+            _aiInteractionRange = agents.interactionRange;
+            _aiArrivalThreshold = agents.arrivalThreshold;
+            _aiStuckTimeout = agents.stuckTimeoutSeconds;
+            _aiAgentRadius = agents.radius;
+            _aiRvoBasePriority = agents.rvoBasePriority;
+            _aiApproachOffset = agents.approachOffset;
+            _verboseLogging = logging.enabled;
+            _taskAgentConfig = agents;
+
+            if (agents.colors.Length > 0)
+            {
+                var parsedColors = new List<Color>();
+                foreach (string value in agents.colors)
+                {
+                    if (ColorUtility.TryParseHtmlString(value, out Color color))
+                        parsedColors.Add(color);
+                    else
+                        Debug.LogWarning($"[KitchenAIManager] Invalid agent color '{value}'.");
+                }
+                if (parsedColors.Count > 0)
+                    _aiColors = parsedColors;
+            }
+
+            AIDebugLogger.Enabled = _verboseLogging;
+        }
 
         #region Unity Lifecycle
 
@@ -216,6 +249,8 @@ namespace Kitchen.AI
                     chef.interactionRange = _aiInteractionRange;
                     chef.arrivalThreshold = _aiArrivalThreshold;
                     chef.stuckTimeout = _aiStuckTimeout;
+                    if (_taskAgentConfig != null)
+                        chef.ApplyTaskConfig(_taskAgentConfig);
                     chef.SetSpawnPosition(spawnPoint.position);
 
                     Color c = _aiColors.Count > 0
@@ -261,6 +296,8 @@ namespace Kitchen.AI
                 chef.interactionRange = _aiInteractionRange;
                 chef.arrivalThreshold = _aiArrivalThreshold;
                 chef.stuckTimeout = _aiStuckTimeout;
+                if (_taskAgentConfig != null)
+                    chef.ApplyTaskConfig(_taskAgentConfig);
                 chef.SetApproachOffset(_aiApproachOffset);
                 chef.SetAIParams(_aiAgentRadius, _aiMoveSpeed,
                     Mathf.Clamp01(_aiRvoBasePriority + chefIdx * 0.05f), _aiApproachOffset);

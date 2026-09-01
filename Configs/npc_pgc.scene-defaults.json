@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "run": {
+    "taskId": "npc-pgc-scene-defaults",
+    "workerId": "0",
+    "scene": "NPC_PGC",
+    "seed": 42,
+    "timeScale": 1.0,
+    "targetFrameRate": -1,
+    "quitOnGameOver": true,
+    "initializeUnityServices": false
+  },
+  "episode": {
+    "durationSeconds": 0.0,
+    "readyCountdownSeconds": 1,
+    "maxPlayers": 4,
+    "autoReady": true,
+    "autoReadyDelaySeconds": 0.0
+  },
+  "world": {
+    "useRandomRecipes": true,
+    "randomRecipeCount": 3,
+    "recipeNames": [],
+    "width": 16,
+    "height": 10,
+    "dilateKernel": 0,
+    "pathRandomness": 1.4,
+    "extraEdges": 1,
+    "cellSize": 1.5,
+    "layoutSeed": 42,
+    "randomizeLayoutSeed": true,
+    "destroyExistingCounters": true,
+    "networkSpawnCounters": true
+  },
+  "agents": {
+    "enabled": true,
+    "count": 4,
+    "scheduleIntervalSeconds": 0.2,
+    "moveSpeed": 4.2,
+    "interactionRange": 2.5,
+    "arrivalThreshold": 0.4,
+    "stuckTimeoutSeconds": 8.0,
+    "radius": 0.7,
+    "rvoBasePriority": 0.5,
+    "approachOffset": 1.2,
+    "colors": ["#ff0000", "#0000ff", "#00ff00", "#ffeb04"],
+    "interactAnimationHoldSeconds": 1.35,
+    "postInteractAnimationHoldSeconds": 0.85,
+    "minimumWorkAnimationSeconds": 2.8,
+    "minimumWaitAnimationSeconds": 1.6,
+    "enableWander": true,
+    "idleWanderPointCount": 12,
+    "wanderRadius": 5.0,
+    "wanderIntervalSeconds": 3.0,
+    "wanderNavmeshTolerance": 0.5,
+    "detourRadius": 2.5,
+    "detourAngleStep": 60.0
+  },
+  "orders": {
+    "spawnIntervalSeconds": 2.0,
+    "spawnJitterSeconds": 1.0,
+    "maxActive": 3
+  },
+  "recording": {
+    "enabled": true,
+    "autoStart": true,
+    "captureFps": 60.0,
+    "width": 1920,
+    "height": 1080,
+    "outputDirectory": "KitchenTrainingRecordings",
+    "maxPendingWrites": 64,
+    "captureGlobalCamera": true,
+    "captureAgentCameras": true
+  },
+  "network": {
+    "address": "127.0.0.1",
+    "listenAddress": "0.0.0.0",
+    "port": 7777,
+    "tickRate": 30
+  },
+  "appearance": {
+    "overrideGlobalSkin": false,
+    "globalSkinId": 0,
+    "enableCharacterAnimation": false
+  },
+  "logging": {
+    "enabled": true,
+    "outputDirectory": "",
+    "fileName": "ai_debug.log"
+  }
+}

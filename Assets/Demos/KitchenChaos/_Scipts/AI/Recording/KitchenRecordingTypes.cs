@@ -90,6 +90,9 @@ namespace Kitchen.AI.Recording
     public class RecordingSessionManifest
     {
         public string sessionId;
+        public string taskId;
+        public string workerId;
+        public int seed;
         public string gameName;
         public float unityTimeStart;
         public int frameWidth;

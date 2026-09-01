@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Kitchen.AI;
+using Kitchen.Config;
 using Nico.MVC;
 using Nico.Network;
 using Unity.Netcode;
@@ -20,6 +21,7 @@ namespace Kitchen
         private readonly List<string> _waitingOrderCodes = new();
         private CancellationTokenSource _orderGenerateCts;
         private long _nextOrderSequence;
+        private GameManager _subscribedGameManager;
 
         public float spawnTime = 5f;
         public float spawnTimeRange = 2f;
@@ -29,6 +31,13 @@ namespace Kitchen
         public event EventHandler<RecipeSo> OnOrderFinished;
         public event EventHandler<Vector3> OnOrderSuccess;
         public event EventHandler<Vector3> OnOrderFailed;
+
+        public void ApplyTaskConfig(OrderTaskConfig config)
+        {
+            spawnTime = config.spawnIntervalSeconds;
+            spawnTimeRange = config.spawnJitterSeconds;
+            maxOrderCount = config.maxActive;
+        }
 
         protected override void Awake()
         {
@@ -284,17 +293,18 @@ namespace Kitchen
         protected override void OnEnable()
         {
             base.OnEnable();
-            GameManager.Instance.stateMachine.onStateChange += _OnGameStateChange;
+            _subscribedGameManager = GameManager.Instance;
+            _subscribedGameManager.stateMachine.onStateChange += _OnGameStateChange;
         }
 
         private void OnDisable()
         {
             _orderGenerateCts?.Cancel();
 
-            if (GameManager.Instance != null)
-            {
-                GameManager.Instance.stateMachine.onStateChange -= _OnGameStateChange;
-            }
+            if (_subscribedGameManager != null)
+                _subscribedGameManager.stateMachine.onStateChange -= _OnGameStateChange;
+
+            _subscribedGameManager = null;
         }
 
         #endregion

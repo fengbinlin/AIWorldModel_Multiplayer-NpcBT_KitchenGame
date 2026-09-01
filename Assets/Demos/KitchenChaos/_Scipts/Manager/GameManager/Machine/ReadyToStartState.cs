@@ -52,7 +52,6 @@ namespace Kitchen
             }
 
             owner.ChangeStateClientRpc(GameStateEnum.Playing);
-            stateMachine.Change<PlayingState>();
             return;
         }
     }

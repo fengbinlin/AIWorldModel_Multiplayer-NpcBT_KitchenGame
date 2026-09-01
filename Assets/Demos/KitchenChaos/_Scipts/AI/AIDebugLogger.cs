@@ -8,19 +8,19 @@ namespace Kitchen.AI
 {
     /// <summary>
     /// File-based debug logger for the AI Chef system.
-    /// Writes structured logs to a file in persistentDataPath so they can be
-    /// copied and shared for debugging.
+    /// Writes structured logs to a configurable file so they can be copied and shared.
     ///
     /// Usage:
     ///   AIDebugLogger.Log("Scheduler", "Assigning task...");
     ///   AIDebugLogger.LogState("Agent1", "moving", "→ CuttingCounter(3)");
     ///   AIDebugLogger.LogError("Agent2", "Stuck! Abandoning task");
     ///
-    /// Log file location: {persistentDataPath}/ai_debug_log.txt
-    /// Previous session's log is moved to ai_debug_log_prev.txt on startup.
+    /// Without a task config, the log is written next to the Unity project/player.
     /// </summary>
     public static class AIDebugLogger
     {
+        public static bool Enabled { get; set; } = true;
+
         private static StringBuilder _buffer = new StringBuilder(65536);
         private static string _logPath;
         private static bool _initialized;
@@ -30,6 +30,8 @@ namespace Kitchen.AI
         // How often to flush to disk (in seconds)
         private const float FLUSH_INTERVAL = 1.0f;
         private static float _lastFlushTime;
+        private static string _configuredOutputDirectory;
+        private static string _configuredFileName = "ai_debug_log.txt";
 
         // Max lines before forcing a flush
         private const int MAX_BUFFER_LINES = 200;
@@ -41,19 +43,38 @@ namespace Kitchen.AI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void AutoInit()
         {
-            Init();
+            _initialized = false;
+            _buffer.Clear();
+        }
+
+        public static void Configure(bool enabled, string outputDirectory, string fileName)
+        {
+            if (_initialized)
+                FlushToDisk();
+
+            Enabled = enabled;
+            _configuredOutputDirectory = outputDirectory;
+            _configuredFileName = string.IsNullOrWhiteSpace(fileName) ? "ai_debug.log" : fileName;
+            _initialized = false;
+            _buffer.Clear();
+            if (Enabled)
+                Init();
         }
 
         public static void Init()
         {
-            if (_initialized) return;
+            if (!Enabled || _initialized) return;
 
-            // Write to project root (one level above Assets/)
-            string projectRoot = Path.GetDirectoryName(Application.dataPath);
-            _logPath = Path.Combine(projectRoot, "ai_debug_log.txt");
+            string outputDirectory = string.IsNullOrWhiteSpace(_configuredOutputDirectory)
+                ? Path.GetDirectoryName(Application.dataPath)
+                : _configuredOutputDirectory;
+            Directory.CreateDirectory(outputDirectory);
+            _logPath = Path.Combine(outputDirectory, _configuredFileName);
 
             // Rotate previous log
-            string prevPath = Path.Combine(projectRoot, "ai_debug_log_prev.txt");
+            string extension = Path.GetExtension(_configuredFileName);
+            string previousName = Path.GetFileNameWithoutExtension(_configuredFileName) + "_prev" + extension;
+            string prevPath = Path.Combine(outputDirectory, previousName);
             try
             {
                 if (File.Exists(_logPath))
@@ -250,6 +271,7 @@ namespace Kitchen.AI
         /// </summary>
         public static void FlushToDisk()
         {
+            if (!Enabled) return;
             if (_buffer.Length == 0) return;
             try
             {
@@ -267,7 +289,7 @@ namespace Kitchen.AI
         /// </summary>
         public static void Update()
         {
-            if (!_initialized) return;
+            if (!Enabled || !_initialized) return;
 
             _frameCount++;
             float timeSinceFlush = Time.time - _lastFlushTime;
@@ -300,6 +322,7 @@ namespace Kitchen.AI
 
         private static void EnsureInit()
         {
+            if (!Enabled) return;
             if (!_initialized) Init();
         }
 
@@ -314,11 +337,13 @@ namespace Kitchen.AI
 
         private static void AppendLine(string line)
         {
+            if (!Enabled) return;
             _buffer.AppendLine(line);
         }
 
         private static void AppendToBuffer(string text)
         {
+            if (!Enabled) return;
             _buffer.Append(text);
         }
 

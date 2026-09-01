@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Kitchen.Config;
 using UnityEngine;
 
 namespace Kitchen.Skin
@@ -66,6 +67,13 @@ namespace Kitchen.Skin
         public SkinIdGranularity CharacterIdGranularity => characterIdGranularity;
         public bool EnableCharacterAnimation => enableCharacterAnimation;
         public int SessionAppearanceSeed => _sessionAppearanceSeed;
+
+        public void ApplyTaskConfig(AppearanceTaskConfig config)
+        {
+            enableCharacterAnimation = config.enableCharacterAnimation;
+            if (config.overrideGlobalSkin)
+                SetRuntimeGlobalSkinId(config.globalSkinId);
+        }
 
         private void Awake()
         {

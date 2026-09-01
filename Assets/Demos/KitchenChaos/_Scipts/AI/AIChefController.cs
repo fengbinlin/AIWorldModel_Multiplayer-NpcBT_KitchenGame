@@ -4,6 +4,7 @@ using UnityEngine;
 using Unity.Netcode;
 using Pathfinding;
 using Kitchen;
+using Kitchen.Config;
 
 namespace Kitchen.AI
 {
@@ -226,6 +227,26 @@ namespace Kitchen.AI
                 rvo.radius = r;
                 rvo.priority = rvoPriority;
             }
+        }
+
+        public void ApplyTaskConfig(AgentTaskConfig config)
+        {
+            moveSpeed = config.moveSpeed;
+            interactionRange = config.interactionRange;
+            arrivalThreshold = config.arrivalThreshold;
+            stuckTimeout = config.stuckTimeoutSeconds;
+            _approachOffset = config.approachOffset;
+            _interactAnimHoldSeconds = config.interactAnimationHoldSeconds;
+            _postInteractAnimHoldSeconds = config.postInteractAnimationHoldSeconds;
+            _minWorkAnimSeconds = config.minimumWorkAnimationSeconds;
+            _minWaitAnimSeconds = config.minimumWaitAnimationSeconds;
+            _enableWander = config.enableWander;
+            _idleWanderPointCount = config.idleWanderPointCount;
+            _wanderRadius = config.wanderRadius;
+            _wanderInterval = config.wanderIntervalSeconds;
+            _wanderNavmeshTolerance = config.wanderNavmeshTolerance;
+            _detourRadius = config.detourRadius;
+            _detourAngleStep = config.detourAngleStep;
         }
 
         /// <summary>Force immediate path recalculation (called by scheduler).</summary>

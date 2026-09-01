@@ -8,6 +8,7 @@ using Nico.Network;
 using Sirenix.OdinInspector;
 using Unity.Netcode;
 using Unity.Services.Authentication;
+using Unity.Services.Core;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -20,6 +21,7 @@ namespace Kitchen
         public NetworkList<PlayerConfig> playerConfigs { get; private set; }
         [field: SerializeField] public List<Color> playerColors { get; private set; } = new List<Color>();
         private string _playerName;
+        private string _runtimePlayerId;
 
         public string playerName
         {
@@ -40,6 +42,26 @@ namespace Kitchen
         public event Action<ulong> OnConnectingFailed;
 
         #endregion
+
+        public void ApplyTaskConfig(EpisodeTaskConfig episode, RunTaskConfig run)
+        {
+            setting ??= new GameSetting();
+            setting.gameDurationSetting = episode.durationSeconds;
+            setting.readyCountDown = episode.readyCountdownSeconds;
+            setting.maxPlayerCount = episode.maxPlayers;
+            _runtimePlayerId = $"rollout-{run.taskId}-{run.workerId}";
+        }
+
+        private string GetPlayerServiceId()
+        {
+            if (UnityServices.State == ServicesInitializationState.Initialized &&
+                AuthenticationService.Instance.IsSignedIn)
+                return AuthenticationService.Instance.PlayerId;
+
+            return string.IsNullOrWhiteSpace(_runtimePlayerId)
+                ? $"local-{NetworkManager.Singleton.LocalClientId}"
+                : _runtimePlayerId;
+        }
 
         public GameStateMachine stateMachine { get; private set; }
         public GameState CurrentState => stateMachine.CurrentState;
@@ -312,14 +334,14 @@ namespace Kitchen
                 colorId = 0
             });
             SetPlayerNameServerRpc(playerName);
-            SetPlayerIDServerRpc(AuthenticationService.Instance.PlayerId);
+            SetPlayerIDServerRpc(GetPlayerServiceId());
         }
 
         private void Client_OnClientConnectedCallback(ulong clientId)
         {
             Debug.Log($"客户端连接成功,客户端id{clientId}");
             SetPlayerNameServerRpc(_playerName);
-            SetPlayerIDServerRpc(AuthenticationService.Instance.PlayerId);
+            SetPlayerIDServerRpc(GetPlayerServiceId());
         }
 
         /// <summary>

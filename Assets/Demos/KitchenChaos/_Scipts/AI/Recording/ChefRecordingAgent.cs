@@ -63,14 +63,16 @@ namespace Kitchen.AI.Recording
                 _renderTexture.Release();
         }
 
-        public void Initialize(int frameWidth, int frameHeight, float recordStartTime)
+        public void Initialize(int frameWidth, int frameHeight, float recordStartTime, bool enableCameraCapture = true)
         {
             _frameWidth = frameWidth;
             _frameHeight = frameHeight;
             _recordStartTime = recordStartTime;
             if (_renderTexture != null)
                 _renderTexture.Release();
-            _renderTexture = RecordingCameraUtility.CreateRenderTexture(frameWidth, frameHeight);
+            _renderTexture = enableCameraCapture
+                ? RecordingCameraUtility.CreateRenderTexture(frameWidth, frameHeight)
+                : null;
             if (_fpCamera != null)
                 _fpCamera.targetTexture = null;
             _hasPrevPose = false;

@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "com.tripo3d.unitybridge": "file:C:/Users/Binlin/Downloads/Tripo3d_Unity_Bridge-latest/Tripo3d_Unity_Bridge",
     "com.unity.addressables": "1.22.2",
     "com.unity.ai.navigation": "1.1.7",
     "com.unity.cinemachine": "2.10.1",

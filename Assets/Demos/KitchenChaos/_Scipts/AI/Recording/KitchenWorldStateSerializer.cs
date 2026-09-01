@@ -32,6 +32,7 @@ namespace Kitchen.AI.Recording
         {
             var scene = new Scene3DInfo
             {
+                coordinateSystem = "Unity left-handed, Y-up, world units in meters",
                 facilities = CaptureSceneFacilities(bb),
                 spawnPoints = CaptureSpawnPoints(spawnPositions),
                 groundDropPoints = CaptureSpawnPoints(groundDropPositions),
@@ -123,6 +124,8 @@ namespace Kitchen.AI.Recording
                         : "",
                     reservedByAgent = f.reservedByAgent,
                     occupiedByAgent = f.occupiedByAgent,
+                    timer = f.timer,
+                    providedIngredient = f.providedIngredient.ToString(),
                 });
             }
             return list.ToArray();
@@ -135,6 +138,7 @@ namespace Kitchen.AI.Recording
             {
                 if (i == null) continue;
                 var pos = i.Position;
+                var holder = i.kitchenObj != null ? i.kitchenObj.GetHolder() as Component : null;
                 list.Add(new ItemSnapshot
                 {
                     id = i.id,
@@ -145,7 +149,10 @@ namespace Kitchen.AI.Recording
                     posY = pos.y,
                     posZ = pos.z,
                     carriedByAgent = i.carriedByAgent,
+                    reservedByTask = i.reservedByTask,
+                    exclusiveDelivererAgentId = i.exclusiveDelivererAgentId,
                     orderId = i.orderId,
+                    holderName = holder != null ? holder.name : "",
                 });
             }
             return list.ToArray();

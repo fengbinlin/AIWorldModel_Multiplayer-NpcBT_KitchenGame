@@ -1,4 +1,5 @@
 using System;
+using Kitchen.PGC;
 
 namespace Kitchen.AI.Recording
 {
@@ -81,6 +82,7 @@ namespace Kitchen.AI.Recording
     [Serializable]
     public class Scene3DInfo
     {
+        public string coordinateSystem;
         public SceneFacilityInfo[] facilities;
         public SceneSpawnPointInfo[] spawnPoints;
         public SceneSpawnPointInfo[] groundDropPoints;
@@ -89,11 +91,21 @@ namespace Kitchen.AI.Recording
     [Serializable]
     public class RecordingSessionManifest
     {
+        public int schemaVersion;
+        public string schemaName;
         public string sessionId;
         public string taskId;
         public string workerId;
         public int seed;
         public string gameName;
+        public string sceneName;
+        public string unityVersion;
+        public string applicationVersion;
+        public string createdUtc;
+        public string completedUtc;
+        public string status;
+        public string taskFile;
+        public string framesFile;
         public float unityTimeStart;
         public int frameWidth;
         public int frameHeight;
@@ -101,6 +113,11 @@ namespace Kitchen.AI.Recording
         public int playerCount;
         public int totalFrames;
         public string task_description;
+        public string[] round_recipes;
+        public Scene3DInfo scene_3d_info;
+        public PGCLayoutResult pgc_layout;
+        public WorldStateSnapshot initial_world;
+        public WorldStateSnapshot final_world;
     }
 
     /// <summary>
@@ -156,6 +173,8 @@ namespace Kitchen.AI.Recording
         public string counterItem;
         public int reservedByAgent;
         public int occupiedByAgent;
+        public float timer;
+        public string providedIngredient;
     }
 
     [Serializable]
@@ -169,7 +188,10 @@ namespace Kitchen.AI.Recording
         public float posY;
         public float posZ;
         public int carriedByAgent;
+        public int reservedByTask;
+        public int exclusiveDelivererAgentId;
         public int orderId;
+        public string holderName;
     }
 
     [Serializable]
@@ -215,8 +237,6 @@ namespace Kitchen.AI.Recording
         public string globalImage;
         /// <summary>Global / third-person camera for this frame (world-space ext).</summary>
         public CameraInfo camera_info;
-        /// <summary>Scene layout snapshot for this frame (facilities + spawn points).</summary>
-        public Scene3DInfo scene_3d_info;
         public PlayerRecordingFrame[] players;
         public WorldStateSnapshot world;
     }

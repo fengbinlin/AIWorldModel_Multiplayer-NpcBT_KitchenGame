@@ -48,6 +48,7 @@ namespace Kitchen.PGC
     [Serializable]
     public class PGCLayoutResult
     {
+        public int seed;
         public int playW;
         public int playH;
         public int totalW;
@@ -55,6 +56,7 @@ namespace Kitchen.PGC
         public float cellSize;
         public Vector3 origin; // 格子 (0,0) 的世界坐标
         public short[] grid;
+        public string gridEncoding = "row-major index=y*totalW+x; 0=wall, 1=path, >=10=facilityId+10";
         public List<PGCFacilityNode> facilities = new();
         public List<PGCMissionEdge> edges = new();
         public List<Vector3> spawnPoints = new();

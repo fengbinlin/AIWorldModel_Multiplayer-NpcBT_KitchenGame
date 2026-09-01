@@ -57,6 +57,18 @@ Each session name contains the task id, worker id, and millisecond timestamp. Th
 original task JSON is copied into the session directory and `_SUCCESS` is written
 after the recorder flushes and the finite episode reaches GameOver.
 
+`manifest.json` uses schema `kitchen-rollout-session` version 2. It stores the
+session/build identity, actual recipe pool, initial and final world snapshots,
+static facility geometry, spawn/drop points, and the complete generated PGC grid.
+The grid is row-major (`index = y * totalW + x`): `0` is a wall, `1` is a path,
+and values `>= 10` reference `facilityId = value - 10`. Each generated facility
+also retains its grid coordinates, world position, facing, ingredient role, and
+whether it is a wall placeholder.
+
+`frames.jsonl` contains only time-varying samples: synchronized images/camera
+parameters, players and their actions, facilities, items, active orders, and task
+graphs. Static layout data is deliberately not repeated on every frame.
+
 `Configs/npc_pgc.scene-defaults.json` is a snapshot of the current scene values.
 It intentionally retains unlimited episode duration (`0`) and the expensive
 60 FPS, 1920x1080, five-camera recording setup. `Configs/rollout.example.json`

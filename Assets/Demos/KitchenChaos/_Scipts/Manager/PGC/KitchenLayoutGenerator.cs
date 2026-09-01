@@ -77,6 +77,7 @@ namespace Kitchen.PGC
 
             return new PGCLayoutResult
             {
+                seed = p.seed,
                 playW = playW,
                 playH = playH,
                 totalW = totalW,

@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using Kitchen.Config;
+using Kitchen.PGC;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Kitchen.AI.Recording
 {
@@ -230,13 +232,31 @@ namespace Kitchen.AI.Recording
             }
 
             float simDt = GetSimDelta();
+            var aiManager = KitchenAIManager.Instance;
+            var blackboard = aiManager?.Blackboard;
+            var spawnPositions = aiManager != null
+                ? aiManager.GetSpawnPositions()
+                : (IReadOnlyList<Vector3>)Array.Empty<Vector3>();
+            var groundDropPositions = blackboard?.groundDropPositions
+                ?? (IReadOnlyList<Vector3>)Array.Empty<Vector3>();
+            var pgcManager = PGCManager.Instance;
             _manifest = new RecordingSessionManifest
             {
+                schemaVersion = 2,
+                schemaName = "kitchen-rollout-session",
                 sessionId = sessionId,
                 taskId = _taskId,
                 workerId = _workerId,
                 seed = _taskSeed,
                 gameName = KitchenCameraInfoUtility.DefaultGameName,
+                sceneName = SceneManager.GetActiveScene().name,
+                unityVersion = Application.unityVersion,
+                applicationVersion = Application.version,
+                createdUtc = DateTime.UtcNow.ToString("O"),
+                completedUtc = "",
+                status = "recording",
+                taskFile = !string.IsNullOrEmpty(_taskConfigPath) ? "task.json" : "",
+                framesFile = "frames.jsonl",
                 unityTimeStart = _recordStartTime,
                 frameWidth = _frameWidth,
                 frameHeight = _frameHeight,
@@ -244,6 +264,12 @@ namespace Kitchen.AI.Recording
                 playerCount = _agents.Count,
                 totalFrames = 0,
                 task_description = KitchenCameraInfoUtility.DefaultTaskDescription,
+                round_recipes = CaptureRoundRecipeNames(pgcManager),
+                scene_3d_info = KitchenWorldStateSerializer.CaptureScene3D(
+                    blackboard, spawnPositions, groundDropPositions),
+                pgc_layout = pgcManager?.LastLayout,
+                initial_world = KitchenWorldStateSerializer.Capture(blackboard),
+                final_world = null,
             };
             WriteManifest();
 
@@ -269,6 +295,10 @@ namespace Kitchen.AI.Recording
             if (_manifest != null)
             {
                 _manifest.totalFrames = _frameIndex;
+                _manifest.final_world = KitchenWorldStateSerializer.Capture(
+                    KitchenAIManager.Instance?.Blackboard);
+                _manifest.completedUtc = DateTime.UtcNow.ToString("O");
+                _manifest.status = "complete";
                 WriteManifest();
             }
 
@@ -410,11 +440,6 @@ namespace Kitchen.AI.Recording
             }
 
             var bb = KitchenAIManager.Instance?.Blackboard;
-            var spawnPositions = KitchenAIManager.Instance != null
-                ? KitchenAIManager.Instance.GetSpawnPositions()
-                : (IReadOnlyList<Vector3>)System.Array.Empty<Vector3>();
-            var groundDropPositions = KitchenAIManager.Instance?.Blackboard?.groundDropPositions
-                ?? (IReadOnlyList<Vector3>)System.Array.Empty<Vector3>();
             float frameTime = Time.time - _recordStartTime;
             _pendingFrame = new RecordingFrameData
             {
@@ -423,14 +448,24 @@ namespace Kitchen.AI.Recording
                 globalImage = globalRel,
                 camera_info = KitchenCameraInfoUtility.Capture(
                     _globalCamera, _frameWidth, _frameHeight, "global"),
-                scene_3d_info = KitchenWorldStateSerializer.CaptureScene3D(
-                    bb, spawnPositions, groundDropPositions),
                 players = playerFrames,
                 world = KitchenWorldStateSerializer.Capture(bb),
             };
             _hasPendingFrame = true;
 
             _frameIndex++;
+        }
+
+        private static string[] CaptureRoundRecipeNames(PGCManager pgcManager)
+        {
+            if (pgcManager == null || pgcManager.RoundRecipes == null)
+                return Array.Empty<string>();
+
+            var recipes = pgcManager.RoundRecipes;
+            var names = new string[recipes.Count];
+            for (int i = 0; i < recipes.Count; i++)
+                names[i] = recipes[i] != null ? recipes[i].recipeName : "";
+            return names;
         }
 
         private static string SafePathSegment(string value)

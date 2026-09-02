@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BATCH_ID="kitchen-subset-10h-v3-20260902"
+BATCH_ID="${2:-kitchen-subset-10h-v3-20260902}"
 BATCH_ROOT="/data/mayanwen/kitchen-rollouts/${BATCH_ID}"
 IMAGE="ccr-21dndou3-vpc.cnc.bj.baidubce.com/wanghy/ue_pipeline:v1.0-torch2.7.1-cu12.8_wanghaoyu_20260424155044"
-NODE="${1:?usage: launch_10h_subset_node.sh g154|g155}"
+NODE="${1:?usage: launch_10h_subset_node.sh g154|g155 [batch-id]}"
 
 case "${NODE}" in
   g154|g155) ;;

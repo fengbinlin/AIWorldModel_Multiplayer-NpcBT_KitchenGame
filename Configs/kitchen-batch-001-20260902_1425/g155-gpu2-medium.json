@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "run": {
+    "taskId": "kitchen-batch-001-20260902_1425-medium-g155-gpu2",
+    "workerId": "g155-gpu2",
+    "scene": "NPC_PGC",
+    "seed": 155102,
+    "timeScale": 2.0,
+    "targetFrameRate": -1,
+    "quitOnGameOver": true,
+    "initializeUnityServices": false
+  },
+  "episode": {
+    "durationSeconds": 2250.0,
+    "readyCountdownSeconds": 0,
+    "maxPlayers": 3,
+    "autoReady": true,
+    "autoReadyDelaySeconds": 0.0
+  },
+  "world": {
+    "useRandomRecipes": false,
+    "randomRecipeCount": 3,
+    "recipeNames": [
+      "BeefSteak",
+      "ChickenSteak",
+      "CabbageSalad"
+    ],
+    "width": 12,
+    "height": 9,
+    "dilateKernel": 0,
+    "pathRandomness": 1.4,
+    "extraEdges": 1,
+    "cellSize": 1.5,
+    "layoutSeed": 155102,
+    "randomizeLayoutSeed": false,
+    "destroyExistingCounters": true,
+    "networkSpawnCounters": true
+  },
+  "agents": {
+    "enabled": true,
+    "count": 3,
+    "scheduleIntervalSeconds": 0.2,
+    "moveSpeed": 4.2,
+    "interactionRange": 2.5,
+    "arrivalThreshold": 0.4,
+    "stuckTimeoutSeconds": 8.0,
+    "radius": 0.55,
+    "rvoBasePriority": 0.5,
+    "approachOffset": 1.2,
+    "colors": [
+      "#ff453a",
+      "#0a84ff",
+      "#30d158"
+    ],
+    "interactAnimationHoldSeconds": 1.35,
+    "postInteractAnimationHoldSeconds": 0.85,
+    "minimumWorkAnimationSeconds": 2.8,
+    "minimumWaitAnimationSeconds": 1.6,
+    "enableWander": true,
+    "idleWanderPointCount": 12,
+    "wanderRadius": 5.0,
+    "wanderIntervalSeconds": 3.0,
+    "wanderNavmeshTolerance": 0.5,
+    "detourRadius": 2.5,
+    "detourAngleStep": 60.0
+  },
+  "orders": {
+    "spawnIntervalSeconds": 9.0,
+    "spawnJitterSeconds": 1.8,
+    "maxActive": 4
+  },
+  "recording": {
+    "enabled": true,
+    "autoStart": true,
+    "captureFps": 10.0,
+    "width": 320,
+    "height": 180,
+    "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-batch-001-20260902_1425/g155/gpu_2/recordings",
+    "maxPendingWrites": 16,
+    "captureGlobalCamera": true,
+    "captureAgentCameras": true
+  },
+  "network": {
+    "address": "127.0.0.1",
+    "listenAddress": "0.0.0.0",
+    "port": 19102,
+    "tickRate": 30
+  },
+  "appearance": {
+    "overrideGlobalSkin": false,
+    "globalSkinId": 0,
+    "enableCharacterAnimation": true
+  },
+  "logging": {
+    "enabled": true,
+    "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-batch-001-20260902_1425/g155/gpu_2/logs",
+    "fileName": "ai_debug.log"
+  }
+}

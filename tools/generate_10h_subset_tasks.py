@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """Generate the reproducible 16-worker, 10-simulation-hour rollout subset."""
 
+import argparse
 import json
 from pathlib import Path
 
 
 BATCH_ID = "kitchen-subset-10h-v3-20260902"
-OUTPUT_DIR = Path(__file__).resolve().parents[1] / "Configs" / BATCH_ID
-REMOTE_ROOT = f"/data/mayanwen/kitchen-rollouts/{BATCH_ID}"
 EPISODE_SECONDS = 2250.0
 
 
@@ -32,15 +31,26 @@ SPECS = [
 ]
 
 
-def make_task(node, gpu, difficulty, recipes, agents, dimensions, order, seed):
+def make_task(
+    node,
+    gpu,
+    difficulty,
+    recipes,
+    agents,
+    dimensions,
+    order,
+    seed,
+    batch_id,
+    remote_root,
+):
     worker_id = f"{node.lower()}-gpu{gpu}"
-    worker_root = f"{REMOTE_ROOT}/{node.lower()}/gpu_{gpu}"
+    worker_root = f"{remote_root}/{node.lower()}/gpu_{gpu}"
     width, height = dimensions
     order_interval, max_active = order
     return {
         "version": 1,
         "run": {
-            "taskId": f"{BATCH_ID}-{difficulty}-{worker_id}",
+            "taskId": f"{batch_id}-{difficulty}-{worker_id}",
             "workerId": worker_id,
             "scene": "NPC_PGC",
             "seed": seed,
@@ -130,14 +140,38 @@ def make_task(node, gpu, difficulty, recipes, agents, dimensions, order, seed):
     }
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--batch-id", default=BATCH_ID)
+    parser.add_argument("--seed-offset", type=int, default=0)
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--remote-root")
+    return parser.parse_args()
+
+
 def main():
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    args = parse_args()
+    output_dir = args.output_dir or Path(__file__).resolve().parents[1] / "Configs" / args.batch_id
+    remote_root = args.remote_root or f"/data/mayanwen/kitchen-rollouts/{args.batch_id}"
+    output_dir.mkdir(parents=True, exist_ok=True)
     workers = []
     for spec in SPECS:
         node, gpu, difficulty, recipes, agents, dimensions, order, seed = spec
-        task = make_task(*spec)
+        seed += args.seed_offset
+        task = make_task(
+            node,
+            gpu,
+            difficulty,
+            recipes,
+            agents,
+            dimensions,
+            order,
+            seed,
+            args.batch_id,
+            remote_root,
+        )
         filename = f"{node.lower()}-gpu{gpu}-{difficulty}.json"
-        (OUTPUT_DIR / filename).write_text(
+        (output_dir / filename).write_text(
             json.dumps(task, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         workers.append({
@@ -158,7 +192,7 @@ def main():
         })
 
     manifest = {
-        "batchId": BATCH_ID,
+        "batchId": args.batch_id,
         "schemaVersion": 1,
         "workerCount": len(workers),
         "totalSimulationSeconds": sum(w["episodeSeconds"] for w in workers),
@@ -170,7 +204,7 @@ def main():
         "captureAgentCameras": True,
         "workers": workers,
     }
-    (OUTPUT_DIR / "task_set_manifest.json").write_text(
+    (output_dir / "task_set_manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 

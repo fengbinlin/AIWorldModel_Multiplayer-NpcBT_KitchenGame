@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Pathfinding;
 using Kitchen.UI;
 using UnityEngine;
@@ -26,6 +28,7 @@ namespace Kitchen.AI.Recording
         private ChefCameraPitchController _pitchController;
         private RenderTexture _renderTexture;
         private bool _interactThisFrame;
+        private readonly List<InteractionSnapshot> _interactions = new();
         private int _frameWidth;
         private int _frameHeight;
         private float _recordStartTime;
@@ -48,13 +51,19 @@ namespace Kitchen.AI.Recording
         private void OnEnable()
         {
             if (_chef != null)
+            {
                 _chef.OnInteractionPerformed += OnChefInteraction;
+                _chef.OnInteractionPerformedDetailed += OnChefInteractionDetailed;
+            }
         }
 
         private void OnDisable()
         {
             if (_chef != null)
+            {
                 _chef.OnInteractionPerformed -= OnChefInteraction;
+                _chef.OnInteractionPerformedDetailed -= OnChefInteractionDetailed;
+            }
         }
 
         private void OnDestroy()
@@ -77,6 +86,7 @@ namespace Kitchen.AI.Recording
                 _fpCamera.targetTexture = null;
             _hasPrevPose = false;
             _interactThisFrame = false;
+            _interactions.Clear();
             _prevPosition = transform.position;
             SampleViewAngles(out _prevYaw, out _prevPitch);
         }
@@ -90,6 +100,64 @@ namespace Kitchen.AI.Recording
         {
             _interactThisFrame = true;
         }
+
+        private void OnChefInteractionDetailed(AIChefInteractionEvent evt)
+        {
+            if (evt == null || _chef == null) return;
+            var task = _chef.CurrentTask;
+            bool targetsLooseItem = evt.targetItem != null && evt.targetCounter == null;
+            string targetActorId = targetsLooseItem
+                ? KitchenWorldStateSerializer.GetItemActorId(evt.targetItem)
+                : KitchenWorldStateSerializer.GetMapActorId(evt.targetCounter);
+            string interactionType = ClassifyInteraction(evt, targetsLooseItem);
+            _interactions.Add(new InteractionSnapshot
+            {
+                sourceActorId = KitchenWorldStateSerializer.GetAgentActorId(_chef.agentId),
+                targetActorId = targetActorId,
+                targetCategory = targetsLooseItem ? "item" : "map",
+                targetType = targetsLooseItem
+                    ? evt.targetItem.objEnum.ToString()
+                    : evt.targetCounter != null ? evt.targetCounter.GetType().Name : "",
+                targetName = targetsLooseItem
+                    ? evt.targetItem.name
+                    : evt.targetCounter != null ? evt.targetCounter.name : "",
+                interactionType = interactionType,
+                stateChanged = evt.heldItemBefore != evt.heldItemAfter
+                    || evt.targetItemBefore != evt.targetItemAfter,
+                taskId = task?.id ?? -1,
+                taskType = task != null ? task.type.ToString() : "",
+                taskLabel = task?.label ?? "",
+                heldItemBefore = ItemTypeName(evt.heldItemBefore),
+                heldItemAfter = ItemTypeName(evt.heldItemAfter),
+                targetItemBefore = ItemTypeName(evt.targetItemBefore),
+                targetItemAfter = ItemTypeName(evt.targetItemAfter),
+            });
+        }
+
+        public InteractionSnapshot[] ConsumeInteractions()
+        {
+            if (_interactions.Count == 0)
+                return Array.Empty<InteractionSnapshot>();
+            var result = _interactions.ToArray();
+            _interactions.Clear();
+            return result;
+        }
+
+        private static string ClassifyInteraction(AIChefInteractionEvent evt, bool targetsLooseItem)
+        {
+            if (targetsLooseItem || (evt.heldItemBefore == null && evt.heldItemAfter != null))
+                return "pickup";
+            if (evt.heldItemBefore != null && evt.heldItemAfter == null)
+                return "place";
+            if (evt.heldItemBefore != evt.heldItemAfter)
+                return "exchange";
+            if (evt.targetItemBefore != evt.targetItemAfter)
+                return "operate";
+            return "interact";
+        }
+
+        private static string ItemTypeName(KitchenObj item)
+            => item != null ? item.objEnum.ToString() : "";
 
         /// <summary>
         /// Snapshot observation / state at the current sim frame.

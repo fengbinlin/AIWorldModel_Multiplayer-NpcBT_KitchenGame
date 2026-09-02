@@ -9,6 +9,20 @@ using Kitchen.Config;
 namespace Kitchen.AI
 {
     /// <summary>
+    /// Runtime references describing one completed interaction. Consumers must
+    /// serialize the values immediately; referenced objects may change later.
+    /// </summary>
+    public sealed class AIChefInteractionEvent
+    {
+        public BaseCounter targetCounter;
+        public KitchenObj targetItem;
+        public KitchenObj heldItemBefore;
+        public KitchenObj heldItemAfter;
+        public KitchenObj targetItemBefore;
+        public KitchenObj targetItemAfter;
+    }
+
+    /// <summary>
     /// AI Chef controller — the "brain" of a single AI chef.
     ///
     /// Implements ICanHoldKitchenObj so the AI can hold items and interact with counters
@@ -211,6 +225,8 @@ namespace Kitchen.AI
 
         /// <summary>Fired when the chef performs an interact action (maps to E key in recordings).</summary>
         public event System.Action OnInteractionPerformed;
+        /// <summary>Fired with target and before/after state for dataset annotations.</summary>
+        public event System.Action<AIChefInteractionEvent> OnInteractionPerformedDetailed;
 
         /// <summary>Apply A* Pathfinding + RVO params after spawn.</summary>
         public void SetAIParams(float radius, float maxSpeed, float rvoPriority, float approachOffset)
@@ -2183,6 +2199,8 @@ namespace Kitchen.AI
         private void PerformInteract(BaseCounter counter)
         {
             if (counter == null) return;
+            KitchenObj heldBefore = _heldItem;
+            KitchenObj targetItemBefore = counter.HasKitchenObj() ? counter.GetKitchenObj() : null;
             if (_currentTask != null)
             {
                 _currentTask.objectBId = counter.NetworkObject != null
@@ -2194,7 +2212,28 @@ namespace Kitchen.AI
             counter.Interact(this);
             if (_currentTask != null && _heldItem != null)
                 _currentTask.objectAId = _heldItem.RuntimeObjectId;
+            NotifyInteraction(counter, null, heldBefore, targetItemBefore);
+        }
+
+        private void NotifyInteraction(
+            BaseCounter targetCounter,
+            KitchenObj targetItem,
+            KitchenObj heldItemBefore,
+            KitchenObj targetItemBefore)
+        {
+            var targetItemAfter = targetCounter != null && targetCounter.HasKitchenObj()
+                ? targetCounter.GetKitchenObj()
+                : targetItem;
             OnInteractionPerformed?.Invoke();
+            OnInteractionPerformedDetailed?.Invoke(new AIChefInteractionEvent
+            {
+                targetCounter = targetCounter,
+                targetItem = targetItem,
+                heldItemBefore = heldItemBefore,
+                heldItemAfter = _heldItem,
+                targetItemBefore = targetItemBefore,
+                targetItemAfter = targetItemAfter,
+            });
         }
 
         private void ExecuteInteraction()
@@ -2262,11 +2301,15 @@ namespace Kitchen.AI
                         if (_targetCounter is PlatesCounter
                             && _currentTask?.orderId != 0)
                         {
+                            KitchenObj heldBefore = _heldItem;
+                            KitchenObj targetItemBefore = _targetCounter.HasKitchenObj()
+                                ? _targetCounter.GetKitchenObj()
+                                : null;
                             KitchenObjOperator.SpawnKitchenObjForOrderRpc(
                                 KitchenObjEnum.Plate,
                                 this,
                                 _currentTask.orderId);
-                            OnInteractionPerformed?.Invoke();
+                            NotifyInteraction(_targetCounter, null, heldBefore, targetItemBefore);
                         }
                         else if (_targetCounter is PlatesCounter)
                         {
@@ -2729,10 +2772,12 @@ namespace Kitchen.AI
             var factory = KitchenObjFactory.Instance;
             if (factory != null)
             {
+                KitchenObj targetItem = _carryTargetItem;
+                KitchenObj heldBefore = _heldItem;
                 KitchenObjFactory.Instance.PickupObjServerRpc(
                     _carryTargetItem.NetworkObject,
                     GetNetworkObject());
-                OnInteractionPerformed?.Invoke();
+                NotifyInteraction(null, targetItem, heldBefore, targetItem);
             }
 
             // Verify pickup succeeded (RPC runs synchronously on host)

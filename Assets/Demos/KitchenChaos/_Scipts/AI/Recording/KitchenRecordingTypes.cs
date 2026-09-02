@@ -88,6 +88,74 @@ namespace Kitchen.AI.Recording
         public SceneSpawnPointInfo[] groundDropPoints;
     }
 
+    /// <summary>World-space axis-aligned bounds assembled from all child colliders.</summary>
+    [Serializable]
+    public class ActorAabbSnapshot
+    {
+        public bool valid;
+        public float centerX;
+        public float centerY;
+        public float centerZ;
+        public float sizeX;
+        public float sizeY;
+        public float sizeZ;
+        public float minX;
+        public float minY;
+        public float minZ;
+        public float maxX;
+        public float maxY;
+        public float maxZ;
+    }
+
+    /// <summary>
+    /// A physical gameplay actor. Static map actors live in the manifest; moving
+    /// agents and items are captured on every frame.
+    /// </summary>
+    [Serializable]
+    public class GameActorSnapshot
+    {
+        public string actorId;
+        public string category;
+        public string actorType;
+        public string name;
+        public int layoutId;
+        public int gridX;
+        public int gridY;
+        public bool active;
+        public float posX;
+        public float posY;
+        public float posZ;
+        public float rotX;
+        public float rotY;
+        public float rotZ;
+        public float rotW;
+        public float scaleX;
+        public float scaleY;
+        public float scaleZ;
+        public ActorAabbSnapshot aabb;
+        public string holderActorId;
+    }
+
+    /// <summary>One concrete agent-to-actor interaction observed during this frame.</summary>
+    [Serializable]
+    public class InteractionSnapshot
+    {
+        public string sourceActorId;
+        public string targetActorId;
+        public string targetCategory;
+        public string targetType;
+        public string targetName;
+        public string interactionType;
+        public bool stateChanged;
+        public int taskId;
+        public string taskType;
+        public string taskLabel;
+        public string heldItemBefore;
+        public string heldItemAfter;
+        public string targetItemBefore;
+        public string targetItemAfter;
+    }
+
     [Serializable]
     public class RecordingSessionManifest
     {
@@ -115,6 +183,7 @@ namespace Kitchen.AI.Recording
         public string task_description;
         public string[] round_recipes;
         public Scene3DInfo scene_3d_info;
+        public GameActorSnapshot[] map_actors;
         public PGCLayoutResult pgc_layout;
         public WorldStateSnapshot initial_world;
         public WorldStateSnapshot final_world;
@@ -238,6 +307,8 @@ namespace Kitchen.AI.Recording
         /// <summary>Global / third-person camera for this frame (world-space ext).</summary>
         public CameraInfo camera_info;
         public PlayerRecordingFrame[] players;
+        public GameActorSnapshot[] actors;
+        public InteractionSnapshot[] interactions;
         public WorldStateSnapshot world;
     }
 }

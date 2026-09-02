@@ -242,7 +242,7 @@ namespace Kitchen.AI.Recording
             var pgcManager = PGCManager.Instance;
             _manifest = new RecordingSessionManifest
             {
-                schemaVersion = 2,
+                schemaVersion = 3,
                 schemaName = "kitchen-rollout-session",
                 sessionId = sessionId,
                 taskId = _taskId,
@@ -267,6 +267,7 @@ namespace Kitchen.AI.Recording
                 round_recipes = CaptureRoundRecipeNames(pgcManager),
                 scene_3d_info = KitchenWorldStateSerializer.CaptureScene3D(
                     blackboard, spawnPositions, groundDropPositions),
+                map_actors = KitchenWorldStateSerializer.CaptureMapActors(pgcManager?.LastLayout),
                 pgc_layout = pgcManager?.LastLayout,
                 initial_world = KitchenWorldStateSerializer.Capture(blackboard),
                 final_world = null,
@@ -414,6 +415,7 @@ namespace Kitchen.AI.Recording
 
             var playerFrames = new PlayerRecordingFrame[_agents.Count];
             var transitionActions = new ChefKeyboardInput[_agents.Count];
+            var interactions = new List<InteractionSnapshot>();
             for (int i = 0; i < _agents.Count; i++)
             {
                 var agent = _agents[i];
@@ -425,6 +427,7 @@ namespace Kitchen.AI.Recording
                 if (_captureAgentCameras)
                     agent.CaptureImageAsync(Path.Combine(_sessionDir, rel));
                 playerFrames[i] = agent.CaptureState(rel);
+                interactions.AddRange(agent.ConsumeInteractions());
                 // Action that moved prev→current; belongs on the previous frame.
                 transitionActions[i] = agent.ConsumeTransitionAction();
                 agent.BeginFrame();
@@ -449,6 +452,8 @@ namespace Kitchen.AI.Recording
                 camera_info = KitchenCameraInfoUtility.Capture(
                     _globalCamera, _frameWidth, _frameHeight, "global"),
                 players = playerFrames,
+                actors = KitchenWorldStateSerializer.CaptureDynamicActors(bb),
+                interactions = interactions.ToArray(),
                 world = KitchenWorldStateSerializer.Capture(bb),
             };
             _hasPendingFrame = true;

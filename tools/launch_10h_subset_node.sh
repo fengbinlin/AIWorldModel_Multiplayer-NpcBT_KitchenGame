@@ -44,6 +44,8 @@ for gpu in $(seq 0 7); do
     bash -lc '
       mkdir -p /tmp/runtime-1000
       chmod 700 /tmp/runtime-1000
+      launch_marker="${WORKER_ROOT}/.launch_started"
+      touch "${launch_marker}"
       printf "%s\n" "{\"file_format_version\":\"1.0.1\",\"ICD\":{\"library_path\":\"/host_nvidia/libEGL_nvidia.so.0\",\"api_version\":\"1.4.303\"}}" > /tmp/nvidia_egl_icd.json
       xvfb-run -a ./KitchenGame.x86_64 \
         -batchmode \
@@ -51,6 +53,14 @@ for gpu in $(seq 0 7); do
         -logFile "${WORKER_ROOT}/logs/player.log" \
         --task "${TASK_FILE}"
       code=$?
+      # Some NVIDIA/Vulkan stacks return 139 during Unity shutdown even after
+      # the recorder has atomically finalized the session. Treat a fresh
+      # _SUCCESS marker as the authoritative completion signal.
+      if [[ "${code}" -ne 0 ]] && find "${WORKER_ROOT}/recordings" \
+          -type f -name _SUCCESS -newer "${launch_marker}" -print -quit \
+          | grep -q .; then
+        code=0
+      fi
       printf "%s\n" "${code}" > "${WORKER_ROOT}/exit_code"
       exit "${code}"
     '

@@ -329,9 +329,10 @@ namespace Kitchen
 
             if (rg != null)
             {
-                // Recast 范围固定（与场景厨房地面一致），不随布局 cell 动态放大
-                const float recastSizeX = 24f;
-                const float recastSizeZ = 15f;
+                // Preserve the historical minimum, but expand for generated layouts.
+                // A fixed 24x15 graph clips medium/hard maps (up to 30x21 before padding).
+                float recastSizeX = Mathf.Max(24f, worldW);
+                float recastSizeZ = Mathf.Max(15f, worldD);
                 float height = Mathf.Max(4f, rg.forcedBoundsSize.y);
                 var boundsCenter = new Vector3(center.x, height * 0.5f, center.z);
                 rg.forcedBoundsCenter = boundsCenter;

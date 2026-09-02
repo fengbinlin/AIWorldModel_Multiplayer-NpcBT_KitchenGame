@@ -104,6 +104,7 @@ namespace Kitchen.AI
         // Anti-stuck
         private float _lastProgressDist = float.MaxValue;
         private float _stuckProgressTimer;
+        private float _lastManualRepathTime = float.NegativeInfinity;
         private Vector3 _spawnPosition;
         private Vector3 _moveTarget;
 
@@ -265,12 +266,14 @@ namespace Kitchen.AI
             _detourAngleStep = config.detourAngleStep;
         }
 
-        /// <summary>Force immediate path recalculation (called by scheduler).</summary>
+        /// <summary>Force an immediate path recalculation for explicit recovery.</summary>
         public void ForceRepath()
         {
-            if (_ai != null && !_ai.isStopped && _aiPath != null && _aiPath.enabled)
+            if (_ai != null && !_ai.isStopped && !_ai.pathPending
+                && _aiPath != null && _aiPath.enabled)
             {
                 _ai.SearchPath();
+                _lastManualRepathTime = Time.time;
             }
         }
 
@@ -539,43 +542,26 @@ namespace Kitchen.AI
                         debugState = _isWandering ? $"wandering d={dist:F1}" : $"moving → ({_ai.destination.x:F0},{_ai.destination.z:F0}) d={dist:F1}";
                         _moveTimer += Time.deltaTime;
 
-                        // Track progress: if distance hasn't decreased significantly, repath
-                        if (dist < _lastProgressDist - 0.1f)
-                        {
-                            _lastProgressDist = dist;
-                            _stuckProgressTimer = 0f;
-                        }
-                        else
-                        {
-                            _stuckProgressTimer += Time.deltaTime;
-                        }
-                        if (_stuckProgressTimer > 0.8f && !_isWandering)
-                        {
-                            if (_stuckProgressTimer > 2f && !_isYielding && !_isDetouring)
-                            {
-                                // Long deadlock — detour via a rotated waypoint near spawn
-                                if (!TrySpawnDetour())
-                                    TrySidestepYield();
-                            }
-                            else if (!_isYielding && !_isDetouring)
-                            {
-                                // 只重寻路，不要随机改 destination（会偏出 NavMesh，表现成直线撞墙）
-                                if (_hasApproachPoint)
-                                    _ai.destination = _lastApproachPoint;
-                                _ai.SearchPath();
-                                _stuckProgressTimer = 0.8f;
-                                _lastProgressDist = float.MaxValue;
-                            }
-                        }
+                        // Check arrival before issuing any new asynchronous path request.
+                        // Repeated SearchPath calls can otherwise keep pathPending true and
+                        // prevent reachedDestination from ever being observed under load.
+                        Vector3 toDestination = _ai.destination - transform.position;
+                        toDestination.y = 0f;
+                        bool reachedSpatially = toDestination.sqrMagnitude
+                            <= arrivalThreshold * arrivalThreshold;
+                        bool reached = reachedSpatially
+                            || (!_ai.pathPending && _ai.reachedDestination);
 
-                        if (!_ai.pathPending && _ai.reachedDestination)
+                        if (reached)
                         {
+                            float arrivalTime = _moveTimer;
                             if (_isDetouring && _detourPhase == DetourPhase.ToTransit)
                             {
                                 AIDebugLogger.Log(chefName,
                                     $"Detour: reached spawn transit, resuming to ({_detourOriginalDest.x:F1},{_detourOriginalDest.z:F1})");
                                 _ai.destination = _detourOriginalDest;
                                 _ai.SearchPath();
+                                _lastManualRepathTime = Time.time;
                                 _ai.isStopped = false;
                                 _detourPhase = DetourPhase.None;
                                 _isDetouring = false;
@@ -612,19 +598,50 @@ namespace Kitchen.AI
                             {
                                 // Sequence: arrive → freeze AI → smooth rotate → wait → operate
                                 // Freeze ALL AI movement/rotation so only FaceTarget() controls rotation.
-                                _ai.isStopped = true;
                                 if (_aiPath != null) _aiPath.enableRotation = false;
                                 var rvoLock = GetComponent<Pathfinding.RVO.RVOController>();
                                 if (rvoLock != null) rvoLock.locked = true;
                                 _facingComplete = false;
                                 AIDebugLogger.LogState(chefName, "moving", "arrived",
-                                    $"at ({_ai.destination.x:F1},{_ai.destination.z:F1}) dist={dist:F2} time={_moveTimer:F1}s");
+                                    $"at ({_ai.destination.x:F1},{_ai.destination.z:F1}) dist={toDestination.magnitude:F2} time={arrivalTime:F1}s");
                                 _substate = "paused";
                                 _stateTimer = 0;
                                 _pauseCallback = "arrived";
                             }
+                            break;
                         }
-                        else if (_moveTimer > stuckTimeout)
+
+                        // Track progress: if distance hasn't decreased significantly, repath
+                        if (dist < _lastProgressDist - 0.1f)
+                        {
+                            _lastProgressDist = dist;
+                            _stuckProgressTimer = 0f;
+                        }
+                        else
+                        {
+                            _stuckProgressTimer += Time.deltaTime;
+                        }
+                        if (_stuckProgressTimer > 0.8f && !_isWandering)
+                        {
+                            if (_stuckProgressTimer > 2f && !_isYielding && !_isDetouring)
+                            {
+                                // Long deadlock — detour via a rotated waypoint near spawn
+                                if (!TrySpawnDetour())
+                                    TrySidestepYield();
+                            }
+                            else if (!_isYielding && !_isDetouring
+                                && !_ai.pathPending
+                                && Time.time - _lastManualRepathTime >= 1f)
+                            {
+                                // 只重寻路，不要随机改 destination（会偏出 NavMesh，表现成直线撞墙）
+                                if (_hasApproachPoint)
+                                    _ai.destination = _lastApproachPoint;
+                                _ai.SearchPath();
+                                _lastManualRepathTime = Time.time;
+                                _lastProgressDist = float.MaxValue;
+                            }
+                        }
+                        if (_moveTimer > stuckTimeout)
                         {
                             if (_isWandering)
                             {
@@ -1083,6 +1100,7 @@ namespace Kitchen.AI
 
             _ai.destination = bestPoint;
             _ai.SearchPath();
+            _lastManualRepathTime = Time.time;
             _ai.isStopped = false;
             if (_aiPath != null) _aiPath.enableRotation = true;
             _isYielding = false;

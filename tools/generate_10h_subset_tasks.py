@@ -42,6 +42,7 @@ def make_task(
     seed,
     batch_id,
     remote_root,
+    episode_seconds,
 ):
     worker_id = f"{node.lower()}-gpu{gpu}"
     worker_root = f"{remote_root}/{node.lower()}/gpu_{gpu}"
@@ -60,7 +61,7 @@ def make_task(
             "initializeUnityServices": False,
         },
         "episode": {
-            "durationSeconds": EPISODE_SECONDS,
+            "durationSeconds": episode_seconds,
             "readyCountdownSeconds": 0,
             "maxPlayers": agents,
             "autoReady": True,
@@ -72,7 +73,7 @@ def make_task(
             "recipeNames": recipes,
             "width": width,
             "height": height,
-            "dilateKernel": 0,
+            "dilateKernel": 3,
             "pathRandomness": 1.1 if difficulty == "easy" else 1.4 if difficulty == "medium" else 1.8,
             "extraEdges": 0 if difficulty == "easy" else 1 if difficulty == "medium" else 2,
             "cellSize": 1.5,
@@ -144,6 +145,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch-id", default=BATCH_ID)
     parser.add_argument("--seed-offset", type=int, default=0)
+    parser.add_argument("--episode-seconds", type=float, default=EPISODE_SECONDS)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--remote-root")
     return parser.parse_args()
@@ -169,6 +171,7 @@ def main():
             seed,
             args.batch_id,
             remote_root,
+            args.episode_seconds,
         )
         filename = f"{node.lower()}-gpu{gpu}-{difficulty}.json"
         (output_dir / filename).write_text(
@@ -181,7 +184,7 @@ def main():
             "taskFile": filename,
             "taskId": task["run"]["taskId"],
             "seed": seed,
-            "episodeSeconds": EPISODE_SECONDS,
+            "episodeSeconds": args.episode_seconds,
             "timeScale": 2.0,
             "agents": agents,
             "map": {"width": dimensions[0], "height": dimensions[1]},

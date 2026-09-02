@@ -23,7 +23,7 @@
     "recipeNames": [],
     "width": 16,
     "height": 10,
-    "dilateKernel": 0,
+    "dilateKernel": 3,
     "pathRandomness": 1.4,
     "extraEdges": 1,
     "cellSize": 1.5,

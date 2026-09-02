@@ -148,7 +148,7 @@ namespace Kitchen.Config
         public string[] recipeNames = Array.Empty<string>();
         public int width = 16;
         public int height = 10;
-        public int dilateKernel = 0;
+        public int dilateKernel = 3;
         public float pathRandomness = 1.4f;
         public int extraEdges = 1;
         public float cellSize = 1.5f;

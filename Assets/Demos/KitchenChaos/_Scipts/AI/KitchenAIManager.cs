@@ -436,14 +436,6 @@ namespace Kitchen.AI
             AIDebugLogger.LogSchedulerCycle(_schedulerCycle, _agentStates.Count,
                 _blackboard.taskPool.Count, _blackboard.activeOrders.Count);
 
-            // Force all moving agents to repath — dynamic kitchen environment
-            // may have changed (items spawned, counters updated, agents moved).
-            foreach (var agent in _agentStates)
-            {
-                if (agent.substate == "moving" && agent.controller != null)
-                    agent.controller.ForceRepath();
-            }
-
             // Release completed AND abandoned task reservations
             foreach (var agent in _agentStates)
             {

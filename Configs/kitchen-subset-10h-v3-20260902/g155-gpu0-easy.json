@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "run": {
+    "taskId": "kitchen-subset-10h-v3-20260902-easy-g155-gpu0",
+    "workerId": "g155-gpu0",
+    "scene": "NPC_PGC",
+    "seed": 55100,
+    "timeScale": 2.0,
+    "targetFrameRate": -1,
+    "quitOnGameOver": true,
+    "initializeUnityServices": false
+  },
+  "episode": {
+    "durationSeconds": 2250.0,
+    "readyCountdownSeconds": 0,
+    "maxPlayers": 2,
+    "autoReady": true,
+    "autoReadyDelaySeconds": 0.0
+  },
+  "world": {
+    "useRandomRecipes": false,
+    "randomRecipeCount": 2,
+    "recipeNames": [
+      "TomatoOrder",
+      "FishSlices"
+    ],
+    "width": 8,
+    "height": 8,
+    "dilateKernel": 0,
+    "pathRandomness": 1.1,
+    "extraEdges": 0,
+    "cellSize": 1.5,
+    "layoutSeed": 55100,
+    "randomizeLayoutSeed": false,
+    "destroyExistingCounters": true,
+    "networkSpawnCounters": true
+  },
+  "agents": {
+    "enabled": true,
+    "count": 2,
+    "scheduleIntervalSeconds": 0.25,
+    "moveSpeed": 4.0,
+    "interactionRange": 2.5,
+    "arrivalThreshold": 0.4,
+    "stuckTimeoutSeconds": 8.0,
+    "radius": 0.55,
+    "rvoBasePriority": 0.5,
+    "approachOffset": 1.2,
+    "colors": [
+      "#ff453a",
+      "#0a84ff"
+    ],
+    "interactAnimationHoldSeconds": 1.35,
+    "postInteractAnimationHoldSeconds": 0.85,
+    "minimumWorkAnimationSeconds": 2.8,
+    "minimumWaitAnimationSeconds": 1.6,
+    "enableWander": true,
+    "idleWanderPointCount": 12,
+    "wanderRadius": 5.0,
+    "wanderIntervalSeconds": 3.0,
+    "wanderNavmeshTolerance": 0.5,
+    "detourRadius": 2.5,
+    "detourAngleStep": 60.0
+  },
+  "orders": {
+    "spawnIntervalSeconds": 14.0,
+    "spawnJitterSeconds": 2.8000000000000003,
+    "maxActive": 2
+  },
+  "recording": {
+    "enabled": true,
+    "autoStart": true,
+    "captureFps": 10.0,
+    "width": 320,
+    "height": 180,
+    "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g155/gpu_0/recordings",
+    "maxPendingWrites": 16,
+    "captureGlobalCamera": true,
+    "captureAgentCameras": true
+  },
+  "network": {
+    "address": "127.0.0.1",
+    "listenAddress": "0.0.0.0",
+    "port": 19100,
+    "tickRate": 30
+  },
+  "appearance": {
+    "overrideGlobalSkin": false,
+    "globalSkinId": 0,
+    "enableCharacterAnimation": true
+  },
+  "logging": {
+    "enabled": true,
+    "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g155/gpu_0/logs",
+    "fileName": "ai_debug.log"
+  }
+}

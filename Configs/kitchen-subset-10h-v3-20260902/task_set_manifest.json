@@ -1,0 +1,389 @@
+{
+  "batchId": "kitchen-subset-10h-v3-20260902",
+  "schemaVersion": 1,
+  "workerCount": 16,
+  "totalSimulationSeconds": 36000.0,
+  "totalSimulationHours": 10.0,
+  "timeScale": 2.0,
+  "captureFps": 10.0,
+  "resolution": {
+    "width": 320,
+    "height": 180
+  },
+  "captureGlobalCamera": true,
+  "captureAgentCameras": true,
+  "workers": [
+    {
+      "node": "G154",
+      "gpu": 0,
+      "difficulty": "easy",
+      "taskFile": "g154-gpu0-easy.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-easy-g154-gpu0",
+      "seed": 54100,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 2,
+      "map": {
+        "width": 8,
+        "height": 8
+      },
+      "recipes": [
+        "TomatoOrder",
+        "CabbageOrder"
+      ],
+      "orderIntervalSeconds": 14.0,
+      "maxActiveOrders": 2,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g154/gpu_0/recordings"
+    },
+    {
+      "node": "G154",
+      "gpu": 1,
+      "difficulty": "easy",
+      "taskFile": "g154-gpu1-easy.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-easy-g154-gpu1",
+      "seed": 54101,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 2,
+      "map": {
+        "width": 9,
+        "height": 8
+      },
+      "recipes": [
+        "FishSlices",
+        "ShrimpSlices"
+      ],
+      "orderIntervalSeconds": 13.0,
+      "maxActiveOrders": 2,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g154/gpu_1/recordings"
+    },
+    {
+      "node": "G154",
+      "gpu": 2,
+      "difficulty": "medium",
+      "taskFile": "g154-gpu2-medium.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-medium-g154-gpu2",
+      "seed": 54102,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 3,
+      "map": {
+        "width": 12,
+        "height": 9
+      },
+      "recipes": [
+        "BeefSteak",
+        "ChickenSteak",
+        "TomatoSalad"
+      ],
+      "orderIntervalSeconds": 9.0,
+      "maxActiveOrders": 4,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g154/gpu_2/recordings"
+    },
+    {
+      "node": "G154",
+      "gpu": 3,
+      "difficulty": "medium",
+      "taskFile": "g154-gpu3-medium.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-medium-g154-gpu3",
+      "seed": 54103,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 3,
+      "map": {
+        "width": 12,
+        "height": 9
+      },
+      "recipes": [
+        "TomatoShake",
+        "CabbageShake",
+        "FishSushi"
+      ],
+      "orderIntervalSeconds": 9.0,
+      "maxActiveOrders": 4,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g154/gpu_3/recordings"
+    },
+    {
+      "node": "G154",
+      "gpu": 4,
+      "difficulty": "medium",
+      "taskFile": "g154-gpu4-medium.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-medium-g154-gpu4",
+      "seed": 54104,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 3,
+      "map": {
+        "width": 13,
+        "height": 10
+      },
+      "recipes": [
+        "ShrimpSushi",
+        "BeefBurger",
+        "ChickenBurger"
+      ],
+      "orderIntervalSeconds": 8.0,
+      "maxActiveOrders": 4,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g154/gpu_4/recordings"
+    },
+    {
+      "node": "G154",
+      "gpu": 5,
+      "difficulty": "medium",
+      "taskFile": "g154-gpu5-medium.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-medium-g154-gpu5",
+      "seed": 54105,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 3,
+      "map": {
+        "width": 13,
+        "height": 10
+      },
+      "recipes": [
+        "TomatoCabbageSalad",
+        "TomatoCabbageShake",
+        "PizzaBaked"
+      ],
+      "orderIntervalSeconds": 8.0,
+      "maxActiveOrders": 4,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g154/gpu_5/recordings"
+    },
+    {
+      "node": "G154",
+      "gpu": 6,
+      "difficulty": "hard",
+      "taskFile": "g154-gpu6-hard.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-hard-g154-gpu6",
+      "seed": 54106,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 4,
+      "map": {
+        "width": 16,
+        "height": 10
+      },
+      "recipes": [
+        "BeefBurger",
+        "ChickenBurger",
+        "FishSushi",
+        "ShrimpSushi",
+        "PizzaBaked"
+      ],
+      "orderIntervalSeconds": 5.0,
+      "maxActiveOrders": 6,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g154/gpu_6/recordings"
+    },
+    {
+      "node": "G154",
+      "gpu": 7,
+      "difficulty": "hard",
+      "taskFile": "g154-gpu7-hard.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-hard-g154-gpu7",
+      "seed": 54107,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 4,
+      "map": {
+        "width": 18,
+        "height": 12
+      },
+      "recipes": [
+        "TomatoCabbageSalad",
+        "TomatoCabbageShake",
+        "BeefBurger",
+        "ChickenBurger",
+        "PizzaBaked"
+      ],
+      "orderIntervalSeconds": 5.0,
+      "maxActiveOrders": 6,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g154/gpu_7/recordings"
+    },
+    {
+      "node": "G155",
+      "gpu": 0,
+      "difficulty": "easy",
+      "taskFile": "g155-gpu0-easy.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-easy-g155-gpu0",
+      "seed": 55100,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 2,
+      "map": {
+        "width": 8,
+        "height": 8
+      },
+      "recipes": [
+        "TomatoOrder",
+        "FishSlices"
+      ],
+      "orderIntervalSeconds": 14.0,
+      "maxActiveOrders": 2,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g155/gpu_0/recordings"
+    },
+    {
+      "node": "G155",
+      "gpu": 1,
+      "difficulty": "easy",
+      "taskFile": "g155-gpu1-easy.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-easy-g155-gpu1",
+      "seed": 55101,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 2,
+      "map": {
+        "width": 9,
+        "height": 8
+      },
+      "recipes": [
+        "CabbageOrder",
+        "ShrimpSlices"
+      ],
+      "orderIntervalSeconds": 13.0,
+      "maxActiveOrders": 2,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g155/gpu_1/recordings"
+    },
+    {
+      "node": "G155",
+      "gpu": 2,
+      "difficulty": "medium",
+      "taskFile": "g155-gpu2-medium.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-medium-g155-gpu2",
+      "seed": 55102,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 3,
+      "map": {
+        "width": 12,
+        "height": 9
+      },
+      "recipes": [
+        "BeefSteak",
+        "ChickenSteak",
+        "CabbageSalad"
+      ],
+      "orderIntervalSeconds": 9.0,
+      "maxActiveOrders": 4,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g155/gpu_2/recordings"
+    },
+    {
+      "node": "G155",
+      "gpu": 3,
+      "difficulty": "medium",
+      "taskFile": "g155-gpu3-medium.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-medium-g155-gpu3",
+      "seed": 55103,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 3,
+      "map": {
+        "width": 12,
+        "height": 9
+      },
+      "recipes": [
+        "TomatoShake",
+        "CabbageShake",
+        "ShrimpSushi"
+      ],
+      "orderIntervalSeconds": 9.0,
+      "maxActiveOrders": 4,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g155/gpu_3/recordings"
+    },
+    {
+      "node": "G155",
+      "gpu": 4,
+      "difficulty": "medium",
+      "taskFile": "g155-gpu4-medium.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-medium-g155-gpu4",
+      "seed": 55104,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 3,
+      "map": {
+        "width": 13,
+        "height": 10
+      },
+      "recipes": [
+        "FishSushi",
+        "BeefBurger",
+        "TomatoCabbageSalad"
+      ],
+      "orderIntervalSeconds": 8.0,
+      "maxActiveOrders": 4,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g155/gpu_4/recordings"
+    },
+    {
+      "node": "G155",
+      "gpu": 5,
+      "difficulty": "medium",
+      "taskFile": "g155-gpu5-medium.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-medium-g155-gpu5",
+      "seed": 55105,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 3,
+      "map": {
+        "width": 13,
+        "height": 10
+      },
+      "recipes": [
+        "ChickenBurger",
+        "PizzaBaked",
+        "TomatoCabbageShake"
+      ],
+      "orderIntervalSeconds": 8.0,
+      "maxActiveOrders": 4,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g155/gpu_5/recordings"
+    },
+    {
+      "node": "G155",
+      "gpu": 6,
+      "difficulty": "hard",
+      "taskFile": "g155-gpu6-hard.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-hard-g155-gpu6",
+      "seed": 55106,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 4,
+      "map": {
+        "width": 16,
+        "height": 10
+      },
+      "recipes": [
+        "BeefBurger",
+        "ChickenBurger",
+        "TomatoCabbageSalad",
+        "FishSushi",
+        "PizzaBaked"
+      ],
+      "orderIntervalSeconds": 5.0,
+      "maxActiveOrders": 6,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g155/gpu_6/recordings"
+    },
+    {
+      "node": "G155",
+      "gpu": 7,
+      "difficulty": "hard",
+      "taskFile": "g155-gpu7-hard.json",
+      "taskId": "kitchen-subset-10h-v3-20260902-hard-g155-gpu7",
+      "seed": 55107,
+      "episodeSeconds": 2250.0,
+      "timeScale": 2.0,
+      "agents": 4,
+      "map": {
+        "width": 18,
+        "height": 12
+      },
+      "recipes": [
+        "BeefBurger",
+        "ChickenBurger",
+        "TomatoCabbageShake",
+        "ShrimpSushi",
+        "PizzaBaked"
+      ],
+      "orderIntervalSeconds": 5.0,
+      "maxActiveOrders": 6,
+      "outputDirectory": "/data/mayanwen/kitchen-rollouts/kitchen-subset-10h-v3-20260902/g155/gpu_7/recordings"
+    }
+  ]
+}
